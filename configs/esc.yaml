@@ -1,0 +1,31 @@
+# ESC (mouse) — the second training cell type & cross-cell-type transfer target.
+# Uses the self-consistent dual-evidence triple from a single study (PMID 23794736):
+#   RN114 ChIP-chip -> localization | RN115 LOGOF -> perturbation | RN116 ChIPchip&LOGOF -> dual
+# RN116 IS the intersection of RN114 & RN115, so E_dual ⊆ E_loc and E_dual ⊆ E_pert
+# hold by construction (the clean case for the curriculum).
+inherit: default.yaml
+
+cell_type: ESC
+organism: mouse          # for TSS annotation (mm39 / GRCm39)
+genome: mm39
+
+paths:
+  networks:
+    localization:  data/raw/networks/ESC_localization.tsv     # RN114
+    perturbation:  data/raw/networks/ESC_perturbation.tsv     # RN115
+    dual_evidence: data/raw/networks/ESC_dual_evidence.tsv     # RN116
+  single_cell:
+    # DS010 (9021 cells, scRNA/scATAC) — small on disk, high cell count.
+    # Filenames vary across datasets (scRNA.Expression_Matrix vs scRNA_Expression),
+    # so match flexibly on the descriptive stem.
+    rna_glob:  "data/raw/single_cell/ESC_multiome/**/scRNA*xpression*"
+    atac_glob: "data/raw/single_cell/ESC_multiome/**/scATAC*eak*"
+    # Fallback DS012 (930 cells):
+    # rna_glob:  "data/raw/single_cell/ESC_multiome_alt/**/scRNA.Expression_Matrix.*.txt"
+    # atac_glob: "data/raw/single_cell/ESC_multiome_alt/**/scATAC.Peak_Matrix.*.txt"
+  processed_dir: data/processed/ESC
+
+atac:
+  # Mouse build determined empirically from ATAC peak coords (see preprocess logs);
+  # mm10 (vM25) tends to match older studies. Swap to gencode.vM27.gtf.gz for mm39.
+  gtf_path: data/raw/gtf/gencode.vM25.gtf.gz

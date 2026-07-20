@@ -1,0 +1,9 @@
+# Local smoke-test config: mouse ESC using the small DS012 paired dataset
+# (the only single-cell data downloaded locally). Inherits esc.yaml.
+inherit: esc.yaml
+
+paths:
+  single_cell:
+    rna_glob:  "data/raw/single_cell/ESC_multiome_alt/**/scRNA.Expression_Matrix.*.txt"
+    atac_glob: "data/raw/single_cell/ESC_multiome_alt/**/scATAC.Peak_Matrix.*.txt"
+  processed_dir: data/processed/ESC

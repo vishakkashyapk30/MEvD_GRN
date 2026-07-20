@@ -1,0 +1,27 @@
+# K562 (human) — the primary training cell type.
+# The ONLY human cell type in SC-MO-GRN-DB with all three evidence tiers:
+#   RN117 ChIPseq -> localization | RN118 KO -> perturbation | RN119 ChIPseq&KO -> dual
+# NOTE: RN119 is from a different study (PMID 38749504) than RN117/RN118, so
+# nesting is verified at preprocess time (see data.dual_evidence_mode).
+inherit: default.yaml
+
+cell_type: K562
+organism: human          # for TSS annotation (hg38)
+genome: hg38
+
+paths:
+  networks:
+    localization:  data/raw/networks/K562_localization.tsv    # RN117
+    perturbation:  data/raw/networks/K562_perturbation.tsv    # RN118
+    dual_evidence: data/raw/networks/K562_dual_evidence.tsv    # RN119
+  single_cell:
+    # RNA from DS019 (953 K562 cells, reliable download; genes×cells CSV .out).
+    # ATAC from DS025 multiome when available (gene-level aggregation makes the
+    # RNA/ATAC pairing irrelevant); until DS025 finishes, ATAC gracefully = 0.
+    rna_glob:  "data/raw/single_cell/K562_scRNA/**/*.out"
+    # DS025 multiome ATAC as a 10x CellRanger .h5 (Peaks feature type, hg38).
+    atac_glob: "data/raw/single_cell/K562_multiome_h5/*.h5"
+  processed_dir: data/processed/K562
+
+atac:
+  gtf_path: data/raw/gtf/gencode.v38.gtf.gz     # hg38 (K562 is human)
