@@ -1,0 +1,84 @@
+# =============================================================================
+# MEvD-GRN master configuration (Part 14 of the plan).
+# Cell-type configs (k562.yaml, esc.yaml) inherit this and override `paths`.
+# All scripts read from a config; no hardcoded hyperparameters.
+# =============================================================================
+
+data:
+  cell_types: [K562, ESC]
+  evidence_tiers: [localization, perturbation, dual_evidence]
+  tier_hierarchy: [localization, perturbation, dual_evidence]  # easy -> hard
+  n_hvg: 3000
+  atac_window_bp: 100000
+  signature_dim: 50               # co-expression signature dims (s_i.s_j ~ Pearson corr)
+  coexpr_knn_k: 20                # gene-gene co-expression kNN degree (message-passing graph)
+  tf_candidate_topk: 500          # per-TF accessible+co-expressed candidate targets
+  top_k_prior_targets: 500        # legacy global-accessibility prior (used only if signatures absent)
+  prior_exclude_positives: true   # keep known edges OUT of the message-passing graph (no label leakage)
+  negative_pool_cap: 1000000      # max random TF×gene negatives to pre-sample
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  neg_train_ratio: 5
+  seed: 42
+  # Single-cell value handling (real SC-MO-GRN-DB matrices are features x cells,
+  # tab-delimited; RNA = normalized floats, ATAC = integer counts).
+  normalize_total: true        # library-size normalize to target_sum
+  target_sum: 10000
+  log1p: true
+  min_genes_per_cell: 200
+  min_cells_per_gene: 3
+  min_peaks_per_cell: 100
+  # Dual-evidence handling. The K562 dual network (RN119) is from a different
+  # study than its loc/pert nets, so strict nesting (E_dual subset of E_loc/E_pert)
+  # is NOT guaranteed. Options: "as_is" (use DB dual directly, verify nesting and
+  # warn) or "reconstruct" (define dual = loc intersect pert ourselves).
+  dual_evidence_mode: as_is
+
+model:
+  rna_in_dim: 3                   # [mean, var, detection_rate]
+  atac_in_dim: 2                  # [mean, var] (openness enters separately at the decoder)
+  hidden_dim: 128
+  n_gnn_layers: 2
+  dropout: 0.2
+  gnn_type: sage
+  # Modality integration: role_aware (default; ATAC gates target accessibility,
+  # RNA drives TF activity + co-expression) | gated | concat (legacy fusion ablations).
+  integration: role_aware
+
+curriculum:
+  stages:
+    - {name: Stage1_Localization, evidence_tier: localization, n_epochs: 30, lr: 1.0e-3, neg_ratio: 5,  freeze_encoder: false}
+    - {name: Stage2_Perturbation, evidence_tier: perturbation, n_epochs: 15, lr: 3.0e-4, neg_ratio: 5,  freeze_encoder: false}
+    - {name: Stage3_DualEvidence, evidence_tier: dual_evidence, n_epochs: 10, lr: 1.0e-4, neg_ratio: 10, freeze_encoder: true}
+  use_memory_replay: false
+  replay_weight: 0.1
+  use_hard_negatives: true
+
+training:
+  optimizer: adamw
+  weight_decay: 1.0e-4
+  batch_size: 8192          # re-encode-per-batch => fewer/larger batches is much faster; fits 4060/2080Ti easily
+  clip_grad_norm: 1.0
+  early_stopping_patience: 10     # in val-check units (val every `eval_every` epochs)
+  eval_every: 5
+  loss_type: bce_weighted         # bce_weighted | focal
+  focal_alpha: 0.75
+  focal_gamma: 2.0
+  neg_stage3_ratio: 10
+
+evaluation:
+  metrics: [auroc, aupr, early_precision, epr]
+  test_on_all_tiers: true
+  cross_cell_type: true
+
+hardware:
+  device: cuda:0
+  n_dataloader_workers: 4
+
+# scATAC peak->gene mapping needs TSS coordinates. On Ada compute nodes there is
+# no internet, so prefer an offline GTF (download GENCODE on a login node):
+#   hg38: gencode.v38.annotation.gtf(.gz)   mm39: gencode.vM27.annotation.gtf(.gz)
+# If gtf_path is null, the code tries BioMart (online) and otherwise sets ATAC=0.
+atac:
+  gtf_path: null

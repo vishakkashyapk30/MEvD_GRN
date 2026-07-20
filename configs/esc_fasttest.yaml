@@ -1,0 +1,11 @@
+# Fast local integration test (1 epoch/stage, CPU) on real ESC/DS012 data.
+inherit: esc_ds012_localtest.yaml
+
+curriculum:
+  stages:
+    - {name: Stage1_Localization, evidence_tier: localization, n_epochs: 1, lr: 1.0e-3, neg_ratio: 5,  freeze_encoder: false}
+    - {name: Stage2_Perturbation, evidence_tier: perturbation, n_epochs: 1, lr: 3.0e-4, neg_ratio: 5,  freeze_encoder: false}
+    - {name: Stage3_DualEvidence, evidence_tier: dual_evidence, n_epochs: 1, lr: 1.0e-4, neg_ratio: 10, freeze_encoder: true}
+
+training:
+  eval_every: 1

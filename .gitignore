@@ -1,0 +1,28 @@
+# Data (downloaded from SC-MO-GRN-DB; re-fetch with scripts/01_download_data.sh)
+data/raw/
+data/processed/
+data/splits/
+
+# Results / checkpoints / logs
+results/
+result_logs/
+logs/
+*.pt
+*.npy
+
+# Superseded local planning document
+MEvD_GRN_plan.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.ipynb_checkpoints/
+.venv/
+env/
+
+# OS
+.DS_Store
