@@ -10,8 +10,11 @@ Reality check vs. the original plan (which assumed .h5ad, cells x genes):
   * RNA values are already normalised floats; we re-apply CP10K + log1p so the
     transform is well-defined regardless of upstream scaling.
 
-The model operates on GENE NODES, so every modality is reduced to a per-gene
-(mean, variance) feature pair across cells.
+The model operates on GENE NODES, so every modality is reduced to per-gene
+summary statistics across cells (mean/variance/detection-rate for RNA and,
+since the ATAC rewrite in plan.md Section 2, RP-weighted ATAC activity, plus
+a separate 4-dim regulatory-potential locus-shape descriptor -- see
+`preprocess_scatac`).
 """
 from __future__ import annotations
 
@@ -347,12 +350,26 @@ def _tss_from_biomart(genome: str, want: set) -> pd.DataFrame:
     return res.drop_duplicates("gene")
 
 
-def _peak_gene_incidence(peaks: pd.DataFrame, tss: pd.DataFrame,
-                         gene_index: Dict[str, int], n_peaks: int,
-                         window_bp: int) -> sp.csr_matrix:
-    """Sparse (n_peaks x n_genes) 0/1 incidence: peak within +/-window of gene TSS."""
+def _peak_gene_weighted_incidence(peaks: pd.DataFrame, tss: pd.DataFrame,
+                                  gene_index: Dict[str, int], n_peaks: int,
+                                  window_bp: int, decay_bp: float
+                                  ) -> Tuple[sp.csr_matrix, Dict[int, Tuple[np.ndarray, np.ndarray]]]:
+    """Sparse (n_peaks x n_genes) regulatory-potential (RP) weighted incidence.
+
+    Replaces the old binary +/-window "counts the same regardless of
+    distance" incidence with an exponential TSS-distance decay
+    (MAESTRO/BETA-style): weight = exp(-|signed_distance| / decay_bp) for
+    every peak within +/-window_bp of a gene's TSS. A peak right next to the
+    TSS gets a weight near 1; one near the edge of the window gets a weight
+    near exp(-window_bp/decay_bp), instead of the same "1" as before.
+
+    Also returns `per_gene`: {gene_idx: (weights, signed_distances)} for
+    every peak assigned to that gene, so a richer per-gene locus-shape
+    descriptor can be computed downstream (see
+    `_regulatory_potential_descriptor`) instead of a single collapsed count.
+    """
     n_genes = len(gene_index)
-    rows, cols = [], []
+    rows, cols, weights, dists = [], [], [], []
     for chrom, gss in tss.groupby("chrom"):
         pk = peaks[peaks["chrom"] == chrom]
         if pk.empty:
@@ -368,31 +385,79 @@ def _peak_gene_incidence(peaks: pd.DataFrame, tss: pd.DataFrame,
                 continue
             lo = np.searchsorted(mids_sorted, gr["tss"] - window_bp, side="left")
             hi = np.searchsorted(mids_sorted, gr["tss"] + window_bp, side="right")
-            for pi in pk_idx_sorted[lo:hi]:
+            for pi, mid in zip(pk_idx_sorted[lo:hi], mids_sorted[lo:hi]):
+                d = int(mid) - int(gr["tss"])
                 rows.append(int(pi))
                 cols.append(gi)
+                weights.append(np.exp(-abs(d) / decay_bp))
+                dists.append(d)
     if not rows:
-        return sp.csr_matrix((n_peaks, n_genes), dtype=np.float32)
-    data = np.ones(len(rows), dtype=np.float32)
-    return sp.csr_matrix((data, (rows, cols)), shape=(n_peaks, n_genes))
+        return sp.csr_matrix((n_peaks, n_genes), dtype=np.float32), {}
+    weights_arr = np.asarray(weights, dtype=np.float32)
+    dists_arr = np.asarray(dists, dtype=np.int64)
+    cols_arr = np.asarray(cols, dtype=np.int64)
+    incidence = sp.csr_matrix((weights_arr, (rows, cols_arr)), shape=(n_peaks, n_genes))
+
+    per_gene: Dict[int, Tuple[np.ndarray, np.ndarray]] = {}
+    order = np.argsort(cols_arr)
+    cols_sorted = cols_arr[order]
+    w_sorted = weights_arr[order]
+    d_sorted = dists_arr[order]
+    boundaries = np.searchsorted(cols_sorted, np.arange(n_genes + 1))
+    for gi in range(n_genes):
+        s, e = boundaries[gi], boundaries[gi + 1]
+        if e > s:
+            per_gene[gi] = (w_sorted[s:e], d_sorted[s:e])
+    return incidence, per_gene
+
+
+def _regulatory_potential_descriptor(per_gene: Dict[int, Tuple[np.ndarray, np.ndarray]],
+                                     n_genes: int, top_k: int) -> np.ndarray:
+    """Per-gene locus-SHAPE descriptor (n_genes, 4), replacing the old
+    single collapsed `openness` scalar (which was 96%+ correlated with the
+    gene-activity mean/var and heavily quantized -- see plan.md Section 2).
+
+    For each gene's top-K peaks by RP weight:
+      col 0: mean RP weight   (how strong, on average, the nearest peaks are)
+      col 1: max RP weight    (how close the single nearest peak is)
+      col 2: mean signed distance / 1e5 (proximal vs. distal balance, scaled)
+      col 3: peak count / top_k, clipped to 1 (how many peaks are in-window)
+    """
+    rp = np.zeros((n_genes, 4), dtype=np.float32)
+    for gi, (w, d) in per_gene.items():
+        order = np.argsort(-w)[:top_k]
+        w_top, d_top = w[order], d[order]
+        rp[gi, 0] = float(w_top.mean())
+        rp[gi, 1] = float(w_top.max())
+        rp[gi, 2] = float(d_top.mean()) / 1e5
+        rp[gi, 3] = min(len(w), top_k) / top_k
+    return rp
 
 
 def preprocess_scatac(atac_path: str, gene_names: List[str], gene_index: Dict[str, int],
                       cfg: dict) -> Tuple[np.ndarray, np.ndarray]:
-    """Gene-activity-score features + locus openness per gene.
+    """RP-weighted gene-activity-score features + a locus-shape descriptor per gene.
 
-    Returns (atac_features [n_genes, 2] = [mean, var], openness [n_genes]).
-    `openness` is a normalized count of accessible peaks within +/-window of the
-    gene's TSS (a motif-free accessibility proxy for how regulatable the locus is):
-    openness_g = log1p(n_peaks_near_TSS(g)) / max_g. Genes with no mapped peaks get
-    (0, 0) activity and 0 openness.
+    Returns (atac_features [n_genes, 3] = [mean, var, detection_rate] of
+    RP-weighted gene activity, regulatory_potential [n_genes, 4] -- see
+    `_regulatory_potential_descriptor`).
+
+    This replaces the earlier binary +/-window aggregation (every peak in
+    window counted identically regardless of distance) with an exponential
+    TSS-distance decay, and replaces the earlier single collapsed
+    `openness` scalar (empirically ~96%+ correlated with the gene-activity
+    mean, i.e. carrying almost no independent information -- see plan.md
+    Section 2) with a 4-dim descriptor of peak strength/proximity/count.
+    Genes with no mapped peaks get all-zero features.
     """
     n_genes = len(gene_names)
     atac = cfg.get("atac", {}) if isinstance(cfg.get("atac"), dict) else {}
     genome = cfg.get("genome", "hg38")
     window_bp = int(cfg.get("atac_window_bp", 100_000))
+    decay_bp = float(atac.get("rp_decay_bp", 10_000))
+    top_k = int(atac.get("rp_top_k", 10))
     gtf_path = atac.get("gtf_path")
-    zero = np.zeros((n_genes, 2), dtype=np.float32), np.zeros(n_genes, dtype=np.float32)
+    zero = np.zeros((n_genes, 3), dtype=np.float32), np.zeros((n_genes, 4), dtype=np.float32)
 
     if not atac_path:
         print("[scATAC] no ATAC path; returning zero features.", flush=True)
@@ -418,19 +483,22 @@ def preprocess_scatac(atac_path: str, gene_names: List[str], gene_index: Dict[st
     if tss.empty or peaks.empty:
         return zero
 
-    incidence = _peak_gene_incidence(peaks, tss, gene_index, len(peak_names), window_bp)
-    # Gene activity (cells x genes) = X(cells x peaks) @ incidence(peaks x genes)
+    incidence, per_gene = _peak_gene_weighted_incidence(
+        peaks, tss, gene_index, len(peak_names), window_bp, decay_bp)
+    # Gene activity (cells x genes) = X(cells x peaks) @ incidence(peaks x genes),
+    # now RP-weighted instead of binary.
     gene_act = X @ incidence                                   # sparse cells x genes
     mean, var = _col_mean_var(gene_act)
-    feats = np.stack([mean, var], axis=1).astype(np.float32)
+    detection = _col_detection_rate(gene_act)
+    feats = np.stack([mean, var, detection], axis=1).astype(np.float32)
 
-    # Openness = normalized log peak-count near TSS (accessibility / regulatory potential).
-    peak_count = np.asarray(incidence.sum(axis=0)).ravel().astype(np.float64)  # (n_genes,)
-    openness = np.log1p(peak_count)
-    mx = float(openness.max())
-    openness = (openness / mx if mx > 0 else openness).astype(np.float32)
+    reg_potential = _regulatory_potential_descriptor(per_gene, n_genes, top_k)
 
     nz = int((feats[:, 0] > 0).sum())
+    proximal = int((reg_potential[:, 1] > 0.1).sum())            # peak within ~ln(10)*decay_bp
     print(f"[scATAC] {X.shape[0]} cells; {nz}/{n_genes} genes with non-zero activity "
-          f"({100*nz/max(n_genes,1):.1f}%); mean peaks/gene={peak_count.mean():.2f}", flush=True)
-    return feats, openness
+          f"({100*nz/max(n_genes,1):.1f}%); {proximal}/{n_genes} genes have a "
+          f"PROXIMAL peak (max RP>0.1, ~{decay_bp*np.log(10):.0f}bp) "
+          f"({100*proximal/max(n_genes,1):.1f}%); mean(mean_topK_RP)={reg_potential[:,0].mean():.4f}",
+          flush=True)
+    return feats, reg_potential
