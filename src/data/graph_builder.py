@@ -173,12 +173,16 @@ def build_prior_graph(gene_index: Dict[str, int], tf_indices: List[int],
                       exclude_positives: bool = True) -> torch.Tensor:
     """TF-specific MESSAGE-PASSING candidate graph (directed TF -> target).
 
-    For each TF, candidate targets are the top_k genes that are BOTH (a) accessible
-    (positive `openness`, i.e. the locus has accessible peaks near its TSS) AND
-    (b) most co-expressed with that TF (signature dot product). This yields a
-    DIFFERENT neighbourhood per TF, unlike the old global accessibility ranking that
-    gave every TF the same targets. Falls back to the global accessibility ranking
-    when signatures/openness are unavailable (legacy-graph ablation).
+    For each TF, candidate targets are the top_k genes that are BOTH (a) PROXIMALLY
+    accessible (`openness[:, 1]` -- max regulatory-potential weight among a gene's
+    top peaks -- above 0.1, i.e. the nearest peak is within roughly
+    decay_bp*ln(10) of the TSS; see plan.md Section 2 for why a mere
+    "any peak within the +/-window" gate passes ~90% of genes and barely
+    filters anything) AND (b) most co-expressed with that TF (signature dot
+    product). This yields a DIFFERENT neighbourhood per TF, unlike the old
+    global accessibility ranking that gave every TF the same targets. Falls
+    back to the global accessibility ranking when signatures/openness are
+    unavailable (legacy-graph ablation).
 
     Used ONLY for GNN message passing — the decoder can score ANY (TF, gene) pair.
     Known positive edges are EXCLUDED so val/test labels can't leak via messages.
@@ -195,7 +199,7 @@ def build_prior_graph(gene_index: Dict[str, int], tf_indices: List[int],
 
     if have_coexpr:
         S = signatures.astype(np.float32)
-        accessible = (openness > 0) if (openness is not None and np.any(openness)) \
+        accessible = (openness[:, 1] > 0.1) if (openness is not None and np.any(openness)) \
             else np.ones(n_genes, dtype=bool)
         acc_idx = np.where(accessible)[0]
         for tf in tf_indices:
@@ -290,7 +294,15 @@ def create_edge_splits(pos_edges: torch.Tensor, neg_pool: torch.Tensor,
                        train_ratio: float, val_ratio: float,
                        neg_train_ratio: int, neg_eval_ratio: int,
                        seed: int) -> Dict[str, Dict[str, torch.Tensor]]:
-    """Edge-level split (plan 4.4). Negatives drawn disjointly per split."""
+    """Edge-level split for a SINGLE tier in isolation (plan 4.4, original).
+
+    Kept for single-tier callers (e.g. the `all_at_once` / single-stage
+    ablations that only ever look at one tier's own edges). For anything that
+    spans multiple evidence tiers, use `create_global_edge_splits` instead --
+    splitting each tier independently lets a "held-out" edge in one tier leak
+    into another tier's training set whenever tiers are nested (see that
+    function's docstring).
+    """
     g = torch.Generator().manual_seed(seed)
     n_pos = pos_edges.shape[1]
     perm = torch.randperm(n_pos, generator=g)
@@ -318,3 +330,95 @@ def create_edge_splits(pos_edges: torch.Tensor, neg_pool: torch.Tensor,
         "val": {"pos": val_pos, "neg": val_neg},
         "test": {"pos": test_pos, "neg": test_neg},
     }
+
+
+def create_global_edge_splits(evidence: Dict[str, torch.Tensor], neg_pool: torch.Tensor,
+                              train_ratio: float, val_ratio: float,
+                              neg_train_ratio: int, neg_eval_ratio: int,
+                              seed: int) -> Dict[str, Dict[str, Dict[str, torch.Tensor]]]:
+    """Global, hierarchy-safe edge split across ALL evidence tiers at once.
+
+    The evidence tiers are heavily NESTED (e.g. at K562: 100% of dual_evidence
+    edges are also perturbation edges; 77% are also localization edges).
+    Splitting each tier's positives independently at random -- what
+    `create_edge_splits` does per-tier -- lets an edge held out as "test" in
+    one tier be a TRAINING positive in another tier, since the same
+    (TF, gene) pair can appear in multiple tiers under independent splits.
+    Measured on K562 with independent per-tier splits: 85.8% of
+    dual_evidence's "test" edges were already present in localization-train
+    or perturbation-train.
+
+    Fix: assign every UNIQUE (TF, gene) pair, across the UNION of all tiers,
+    to exactly one global split ONCE (by a single random permutation). Each
+    tier's train/val/test is then that tier's own edges intersected with the
+    global assignment. This guarantees an edge assigned to global val/test
+    can never be a training positive in ANY tier, however nested the tiers
+    are with each other.
+
+    Returns {tier: {"train"|"val"|"test": {"pos": LongTensor(2,E), "neg": LongTensor(2,E)}}}.
+    """
+    g = torch.Generator().manual_seed(seed)
+    all_edges: Set[Edge] = set()
+    for e in evidence.values():
+        all_edges |= edge_set(e)
+    all_edges_sorted = sorted(all_edges)
+    n = len(all_edges_sorted)
+    perm = torch.randperm(n, generator=g).tolist()
+    n_train = int(n * train_ratio)
+    n_val = int(n * val_ratio)
+    split_of: Dict[Edge, str] = {}
+    for rank, idx in enumerate(perm):
+        e = all_edges_sorted[idx]
+        split_of[e] = "train" if rank < n_train else ("val" if rank < n_train + n_val else "test")
+
+    # Negatives use the SAME seed every time they're derived from neg_pool
+    # elsewhere in the codebase, so a fresh shared-seed shuffle here keeps
+    # negative splits globally consistent across tiers (a negative edge is,
+    # by construction, negative in every tier already -- there's no nesting
+    # hazard for negatives the way there is for positives).
+    gneg = torch.Generator().manual_seed(seed)
+    n_neg_total = neg_pool.shape[1]
+    neg_shuf = neg_pool[:, torch.randperm(n_neg_total, generator=gneg)]
+    c_tr = int(n_neg_total * train_ratio)
+    c_va = int(n_neg_total * val_ratio)
+    neg_chunk = {"train": neg_shuf[:, :c_tr], "val": neg_shuf[:, c_tr:c_tr + c_va],
+                 "test": neg_shuf[:, c_tr + c_va:]}
+
+    out: Dict[str, Dict[str, Dict[str, torch.Tensor]]] = {}
+    for tier, e in evidence.items():
+        by_split: Dict[str, List[Edge]] = {"train": [], "val": [], "test": []}
+        for s, d in zip(e[0].tolist(), e[1].tolist()):
+            by_split[split_of[(s, d)]].append((s, d))
+        pos: Dict[str, torch.Tensor] = {}
+        for name, lst in by_split.items():
+            pos[name] = (torch.tensor(list(zip(*lst)), dtype=torch.long) if lst
+                        else torch.zeros((2, 0), dtype=torch.long))
+        neg = {
+            "train": neg_chunk["train"][:, :min(neg_train_ratio * pos["train"].shape[1],
+                                                neg_chunk["train"].shape[1])],
+            "val": neg_chunk["val"][:, :min(neg_eval_ratio * pos["val"].shape[1],
+                                           neg_chunk["val"].shape[1])],
+            "test": neg_chunk["test"][:, :min(neg_eval_ratio * pos["test"].shape[1],
+                                             neg_chunk["test"].shape[1])],
+        }
+        out[tier] = {name: {"pos": pos[name], "neg": neg[name]} for name in ("train", "val", "test")}
+    return out
+
+
+def verify_no_cross_tier_leakage(splits_per_tier: Dict[str, Dict[str, Dict[str, torch.Tensor]]]) -> Dict[str, int]:
+    """Audit check: no tier's val/test positives should appear in ANY tier's
+    train positives. Prints a per-tier report and returns leak counts (should
+    all be 0 when splits came from `create_global_edge_splits`)."""
+    train_union: Set[Edge] = set()
+    for splits in splits_per_tier.values():
+        train_union |= edge_set(splits["train"]["pos"])
+    leaks: Dict[str, int] = {}
+    for tier, splits in splits_per_tier.items():
+        for part in ("val", "test"):
+            held = edge_set(splits[part]["pos"])
+            n_leak = len(held & train_union)
+            leaks[f"{tier}.{part}"] = n_leak
+            flag = "OK" if n_leak == 0 else "LEAK"
+            print(f"[leak-check] {flag} {tier}.{part}: {n_leak}/{max(len(held),1)} edges "
+                  "present in some tier's train split", flush=True)
+    return leaks

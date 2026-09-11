@@ -105,32 +105,49 @@ def main():
     for tier, e in evidence.items():
         torch.save(e, out_dir / f"evidence_{tier}.pt")
 
-    # 8. edge splits -------------------------------------------------------
-    for tier, e in evidence.items():
-        if e.shape[1] == 0:
+    # 8. edge splits (GLOBAL, hierarchy-safe -- see graph_builder docstring) -
+    # Evidence tiers are heavily nested (verified in step 4 above), so tiers
+    # cannot be split independently without an edge held out in one tier
+    # leaking into another tier's training positives. create_global_edge_splits
+    # assigns every unique (TF, gene) pair to exactly one split ONCE, across
+    # the union of all tiers, then derives each tier's train/val/test from
+    # that single assignment.
+    active_evidence = {t: e for t, e in evidence.items() if e.shape[1] > 0}
+    splits_per_tier = gb.create_global_edge_splits(
+        active_evidence, neg_pool,
+        train_ratio=float(dcfg["train_ratio"]), val_ratio=float(dcfg["val_ratio"]),
+        neg_train_ratio=int(dcfg["neg_train_ratio"]), neg_eval_ratio=5,
+        seed=int(dcfg["seed"]))
+    for tier in evidence:
+        if tier not in splits_per_tier:
             print(f"[split] {tier}: 0 positives, skipping", flush=True)
             continue
-        splits = gb.create_edge_splits(
-            e, neg_pool,
-            train_ratio=float(dcfg["train_ratio"]), val_ratio=float(dcfg["val_ratio"]),
-            neg_train_ratio=int(dcfg["neg_train_ratio"]), neg_eval_ratio=5,
-            seed=int(dcfg["seed"]))
+        splits = splits_per_tier[tier]
         torch.save(splits, splits_dir / f"{cell_type}_{tier}_splits.pt")
         print(f"[split] {tier}: train_pos={splits['train']['pos'].shape[1]} "
               f"val_pos={splits['val']['pos'].shape[1]} test_pos={splits['test']['pos'].shape[1]}",
               flush=True)
+    leak_report = gb.verify_no_cross_tier_leakage(splits_per_tier)
 
     # 9. summary -----------------------------------------------------------
     summary = {
         "cell_type": cell_type, "n_genes": len(universe), "n_tfs": len(tf_indices),
         "signature_dim": int(sig_aligned.shape[1]),
         "atac_nonzero_frac": float((atac_aligned[:, 0] > 0).mean()),
-        "openness_nonzero_frac": float((openness > 0).mean()),
+        # openness is now a (n_genes, 4) regulatory-potential descriptor (see
+        # plan.md Section 2); "proximal" (col 1, max RP > 0.1) is the
+        # meaningful accessibility stat -- a mere "any peak in the +/-100kb
+        # window" gate (the old `openness_nonzero_frac`) passed ~90% of
+        # genes and barely filtered anything, which is why it's kept here
+        # only as a diagnostic contrast, not as the graph's accessibility gate.
+        "openness_any_peak_in_window_frac": float((openness[:, 3] > 0).mean()),
+        "openness_proximal_frac": float((openness[:, 1] > 0.1).mean()),
         "tf_candidate_edges": int(tf_candidate_edges.shape[1]),
         "coexpr_edges": int(coexpr_edges.shape[1]),
         "negative_pool": int(neg_pool.shape[1]),
         "evidence_sizes": {t: int(e.shape[1]) for t, e in evidence.items()},
         "nesting": nesting,
+        "cross_tier_leak_check": leak_report,
     }
     save_json(summary, out_dir / "summary.json")
     print(f"\n[done] {cell_type}: {summary}", flush=True)

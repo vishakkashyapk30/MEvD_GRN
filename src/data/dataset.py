@@ -15,15 +15,20 @@ from src.utils.io import load_json
 class CellTypeData:
     cell_type: str
     rna_features: torch.Tensor          # (N_G, 3) [mean, var, detection]
-    atac_features: torch.Tensor         # (N_G, 2) [mean, var]
+    atac_features: torch.Tensor         # (N_G, 3) [mean, var, detection] of RP-weighted activity
     tf_candidate_edges: torch.Tensor    # (2, E) TF -> accessible/co-expressed target (message passing)
     coexpr_edges: torch.Tensor          # (2, E) gene-gene co-expression kNN (message passing)
     rna_signature: torch.Tensor         # (N_G, d) co-expression signatures (s_i.s_j ~ corr)
-    openness: torch.Tensor              # (N_G,) locus accessibility proxy
+    openness: torch.Tensor              # (N_G, 4) regulatory-potential locus-shape descriptor
+                                         # [mean_topK_RP, max_RP, mean_topK_dist/1e5, peak_count/K]
     gene_index: Dict[str, int]
     tf_indices: torch.Tensor            # (N_TF,)
     evidence: Dict[str, torch.Tensor]   # tier -> (2, E)
     negative_pool: torch.Tensor         # (2, N_neg)
+    fm_embeddings: torch.Tensor = None   # (N_G, 768) pretrained Geneformer gene
+                                         # embeddings (plan.md Section 5); zeros if
+                                         # scripts/11_extract_fm_embeddings.py hasn't
+                                         # been run for this cell type yet.
 
     @property
     def n_genes(self) -> int:
@@ -37,6 +42,8 @@ class CellTypeData:
         self.rna_signature = self.rna_signature.to(device)
         self.openness = self.openness.to(device)
         self.tf_indices = self.tf_indices.to(device)
+        if self.fm_embeddings is not None:
+            self.fm_embeddings = self.fm_embeddings.to(device)
         return self
 
 
@@ -64,8 +71,11 @@ def load_celltype_data(processed_dir: str, evidence_tiers: List[str]) -> CellTyp
         p = d / f"evidence_{tier}.pt"
         if p.exists():
             evidence[tier] = torch.load(p)
+    fm_path = d / "fm_gene_embeddings.npy"
+    fm_embeddings = (torch.from_numpy(np.load(fm_path)).float() if fm_path.exists()
+                     else torch.zeros((rna.shape[0], 0)))
     return CellTypeData(cell_type, rna, atac, tf_cand, coexpr, signature, openness,
-                        gene_index, tf_indices, evidence, neg_pool)
+                        gene_index, tf_indices, evidence, neg_pool, fm_embeddings)
 
 
 def load_splits(splits_dir: str, cell_type: str, tier: str) -> Dict[str, Dict[str, torch.Tensor]]:
