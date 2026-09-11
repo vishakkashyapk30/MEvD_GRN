@@ -30,3 +30,12 @@ env/
 
 # OS
 .DS_Store
+
+# LaTeX build artifacts (paper/main.pdf and main.bbl are committed; the rest regenerates)
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.blg
+paper/*.synctex.gz
+paper/*.fls
+paper/*.fdb_latexmk
