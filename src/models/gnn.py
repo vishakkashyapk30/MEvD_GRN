@@ -28,16 +28,29 @@ def to_bidirectional(edge_index: torch.Tensor) -> torch.Tensor:
 
 
 class GNNBackbone(nn.Module):
-    """Relational GraphSAGE: per layer, one SAGEConv per relation, summed.
+    """Relational GraphSAGE: per layer, one SAGEConv per relation.
 
     `n_relations` defaults to 2 (co-expression + TF-candidate). forward() accepts a
     list of edge_index tensors of that length; empty relations contribute nothing.
+
+    `combine_mode` controls how the per-relation outputs are combined at each
+    layer:
+      * "sum" (default, backward-compatible): unweighted sum, as before.
+      * "gated": a learned, per-layer softmax weight over relations
+        (`rel_gate`), so the model decides how much to trust each relation
+        instead of us hand-picking one via the (still-available) graph_mode
+        ablation switch. Minimal diff over "sum"; the learned weights are the
+        interpretability artifact (see `get_relation_weights`).
     """
 
     def __init__(self, in_dim: int = 128, hidden_dim: int = 128,
-                 num_layers: int = 2, dropout: float = 0.2, n_relations: int = 2):
+                 num_layers: int = 2, dropout: float = 0.2, n_relations: int = 2,
+                 combine_mode: str = "sum"):
         super().__init__()
+        if combine_mode not in ("sum", "gated"):
+            raise ValueError(f"combine_mode must be 'sum' or 'gated', got {combine_mode!r}")
         self.n_relations = n_relations
+        self.combine_mode = combine_mode
         self.layers = nn.ModuleList()
         self.norms = nn.ModuleList()
         for i in range(num_layers):
@@ -47,20 +60,35 @@ class GNNBackbone(nn.Module):
             self.norms.append(nn.LayerNorm(hidden_dim))
         self.dropout = nn.Dropout(dropout)
         self.residual = in_dim == hidden_dim
+        if combine_mode == "gated":
+            # One weight per (layer, relation); starts uniform (all zeros -> softmax
+            # is uniform), so "gated" behaves exactly like a normalized "sum" at init
+            # and only diverges as training reveals which relation matters more.
+            self.rel_gate = nn.Parameter(torch.zeros(num_layers, n_relations))
 
     def forward(self, x: torch.Tensor, edge_indices: List[torch.Tensor]) -> torch.Tensor:
         rels = self._prepare(edge_indices, x.device)
         h = x
         for i, (convs, norm) in enumerate(zip(self.layers, self.norms)):
-            agg = None
-            for conv, ei in zip(convs, rels):
-                out = conv(h, ei)
-                agg = out if agg is None else agg + out
+            outs = [conv(h, ei) for conv, ei in zip(convs, rels)]
+            if self.combine_mode == "gated":
+                w = torch.softmax(self.rel_gate[i], dim=0)          # (n_relations,)
+                agg = sum(w[r] * outs[r] for r in range(self.n_relations))
+            else:
+                agg = sum(outs)
             h_new = self.dropout(F.gelu(norm(agg)))
             if self.residual and i > 0:
                 h_new = h_new + h
             h = h_new
         return h
+
+    @torch.no_grad()
+    def get_relation_weights(self) -> Optional[torch.Tensor]:
+        """(num_layers, n_relations) learned softmax relation weights, or
+        None under combine_mode="sum" (no learned weights exist)."""
+        if self.combine_mode != "gated":
+            return None
+        return torch.softmax(self.rel_gate, dim=1).cpu()
 
     def _prepare(self, edge_indices: List[torch.Tensor], device) -> List[torch.Tensor]:
         """Normalize to exactly `n_relations` bidirectional edge_index tensors."""

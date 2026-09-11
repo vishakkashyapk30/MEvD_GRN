@@ -37,7 +37,9 @@ data:
 
 model:
   rna_in_dim: 3                   # [mean, var, detection_rate]
-  atac_in_dim: 2                  # [mean, var] (openness enters separately at the decoder)
+  atac_in_dim: 3                  # [mean, var, detection] of RP-weighted gene activity
+                                   # (the 4-dim regulatory-potential descriptor enters
+                                   # separately at the decoder as `openness`)
   hidden_dim: 128
   n_gnn_layers: 2
   dropout: 0.2
@@ -45,13 +47,83 @@ model:
   # Modality integration: role_aware (default; ATAC gates target accessibility,
   # RNA drives TF activity + co-expression) | gated | concat (legacy fusion ablations).
   integration: role_aware
+  # Which structural prior(s) the GNN message-passes over:
+  #   both | coexpr | tf_candidate   (ablations: coexpr_only / tf_cand_only)
+  graph_mode: both
+  # Nonlinear edge embedding in the role-aware decoder (MPNN-style; replaces
+  # the linear w_coexp / w_open scalars). Ablation name: edge_mlp.
+  use_edge_mlp: false
+  # How the GNN combines its per-relation (coexpr / TF-candidate) outputs at
+  # each layer: "sum" (default, unweighted, backward-compatible with all
+  # prior ablations) | "gated" (learned per-layer softmax weight over
+  # relations -- see src/models/gnn.py GNNBackbone; ablation name:
+  # gated_relations). More useful once a 3rd (motif-based) relation exists.
+  combine_mode: sum
+  # Pretrained foundation-model gene embedding (plan.md Section 5), fused
+  # additively into the RNA channel. Off by default; requires
+  # scripts/11_extract_fm_embeddings.py to have been run for this cell type
+  # (falls back to a no-op zero tensor otherwise). Ablation names: with_fm
+  # (everything + FM), fm_only (FM alone, hand-crafted RNA/co-expression
+  # signal removed).
+  use_fm: false
+  fm_in_dim: 768             # Geneformer-V2-104M hidden_size
 
 curriculum:
+  # protocol: "sequential" (default) trains the stages list below one tier
+  # at a time (localization -> perturbation). "all_at_once" trains a SINGLE
+  # stage jointly on the union of main_curriculum_tiers' positives instead --
+  # no stage boundary, so no catastrophic forgetting is possible by
+  # construction.
+  #
+  # IMPORTANT (re-measured after fixing the hard-negative leakage bug in
+  # src/training/sampler.py -- see git history): with that bug in place,
+  # all_at_once looked strictly better than sequential on every metric,
+  # because the bug specifically crippled sequential's Stage 2. With the bug
+  # fixed, the comparison FLIPS on the metrics that matter most: on a
+  # full-budget K562 run, sequential reaches dual-evidence (zero-shot) AUPR
+  # 0.870 / AUROC 0.968 and perturbation AUPR 0.627, while all_at_once only
+  # reaches dual AUPR 0.791 / AUROC 0.944 and perturbation AUPR 0.351 --
+  # all_at_once wins localization big (0.937 vs 0.569 AUPR) but loses on
+  # perturbation and on the headline zero-shot generalization metric.
+  # Working theory: joint training merges localization's ~818k positives
+  # with perturbation's ~177k, so perturbation's signal gets diluted ~4.6x;
+  # sequential's Stage 2 gives perturbation undiluted gradient attention,
+  # which transfers better to the nested dual-evidence tier. Kept
+  # "sequential" as the default because of this; all_at_once remains
+  # available (and is still a legitimate, forgetting-free architecture
+  # point) via scripts/06_ablation.py --ablation all_at_once.
+  protocol: sequential
   stages:
     - {name: Stage1_Localization, evidence_tier: localization, n_epochs: 30, lr: 1.0e-3, neg_ratio: 5,  freeze_encoder: false}
     - {name: Stage2_Perturbation, evidence_tier: perturbation, n_epochs: 15, lr: 3.0e-4, neg_ratio: 5,  freeze_encoder: false}
     - {name: Stage3_DualEvidence, evidence_tier: dual_evidence, n_epochs: 10, lr: 1.0e-4, neg_ratio: 10, freeze_encoder: true}
-  use_memory_replay: false
+  # Tiers actually trained on by the MAIN model (03_train.py), under EITHER
+  # protocol. dual_evidence is deliberately excluded: it is heavily nested
+  # inside localization/perturbation (at K562, 100% of dual_evidence edges
+  # are also perturbation edges), so it is treated as a held-out, zero-shot
+  # INFERENCE benchmark rather than a training target -- this is the
+  # cleanest way to test whether the model generalizes to the
+  # highest-confidence tier rather than memorizing it via direct fine-tuning.
+  # Stage3_DualEvidence above is kept in the stage list for ablations that
+  # deliberately want to compare AGAINST this default (with_replay, dual_only,
+  # full_curriculum in scripts/06_ablation.py).
+  main_curriculum_tiers: [localization, perturbation]
+  # The rest of this block only matters for protocol: sequential.
+  #
+  # Stage2's perturbation fine-tuning does mildly damage what Stage1 learned
+  # about localization: after fixing a data-leakage-style training bug
+  # (hard negatives were being drawn from another tier's held-out val/test
+  # positives, not just its train split -- see src/training/sampler.py),
+  # localization AUROC after Stage2 recovered from a BELOW-RANDOM 0.33 (the
+  # bug) to ~0.51 (genuine, much milder, ordinary forgetting toward chance).
+  # This remaining mild forgetting is an acceptable trade-off, not a
+  # pathology to eliminate: all_at_once removes it entirely but at the cost
+  # of diluting perturbation's signal into the much larger localization
+  # pool, which measurably hurts the tiers that matter most (perturbation
+  # AUPR, and the headline zero-shot dual-evidence metric) -- see the
+  # `protocol` comment above. Memory replay gives a small further assist on
+  # top of the bugfix but is not a full fix by itself.
+  use_memory_replay: true
   replay_weight: 0.1
   use_hard_negatives: true
 
@@ -82,3 +154,8 @@ hardware:
 # If gtf_path is null, the code tries BioMart (online) and otherwise sets ATAC=0.
 atac:
   gtf_path: null
+  # Regulatory-potential (RP) peak-to-gene weighting (MAESTRO/BETA-style
+  # exponential TSS-distance decay), replacing the old binary +/-window
+  # aggregation -- see plan.md Section 2.
+  rp_decay_bp: 10_000    # weight = exp(-|distance| / rp_decay_bp)
+  rp_top_k: 10           # peaks kept per gene for the locus-shape descriptor

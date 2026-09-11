@@ -1,0 +1,18 @@
+# Fast K562 curriculum for graph / edge-embedding ablations.
+# Same processed data and splits as configs/k562.yaml; fewer epochs so the
+# three new ablations can finish overnight on a single laptop GPU.
+inherit: k562.yaml
+
+curriculum:
+  stages:
+    - {name: Stage1_Localization, evidence_tier: localization, n_epochs: 8,  lr: 1.0e-3, neg_ratio: 5,  freeze_encoder: false}
+    - {name: Stage2_Perturbation, evidence_tier: perturbation, n_epochs: 5,  lr: 3.0e-4, neg_ratio: 5,  freeze_encoder: false}
+    - {name: Stage3_DualEvidence, evidence_tier: dual_evidence, n_epochs: 3,  lr: 1.0e-4, neg_ratio: 10, freeze_encoder: true}
+  main_curriculum_tiers: [localization, perturbation]
+  use_memory_replay: true
+  replay_weight: 0.1
+  use_hard_negatives: true
+
+training:
+  early_stopping_patience: 4
+  eval_every: 2
