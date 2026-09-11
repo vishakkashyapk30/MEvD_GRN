@@ -1,0 +1,107 @@
+\begin{thebibliography}{12}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Bengio et~al.(2009)Bengio, Louradour, Collobert, and
+  Weston]{bengio2009curriculum}
+Bengio, Y., Louradour, J., Collobert, R., and Weston, J.
+\newblock Curriculum learning.
+\newblock In \emph{Proceedings of the 26th International Conference on Machine
+  Learning (ICML)}, pp.\  41--48, 2009.
+
+\bibitem[Duren et~al.(2018)Duren, Chen, Zamanighomi, Zeng, Satpathy, Chang,
+  Wang, and Wong]{duren2018integrative}
+Duren, Z., Chen, X., Zamanighomi, M., Zeng, W., Satpathy, A.~T., Chang, H.~Y.,
+  Wang, Y., and Wong, W.~H.
+\newblock Modeling gene regulation from paired expression and chromatin
+  accessibility data.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 115\penalty0
+  (30):\penalty0 E7151--E7160, 2018.
+\newblock \doi{10.1073/pnas.1802973115}.
+
+\bibitem[Hamilton et~al.(2017)Hamilton, Ying, and
+  Leskovec]{hamilton2017graphsage}
+Hamilton, W.~L., Ying, R., and Leskovec, J.
+\newblock Inductive representation learning on large graphs.
+\newblock In \emph{Advances in Neural Information Processing Systems
+  (NeurIPS)}, volume~30, 2017.
+
+\bibitem[Huynh-Thu et~al.(2010)Huynh-Thu, Irrthum, Wehenkel, and
+  Geurts]{huynhthu2010genie3}
+Huynh-Thu, V.~A., Irrthum, A., Wehenkel, L., and Geurts, P.
+\newblock Inferring regulatory networks from expression data using tree-based
+  methods.
+\newblock \emph{PLoS ONE}, 5\penalty0 (9):\penalty0 e12776, 2010.
+\newblock \doi{10.1371/journal.pone.0012776}.
+
+\bibitem[Kirkpatrick et~al.(2017)Kirkpatrick, Pascanu, Rabinowitz, Veness,
+  Desjardins, Rusu, Milan, Quan, Ramalho, Grabska-Barwinska,
+  et~al.]{kirkpatrick2017ewc}
+Kirkpatrick, J., Pascanu, R., Rabinowitz, N., Veness, J., Desjardins, G., Rusu,
+  A.~A., Milan, K., Quan, J., Ramalho, T., Grabska-Barwinska, A., et~al.
+\newblock Overcoming catastrophic forgetting in neural networks.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 114\penalty0
+  (13):\penalty0 3521--3526, 2017.
+\newblock \doi{10.1073/pnas.1611835114}.
+
+\bibitem[Li et~al.(2024)]{li2024gmfgrn}
+Li, S. et~al.
+\newblock {GMFGRN}: a matrix factorization and graph neural network approach
+  for gene regulatory network inference.
+\newblock \emph{Briefings in Bioinformatics}, 25\penalty0 (2):\penalty0
+  bbad529, 2024.
+\newblock \doi{10.1093/bib/bbad529}.
+
+\bibitem[McCloskey \& Cohen(1989)McCloskey and
+  Cohen]{mccloskey1989catastrophic}
+McCloskey, M. and Cohen, N.~J.
+\newblock Catastrophic interference in connectionist networks: The sequential
+  learning problem.
+\newblock In \emph{Psychology of Learning and Motivation}, volume~24, pp.\
+  109--165. Elsevier, 1989.
+
+\bibitem[Moerman et~al.(2019)Moerman, Aibar~Santos, Bravo Gonz{\'a}lez-Blas,
+  Simm, Moreau, Aerts, and Aerts]{moerman2019grnboost2}
+Moerman, T., Aibar~Santos, S., Bravo Gonz{\'a}lez-Blas, C., Simm, J., Moreau,
+  Y., Aerts, J., and Aerts, S.
+\newblock {GRNBoost2} and {Arboreto}: efficient and scalable inference of gene
+  regulatory networks.
+\newblock \emph{Bioinformatics}, 35\penalty0 (12):\penalty0 2159--2161, 2019.
+\newblock \doi{10.1093/bioinformatics/bty916}.
+
+\bibitem[Rolnick et~al.(2019)Rolnick, Ahuja, Schwarz, Lillicrap, and
+  Wayne]{rolnick2019replay}
+Rolnick, D., Ahuja, A., Schwarz, J., Lillicrap, T., and Wayne, G.
+\newblock Experience replay for continual learning.
+\newblock In \emph{Advances in Neural Information Processing Systems
+  (NeurIPS)}, volume~32, 2019.
+
+\bibitem[Valensi et~al.(2026)Valensi, Karamveer, Moeller, Ozdogan, Edwards, and
+  Uzun]{valensi2026scmogrndb}
+Valensi, H., Karamveer, K., Moeller, E., Ozdogan, S.~E., Edwards, R.~M., and
+  Uzun, Y.
+\newblock {SC-MO-GRN-DB}: A comprehensive repository for single-cell multiomic
+  gene regulatory networks.
+\newblock \emph{iScience}, 29\penalty0 (4):\penalty0 115323, 2026.
+\newblock \doi{10.1016/j.isci.2026.115323}.
+
+\bibitem[Xu et~al.(2025)]{xu2025scmultiomegrn}
+Xu, J. et~al.
+\newblock Deep learning-based cell-specific gene regulatory networks inferred
+  from single-cell multiome data.
+\newblock \emph{Nucleic Acids Research}, 53\penalty0 (5):\penalty0 gkaf138,
+  2025.
+\newblock \doi{10.1093/nar/gkaf138}.
+
+\bibitem[Zhu \& Slonim(2024)Zhu and Slonim]{zhu2024regdiffusion}
+Zhu, H. and Slonim, D.
+\newblock From noise to knowledge: Diffusion probabilistic model-based neural
+  inference of gene regulatory networks.
+\newblock \emph{Journal of Computational Biology}, 31\penalty0 (11):\penalty0
+  1087--1103, 2024.
+\newblock \doi{10.1089/cmb.2024.0607}.
+
+\end{thebibliography}
