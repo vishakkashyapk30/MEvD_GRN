@@ -3,8 +3,9 @@
 A compact dual-modality GNN that predicts TF→target regulatory edges from
 scRNA-seq + scATAC-seq, trained via a **three-stage evidence-aware curriculum**
 over SC-MO-GRN-DB's tiered reference networks
-(localization → perturbation → dual-evidence). See `MEvD_GRN_plan_v2.md` for the
-full theory/spec.
+(localization → perturbation → dual-evidence). See `plan.md` for the current
+project roadmap and results, `docs/archive/MEvD_GRN_plan_v2_superseded.md` for
+the original full theory/spec, and `results.md` for the latest numbers.
 
 ---
 
@@ -93,10 +94,15 @@ python scripts/03_train.py      --config configs/k562.yaml --device cuda:0
 python scripts/04_evaluate.py   --config configs/k562.yaml \
     --checkpoint results/checkpoints/K562/final_model.pt --transfer_config configs/esc.yaml
 
-# baselines (GRNBoost2 / RegDiffusion / self-contained GMF-GAE), same test splits
+# baselines, evaluated on the same frozen test splits
 pip install arboreto regdiffusion        # optional external baselines
 python scripts/05_run_baselines.py --config configs/k562.yaml \
     --baselines grnboost2,regdiffusion,gmf_gae --device cuda:0
+
+# supervised multiomic baseline (paper default: 2000 epochs)
+python scripts/05_run_baselines.py --config configs/k562.yaml \
+    --baselines scmultiomegrn --device cuda:0 \
+    --scmultiomegrn-epochs 2000
 
 # ablations (paper claims)
 sbatch slurm/ablation.sh
@@ -109,6 +115,12 @@ test splits via `evaluate_scorer_on_splits`:
 - **GMF-GAE** — self-contained graph auto-encoder over a co-expression kNN graph
   (the "GNN + matrix factorization" family GMFGRN belongs to). Always runnable;
   the official GMFGRN repo can be wired in via `run_gmfgrn()` after cloning.
+- **scMultiomeGRN** (Xu et al., NAR 2025, gkaf138) — supervised RNA+ATAC
+  edge-aware modality-specific aggregation and cross-modal attention. The
+  published method is limited to undirected TF–TF links; this repository's
+  adapter generalizes its node set to TF→gene candidates, decodes edges
+  sparsely, and trains a separate model on each tier's training split to avoid
+  cross-tier leakage. Those adaptations are reported with its results.
   Uninstalled external baselines fail gracefully (error saved to JSON, run continues).
 
 ---
