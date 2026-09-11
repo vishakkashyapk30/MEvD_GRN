@@ -31,11 +31,19 @@ class MEvDTrainer:
         self.ckpt_dir = ensure_dir(config.get("checkpoint_dir", "results/checkpoints"))
         self.gen = torch.Generator().manual_seed(int(config["data"]["seed"]))
         self.history: Dict[str, list] = {}
+        # tier -> that tier's TRAIN-split positives only; must be set (via
+        # set_train_positives) before any stage uses hard negatives, so the
+        # hard-negative pool never draws on another tier's val/test positives.
+        self.train_pos_by_tier: Dict[str, torch.Tensor] = {}
+
+    def set_train_positives(self, splits_per_tier: Dict[str, dict]) -> None:
+        self.train_pos_by_tier = {t: sp["train"]["pos"] for t, sp in splits_per_tier.items()}
 
     # ------------------------------------------------------------------ helpers
     def _encode(self):
         return self.model.encode(self.data.rna_features, self.data.atac_features,
-                                 self.data.coexpr_edges, self.data.tf_candidate_edges)
+                                 self.data.coexpr_edges, self.data.tf_candidate_edges,
+                                 self.data.fm_embeddings)
 
     def _decode(self, emb, tf_idx, target_idx) -> torch.Tensor:
         return self.model.decode(emb, tf_idx, target_idx,
@@ -46,12 +54,19 @@ class MEvDTrainer:
         """Return (edges (2,M), labels (M,), sample_weight (M,)) for one epoch."""
         n_pos = train_pos.shape[1]
         n_neg = stage.neg_ratio * max(n_pos, 1)
+        # Any edge that may be replayed as a label=1 example this stage must
+        # never also be drawn as a hard negative (label=0), or the two
+        # contradictory copies fight in the same loss with the negative
+        # copy dominating (see get_hard_negatives docstring).
+        replay_exclude = torch.cat(replay, dim=1) if replay else None
         # split requested negatives between hard and random when hard negatives exist
         hard = torch.zeros((2, 0), dtype=torch.long)
         if self.cfg["curriculum"].get("use_hard_negatives", True):
             n_hard = n_neg // 2
-            hard = get_hard_negatives(self.data.evidence, stage.evidence_tier,
-                                      self.hierarchy, n_hard, self.gen)
+            hard = get_hard_negatives(self.train_pos_by_tier, self.data.evidence,
+                                      stage.evidence_tier,
+                                      self.hierarchy, n_hard, self.gen,
+                                      exclude=replay_exclude)
         n_rand = n_neg - hard.shape[1]
         rand = sample_negatives(self.data.negative_pool, n_rand, self.gen)
         neg = torch.cat([hard, rand], dim=1) if hard.shape[1] else rand
@@ -59,11 +74,19 @@ class MEvDTrainer:
         pos_list = [train_pos]
         w_list = [torch.ones(n_pos)]
         if replay:
+            # Plan Sec 6.3: replay should be a SMALL FRACTION of the mini-batch
+            # (not the entire previous tier's positive set), at reduced loss
+            # weight. Sampling `rw * n_pos` per source tier keeps replay from
+            # flooding the current tier's signal / negative calibration.
             rw = float(self.cfg["curriculum"].get("replay_weight", 0.1))
+            n_replay_each = max(int(round(rw * n_pos)), 1)
             for r in replay:
                 if r.shape[1]:
-                    pos_list.append(r)
-                    w_list.append(torch.full((r.shape[1],), rw))
+                    k = min(n_replay_each, r.shape[1])
+                    idx = torch.randperm(r.shape[1], generator=self.gen)[:k]
+                    r_sample = r[:, idx]
+                    pos_list.append(r_sample)
+                    w_list.append(torch.full((r_sample.shape[1],), rw))
         pos_all = torch.cat(pos_list, dim=1)
         edges = torch.cat([pos_all, neg], dim=1)
         labels = torch.cat([torch.ones(pos_all.shape[1]), torch.zeros(neg.shape[1])])
@@ -144,6 +167,7 @@ class MEvDTrainer:
 
     def run_full_curriculum(self, splits_per_tier: Dict[str, dict],
                             stages: List[CurriculumStage]) -> dict:
+        self.set_train_positives(splits_per_tier)
         use_replay = bool(self.cfg["curriculum"].get("use_memory_replay", False))
         results = {}
         seen_train_pos: List[torch.Tensor] = []
@@ -161,18 +185,28 @@ class MEvDTrainer:
 
     # ------------------------------------------------------------------ eval
     @torch.no_grad()
-    def evaluate_split(self, split: dict, n_total_candidates: Optional[int] = None) -> dict:
+    def evaluate_split(self, split: dict, decode_batch_size: int = 200_000) -> dict:
         self.model.eval()
         pos, neg = split["pos"].to(self.device), split["neg"].to(self.device)
         edges = torch.cat([pos, neg], dim=1)
         labels = torch.cat([torch.ones(pos.shape[1]), torch.zeros(neg.shape[1])]).numpy()
         emb = self._encode()
-        logits = self._decode(emb, edges[0], edges[1])
-        scores = torch.sigmoid(logits).cpu().numpy()
-        if n_total_candidates is None:
-            # EPR base rate over the full bipartite candidate space (BEELINE convention)
-            n_total_candidates = int(self.data.tf_indices.numel() * (self.data.n_genes - 1))
-        return compute_all_metrics(labels, scores, n_total_candidates)
+        # Batch the decode step -- a single unbatched decode over a large eval
+        # set (e.g. a cross-cell-type transfer eval against a cell type's
+        # FULL evidence, which can be millions of edges) can OOM even though
+        # training itself is already batched; the encoder's embeddings are
+        # cheap to keep resident, only the decode matmul needs batching.
+        score_chunks = []
+        for start in range(0, edges.shape[1], decode_batch_size):
+            b = slice(start, start + decode_batch_size)
+            logits = self._decode(emb, edges[0, b], edges[1, b])
+            score_chunks.append(torch.sigmoid(logits).cpu())
+        scores = torch.cat(score_chunks).numpy()
+        # EPR base rate must match the candidate pool EP is ranked over: the
+        # eval split itself (pos+sampled neg), not the genome-wide TF x gene
+        # space. Using the genome-wide count here while EP is computed only
+        # over the small eval set inflates EPR by orders of magnitude.
+        return compute_all_metrics(labels, scores, n_total_candidates=None)
 
     # ------------------------------------------------------------------ ckpt
     def save_checkpoint(self, path, best_val_aupr: float = -1.0) -> None:
