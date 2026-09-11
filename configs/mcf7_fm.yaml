@@ -1,0 +1,5 @@
+# MCF7 + Geneformer foundation-model gene embeddings (plan.md Section 5/6).
+inherit: mcf7.yaml
+
+model:
+  use_fm: true
