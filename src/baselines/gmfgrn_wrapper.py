@@ -50,11 +50,13 @@ def run_gmfgrn(rna_path: str, gene_index: Dict[str, int], pcfg: dict, device: st
 class _GAE(torch.nn.Module):
     def __init__(self, in_dim, hidden=128, emb=64, dropout=0.2):
         super().__init__()
-        self.enc = GNNBackbone(in_dim, hidden, num_layers=2, dropout=dropout)
+        # Single relation (the co-expression kNN graph); GNNBackbone always
+        # expects a LIST of per-relation edge_index tensors, one per relation.
+        self.enc = GNNBackbone(in_dim, hidden, num_layers=2, dropout=dropout, n_relations=1)
         self.proj = torch.nn.Linear(hidden, emb)
 
     def encode(self, x, edge_index):
-        return self.proj(self.enc(x, edge_index))
+        return self.proj(self.enc(x, [edge_index]))
 
 
 def run_gmf_gae(rna_path: str, gene_index: Dict[str, int], pcfg: dict,
