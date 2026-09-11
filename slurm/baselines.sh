@@ -8,9 +8,9 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=10
 #SBATCH --mem-per-cpu=2G
-#SBATCH --time=04:00:00
+#SBATCH --time=24:00:00
 #SBATCH --output=logs/base_%A_%a.out
-#SBATCH --array=0-2
+#SBATCH --array=0-3
 
 set -euo pipefail
 mkdir -p logs
@@ -20,7 +20,7 @@ conda activate mevd-grn
 
 # arboreto (GRNBoost2) is optional: pip install arboreto
 # regdiffusion is optional:       pip install regdiffusion
-BASE=(grnboost2 regdiffusion gmf_gae)
+BASE=(grnboost2 regdiffusion gmf_gae scmultiomegrn)
 NAME=${BASE[$SLURM_ARRAY_TASK_ID]}
 for CT in configs/k562.yaml configs/esc.yaml; do
   echo "### Baseline $NAME on $CT ###"

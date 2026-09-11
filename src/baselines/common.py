@@ -6,7 +6,7 @@ identical test splits with the identical metric code (fair comparison).
 """
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -73,6 +73,33 @@ class EmbeddingScorer:
         a = self.Z[np.asarray(tf_idx)]
         b = self.Z[np.asarray(tg_idx)]
         return (a * b).sum(axis=1)
+
+
+class TieredScorer:
+    """Dispatch to a separately trained scorer for each evidence tier.
+
+    Supervised baselines must not train one model on one tier and then evaluate
+    it on another tier: the nested networks can put a nominal test edge in the
+    other tier's training graph.  Keeping one scorer per tier prevents that
+    cross-tier leakage while retaining the common evaluation harness.
+
+    `fallback_tier`: tiers that were never trained on at all (e.g. dual_evidence,
+    treated as a held-out zero-shot inference benchmark -- see
+    `configs/default.yaml: curriculum.main_curriculum_tiers`) have no entry in
+    `scorers`; score_tier falls back to the model trained on `fallback_tier`
+    (by default the last/most-refined trained tier) for those.
+    """
+
+    def __init__(self, scorers: Dict[str, object], fallback_tier: Optional[str] = None):
+        self.scorers = scorers
+        self.fallback_tier = fallback_tier
+
+    def score_tier(self, tier: str, tf_idx: np.ndarray, tg_idx: np.ndarray) -> np.ndarray:
+        key = tier if tier in self.scorers else self.fallback_tier
+        if key is None or key not in self.scorers:
+            raise KeyError(f"No scorer was trained for evidence tier {tier!r} "
+                           f"(no fallback available; trained tiers: {list(self.scorers)})")
+        return self.scorers[key].score(tf_idx, tg_idx)
 
 
 def edgelist_to_dict(df: pd.DataFrame, gene_index: Dict[str, int],
