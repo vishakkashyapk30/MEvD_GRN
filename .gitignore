@@ -13,6 +13,9 @@ logs/
 # Superseded local planning document
 MEvD_GRN_plan.md
 
+# Local-only status/TODO tracker (not part of committed documentation)
+status.md
+
 # Local presentation assets
 mevd_grn_architecture.html
 mevd_grn_architecture.png
