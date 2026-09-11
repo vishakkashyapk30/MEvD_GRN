@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background: #ffffff;
+    width: 1460px;
+  }
+  .title {
+    text-align: center;
+    font-size: 26px;
+    font-weight: 700;
+    color: #1E407C;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 26px;
+  }
+  .row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 22px;
+  }
+  .col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .box {
+    border-radius: 10px;
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 13px;
+    line-height: 1.35;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  .box b { display: block; font-size: 14px; margin-bottom: 3px; }
+  .input-box { background: #EAF1FB; border: 2px solid #1E407C; width: 200px; }
+  .input-box.atac { background: #FBEFE9; border: 2px solid #C0392B; }
+  .input-box.fm { background: #F1E9FB; border: 2px solid #6C3483; }
+  .feat-box { background: #F5F5F5; border: 1.5px solid #888; width: 200px; font-size: 12px; }
+  .enc-box { background: #1E407C; color: white; width: 200px; }
+  .enc-box.atac { background: #C0392B; }
+  .enc-box.fm { background: #6C3483; }
+  .gnn-box { background: #5A8FC7; color: white; width: 200px; }
+  .gnn-box.atac { background: #D98A75; }
+  .graph-box { background: #FFF6DA; border: 1.5px dashed #B8860B; width: 180px; font-size: 11.5px; padding: 8px 10px; }
+  .graph-box.future { background: #F0F0F0; border: 1.5px dashed #999; color: #777; }
+  .combine-box { background: #FFE9B3; border: 1.5px solid #B8860B; width: 200px; font-size: 11.5px; padding: 8px 10px; }
+  .decoder-box { background: #2E8B57; color: white; width: 680px; padding: 16px 18px; }
+  .decoder-inner {
+    display: flex; justify-content: space-around; margin-top: 10px; gap: 10px; flex-wrap: wrap;
+  }
+  .term {
+    background: rgba(255,255,255,0.15);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+  }
+  .arrow-down {
+    width: 0; height: 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-top: 13px solid #666;
+    margin: 0 auto;
+  }
+  .plus-sign {
+    font-size: 22px; color: #6C3483; font-weight: 700; margin: 0 auto;
+  }
+  .side-note {
+    background: #FFF9E6;
+    border: 1px solid #E0C36A;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    width: 230px;
+    line-height: 1.4;
+    position: relative;
+  }
+  .side-note.new { background: #EEF9F0; border: 1px solid #7BC492; }
+  .side-note.warn { background: #FDEDED; border: 1px solid #E29A9A; }
+  .side-note b { color: #8a6d00; }
+  .side-note.new b { color: #256b39; }
+  .side-note.warn b { color: #a13c3c; }
+  .final-box {
+    background: #111; color: #fff; width: 260px; text-align: center;
+    padding: 10px 14px; border-radius: 8px; font-size: 13px;
+  }
+  .banner {
+    background: #EEF9F0; border: 1px solid #7BC492; border-radius: 8px;
+    padding: 12px 18px; font-size: 12.5px; text-align: center; margin: 20px auto;
+    max-width: 1100px; line-height: 1.5;
+  }
+  .banner b { color: #256b39; }
+  .param-badge {
+    text-align: center; font-size: 12.5px; color: #444; margin-top: 6px;
+  }
+</style>
+</head>
+<body>
+
+  <div class="title">MEvD-GRN Architecture (updated 2026-09-11)</div>
+  <div class="subtitle">Dual-modality Graph Neural Network for TF &rarr; Target Gene Regulatory Edge Prediction &nbsp;|&nbsp; 306,691 params (base) / 430,471 params (+ foundation-model embedding)</div>
+
+  <div class="row" style="align-items:flex-start;">
+
+    <!-- RNA branch -->
+    <div class="col">
+      <div class="box input-box"><b>scRNA-seq</b>953&ndash;3143 cells &times; genes<br>CP10K + log1p</div>
+      <div class="arrow-down"></div>
+      <div class="box feat-box">per-gene [mean, var, detection-rate] (3-d)<br>+ co-expression signature (50-d, s<sub>i</sub>&middot;s<sub>j</sub>&asymp;corr)</div>
+      <div class="arrow-down"></div>
+      <div class="box enc-box"><b>RNA Encoder</b>MLP: 3&rarr;64&rarr;128<br>LayerNorm + GELU + Dropout</div>
+    </div>
+
+    <!-- FM branch (new) -->
+    <div class="col">
+      <div class="box input-box fm"><b>Geneformer embedding (new)</b>pretrained, frozen lookup<br>768-d per gene, no fine-tuning</div>
+      <div class="arrow-down"></div>
+      <div class="box feat-box">cell-type-INVARIANT<br>~78&ndash;90% gene coverage per cell type</div>
+      <div class="arrow-down"></div>
+      <div class="box enc-box fm"><b>FM Encoder (new)</b>MLP: 768&rarr;128&rarr;128<br>fused ADDITIVELY into h<sub>rna</sub></div>
+    </div>
+
+    <!-- shared graphs -->
+    <div class="col" style="justify-content:center; align-self:center; margin: 0 4px;">
+      <div class="box graph-box"><b style="color:#8a6d00;">Co-expression kNN graph</b>gene&ndash;gene, k=20<br>undirected</div>
+      <div class="box graph-box"><b style="color:#8a6d00;">TF-candidate graph</b>TF&rarr;proximal-accessible &amp;<br>co-expressed targets, top-500<br><i>(accessibility gate now RP-based,<br>not "any peak in &plusmn;100kb")</i></div>
+      <div class="box graph-box future"><b style="color:#777;">Motif graph (planned)</b>real TF binding-site scan<br>NOT YET BUILT</div>
+      <div class="box combine-box"><b style="color:#8a6d00;">combine_mode (new)</b>"sum" (default) or<br>"gated": learned per-layer<br>softmax weight per relation</div>
+    </div>
+
+    <!-- ATAC branch -->
+    <div class="col">
+      <div class="box input-box atac"><b>scATAC-seq</b>10x multiome h5 / text matrix<br>peaks &times; barcodes</div>
+      <div class="arrow-down"></div>
+      <div class="box feat-box">RP-weighted gene activity<br>[mean, var, detection] (3-d)<br><i>distance-decay weighted, not binary window</i></div>
+      <div class="arrow-down"></div>
+      <div class="box enc-box atac"><b>ATAC Encoder</b>MLP: 3&rarr;64&rarr;128 (was 1-layer)<br>LayerNorm + GELU + Dropout</div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top: 4px;">
+    <div class="plus-sign">+</div>
+  </div>
+
+  <div class="row" style="align-items:flex-start;">
+    <div class="col"><div class="box gnn-box"><b>GNN<sub>RNA</sub></b>2-layer Relational<br>GraphSAGE (128-d)<br>combine_mode: sum/gated</div></div>
+    <div style="width:180px;"></div>
+    <div style="width:200px;"></div>
+    <div class="col"><div class="box gnn-box atac"><b>GNN<sub>ATAC</sub></b>2-layer Relational<br>GraphSAGE (128-d)<br>combine_mode: sum/gated</div></div>
+  </div>
+
+  <div class="row">
+    <div class="arrow-down" style="margin-right: 320px;"></div>
+    <div class="arrow-down" style="margin-left: 320px;"></div>
+  </div>
+
+  <!-- Role-aware decoder -->
+  <div class="row" style="margin-top: -4px;">
+    <div class="box decoder-box">
+      <b style="font-size:16px;">Role-Aware Decoder</b>
+      <div style="font-size:12.5px;">ATAC gates target accessibility &middot; RNA (+FM) drives TF activity &amp; co-expression</div>
+      <div class="decoder-inner">
+        <div class="term">a_j = &sigma;(W<sub>gate</sub> h<sub>atac,j</sub>)</div>
+        <div class="term">z_j = h<sub>rna,j</sub> &middot; a_j</div>
+        <div class="term">raw = h<sub>rna,i</sub><sup>T</sup> W z_j</div>
+        <div class="term">+ w<sub>c</sub>&middot;coexpr(i,j) + open_proj(openness<sub>j</sub>) + b</div>
+      </div>
+      <div style="font-size:11px; margin-top:8px; opacity:0.85;">openness<sub>j</sub> is now a 4-d regulatory-potential vector (mean/max RP, mean distance, peak count), not a single collapsed scalar</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="arrow-down"></div>
+  </div>
+  <div class="row">
+    <div class="box final-box"><b>logit &rarr; &sigma;(&middot;)</b>P(TF<sub>i</sub> &rarr; Gene<sub>j</sub> regulates)</div>
+  </div>
+
+  <div class="banner">
+    <b>New at the training level (not part of the per-example forward pass above):</b>
+    a shared copy of this model can now be trained JOINTLY across more than one cell type at once
+    (<code>scripts/12_joint_train.py</code>: K562 + MCF7, alternating gradient steps, each keeping its own
+    graph/features), then evaluated zero-shot on a THIRD, held-out cell type (Macrophage) it never saw
+    during that run &mdash; reaching AUPR 0.74&ndash;0.70 vs. a 0.84 from-scratch ceiling, far above single-cell-type
+    transfer (0.61 / 0.45). This is the strongest generalization result found so far.
+  </div>
+
+  <div class="row" style="margin-top: 10px; align-items: flex-start; gap: 30px; flex-wrap: wrap;">
+    <div class="side-note">
+      <b>Ablation hooks</b><br>
+      &bull; integration=&quot;gated&quot;/&quot;concat&quot; &rarr; legacy fused-embedding + bilinear decoder<br>
+      &bull; use_atac=False &rarr; RNA-only<br>
+      &bull; use_gnn=False &rarr; encoders feed the decoder directly<br>
+      &bull; use_fm=True &rarr; adds the Geneformer branch<br>
+      &bull; combine_mode="gated" &rarr; learned relation weights
+    </div>
+    <div class="side-note">
+      <b>Curriculum training</b><br>
+      Default: Stage 1 Localization (lr 1e-3, 30ep) &rarr;<br>
+      Stage 2 Perturbation (lr 3e-4, 15ep, + replay)<br>
+      Dual-Evidence = held-out zero-shot tier<br>
+      (all_at_once joint-tier training is available but
+      NOT the default &mdash; it loses on the metrics that matter, see results.md)
+    </div>
+    <div class="side-note new">
+      <b>What actually helped (2026-09-11 ablations)</b><br>
+      &bull; RP-weighted ATAC: real, consistent gain (was ~0)<br>
+      &bull; Geneformer embedding: single biggest in-domain gain<br>
+      &bull; Joint multi-cell-type training: single biggest transfer gain<br>
+      &bull; gated relation combiner: neutral so far (needs the motif graph to matter)
+    </div>
+    <div class="side-note warn">
+      <b>Honest caveat</b><br>
+      The Geneformer embedding, when trained on ONE cell type only,
+      makes cross-cell-type transfer WORSE, not better &mdash; fixed
+      (mostly) by joint multi-cell-type training. See results.md
+      Section on foundation-model embeddings.
+    </div>
+  </div>
+
+</body>
+</html>
