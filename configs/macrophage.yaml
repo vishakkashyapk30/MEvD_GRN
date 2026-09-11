@@ -1,0 +1,32 @@
+# Macrophage (human) — first multi-cell-type generalization target
+# (plan.md Section 6, Workstream 5). LOCALIZATION-ONLY evidence (RN204,
+# ChIPSeq, 24 TFs / ~170K edges) -- no perturbation/dual_evidence network
+# exists for this cell type, so it cannot run the full curriculum. Its role
+# is (a) a single-tier sanity/generalization run via `--ablation loc_only`,
+# and (b) a zero-shot transfer source/target for scripts/08_transfer_eval.py.
+inherit: default.yaml
+
+cell_type: Macrophage
+organism: human          # for TSS annotation (hg38)
+genome: hg38
+
+data:
+  evidence_tiers: [localization]
+  tier_hierarchy: [localization]
+
+paths:
+  networks:
+    localization: data/raw/networks/Macrophage_localization.tsv    # RN204
+  single_cell:
+    # DS026 (PMID 38747151): paired scRNA+scATAC, already unzipped, plain
+    # tab-delimited features x cells text files -- same loader as K562's
+    # text-based fallback path (src/data/preprocessing.py:load_features_by_cells).
+    rna_glob:  "data/raw/single_cell/Macrophage_multiome/DS026_PMID38747151_HUMAN_MACROPHAGE/buffer_macrophage_RNA_matrix.tsv"
+    atac_glob: "data/raw/single_cell/Macrophage_multiome/DS026_PMID38747151_HUMAN_MACROPHAGE/buffer_macrophage_ATAC_matrix.tsv"
+  processed_dir: data/processed/Macrophage
+
+atac:
+  gtf_path: data/raw/gtf/gencode.v38.gtf.gz     # hg38 (same as K562; human)
+
+curriculum:
+  main_curriculum_tiers: [localization]

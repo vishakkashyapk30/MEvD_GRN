@@ -1,0 +1,35 @@
+# MCF7 (human breast cancer cell line) — second multi-cell-type
+# generalization target (plan.md Section 6, Workstream 5). LOCALIZATION-ONLY
+# evidence (RN205, ChIPSeq, 262 TFs / ~1.8M edges -- the richest reference
+# network after K562) -- no perturbation/dual_evidence network exists for
+# this cell type. Role: (a) a single-tier sanity/generalization run via
+# `--ablation loc_only`, and (b) a zero-shot transfer source/target for
+# scripts/08_transfer_eval.py, and (c) a second training cell type for the
+# joint-training experiment motivated by the Macrophage transfer result
+# (plan.md Section 6).
+inherit: default.yaml
+
+cell_type: MCF7
+organism: human          # for TSS annotation (hg38)
+genome: hg38
+
+data:
+  evidence_tiers: [localization]
+  tier_hierarchy: [localization]
+
+paths:
+  networks:
+    localization: data/raw/networks/MCF7_localization.tsv    # RN205
+  single_cell:
+    # DS027 (PMID 36318267): paired scRNA+scATAC, plain tab-delimited
+    # features x cells text files -- same loader as K562's text-based
+    # fallback path (src/data/preprocessing.py:load_features_by_cells).
+    rna_glob:  "data/raw/single_cell/MCF7_multiome/DS027_PMID36318267_HUMAN_MCF7/MCF7_RNA_Matrix.tsv"
+    atac_glob: "data/raw/single_cell/MCF7_multiome/DS027_PMID36318267_HUMAN_MCF7/MCF7_ATAC_Matrix.tsv"
+  processed_dir: data/processed/MCF7
+
+atac:
+  gtf_path: data/raw/gtf/gencode.v38.gtf.gz     # hg38 (same as K562; human)
+
+curriculum:
+  main_curriculum_tiers: [localization]
