@@ -23,9 +23,18 @@ from src.utils.io import load_config, save_json
 
 def build(cfg, device):
     mcfg = cfg["model"]
+    # NOTE: must mirror every architecture flag scripts/03_train.py passes,
+    # or a checkpoint trained with a non-default integration/graph_mode/
+    # combine_mode/use_edge_mlp will silently load into the WRONG
+    # architecture (mismatched or missing state_dict keys).
     return MEvDGRN(rna_in_dim=mcfg["rna_in_dim"], atac_in_dim=mcfg["atac_in_dim"],
                    hidden_dim=mcfg["hidden_dim"], n_gnn_layers=mcfg["n_gnn_layers"],
-                   dropout=mcfg["dropout"]).to(device)
+                   dropout=mcfg["dropout"], integration=mcfg.get("integration", "role_aware"),
+                   graph_mode=mcfg.get("graph_mode", "both"),
+                   use_edge_mlp=bool(mcfg.get("use_edge_mlp", False)),
+                   combine_mode=mcfg.get("combine_mode", "sum"),
+                   use_fm=bool(mcfg.get("use_fm", False)),
+                   fm_in_dim=int(mcfg.get("fm_in_dim", 768))).to(device)
 
 
 def eval_celltype(cfg, model, device):

@@ -1,0 +1,7 @@
+# K562 + Geneformer foundation-model gene embeddings (plan.md Section 5).
+# Same data/splits as configs/k562.yaml; only difference is model.use_fm.
+# Requires scripts/11_extract_fm_embeddings.py to have been run for K562 first.
+inherit: k562.yaml
+
+model:
+  use_fm: true

@@ -45,8 +45,8 @@ def make_synthetic(n_genes=300, n_tf=40, n_cells=200, sig_dim=16, hidden=32, see
     signatures = coexpression_signatures(X, sig_dim)                             # (n_genes, d)
     mean = X.mean(0); var = X.var(0); detect = (X > 0).mean(0)
     rna = torch.tensor(np.stack([mean, var, detect], 1), dtype=torch.float32)
-    atac = torch.rand(n_genes, 2, generator=torch.Generator().manual_seed(seed))
-    openness = torch.tensor(rng.random(n_genes), dtype=torch.float32)
+    atac = torch.rand(n_genes, 3, generator=torch.Generator().manual_seed(seed))
+    openness = torch.tensor(rng.random((n_genes, 4)), dtype=torch.float32)
     sig = torch.tensor(signatures, dtype=torch.float32)
 
     tf_indices = list(range(n_tf))
