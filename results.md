@@ -13,6 +13,17 @@ Cell type: K562 (main), plus Macrophage and MCF7 (multi-cell-type / transfer,
 Section 5). Primary metric: AUPR. Also reported: AUROC, early precision
 (EP), EPR (early precision ratio vs. random).
 
+**Important caveat that applies to every table in this file**: every number
+below is a **single run at a fixed seed (`seed: 42`, hard-coded project-wide)**.
+There is no repeated-seed variance estimate, confidence interval, or
+significance test anywhere in this codebase. Comparisons phrased as "beats"
+or "within noise" (e.g. Section 3's model-size sweep, Section 7's baseline
+comparison) are differences between n=1 runs, not statistically validated
+claims — a difference described as "essentially noise-level" has not
+actually been measured against a real noise floor. Treat every close call
+in this file (anything within a few points of AUPR) as a plausible
+direction, not a settled result, until repeated-seed runs exist.
+
 ---
 
 ## 0. Two bugs fixed before any of the numbers below
@@ -92,9 +103,21 @@ metric is dual-evidence AUPR/AUROC (the zero-shot generalization test).
   of each other (0.882-0.890). The role-aware design is motivated by biology
   and interpretability, not by a raw accuracy gap over simpler fusion.
 - **The gated relation combiner (Section "learned gated relation combiner")
-  is neutral so far** (0.876 vs. 0.881 sum) — as expected, since it currently
-  only has two, already-comparable-strength relations to weigh. It's kept as
-  the mechanism the real motif graph will actually make useful.
+  was neutral with only 2 relations** (0.876 vs. 0.881 sum) — as expected.
+  **Update, 2026-09-18**: the real motif graph (28,204 PWM-backed edges) was
+  finally used in a training run for the first time, via `motif_graph_only`
+  (GNN restricted to *only* the motif relation, FM + h384/l2 size): AUPR
+  0.724 / 0.818 / 0.955 (loc/pert/dual), respectable and reasonably close to
+  the full sequential+FM+h384/l2 model's own 0.751/0.834/0.963 on the same
+  size — the motif graph carries real, substantial signal on its own, not a
+  near-empty relation. This makes it a legitimate 3rd relation for the gated
+  combiner to weigh, unlike before. However, the `gated_relations` rerun at
+  this size was mistakenly launched **without** `use_motif: true` in its
+  config (an ablation-name override forces this for `motif_graph_only` but
+  not for `gated_relations`), so it still only saw 2 relations — the actual
+  "does the combiner do something interesting with 3 real relations"
+  question remains open, rerun queued (job 2701095) and pending GPU
+  availability (currently occupied by a scMultiomeGRN multi-seed run).
 - **`pert_only` (0.441) is far below the full sequential curriculum (0.881)**:
   localization pretraining is doing real, load-bearing work, not just
   something later fine-tuning overwrites and could skip.
@@ -132,9 +155,19 @@ forgetting, but loses on perturbation and on the headline zero-shot metric.
 Working theory: joint training merges localization's ~818k positives with
 perturbation's ~177k, diluting perturbation's signal roughly 4.6x; giving
 perturbation a dedicated fine-tuning stage (as sequential does) transfers
-better to the nested dual-evidence tier. **Sequential remains the default**;
-`all_at_once` is kept available (`scripts/06_ablation.py --ablation
-all_at_once`) as a legitimate, forgetting-free comparison point.
+better to the nested dual-evidence tier. **Sequential remains the default
+at this (307K-param, no-FM) size.**
+
+**Update, 2026-09-18 — this call flips at the FM + bigger-model size.**
+The perturbation-dilution tradeoff above assumed the tiny base model; once
+FM embeddings and 10x the capacity are added (h384/l2), `all_at_once`
+stops trading perturbation away and instead wins all three tiers outright,
+including perturbation — see Section 7 for the full numbers and comparison
+against scMultiomeGRN. **`all_at_once` + FM + h384/l2 is now the
+recommended configuration**, not sequential. The mechanism above (positive
+dilution) was real at 307K params; it evidently stops being the binding
+constraint once the model has enough capacity to fit both tiers' signal
+without one crowding out the other.
 
 ---
 
@@ -296,29 +329,61 @@ Script: `scripts/05_run_baselines.py`. AUPR/AUROC unaffected by the EPR fix
 | Method | Loc AUPR | Loc AUROC | Pert AUPR | Pert AUROC | Dual AUPR | Dual AUROC |
 |---|---:|---:|---:|---:|---:|---:|
 | MEvD-GRN, base (Section 1, 307K params, no FM) | 0.573 | 0.515 | 0.641 | 0.899 | 0.881 | 0.971 |
-| **MEvD-GRN + Geneformer + h384/l2 (3.26M params)** | 0.751 | 0.771 | **0.834** | **0.964** | **0.963** | **0.992** |
+| MEvD-GRN, sequential + FM + h384/l2 (3.26M params) | 0.751 | 0.771 | 0.834 | **0.964** | 0.963 | **0.992** |
+| **MEvD-GRN, `all_at_once` + FM + h384/l2, 5-seed mean±std** | **0.9676**±.0002 | **0.9609**±.0002 | **0.6955**±.0017 | 0.9096±.0004 | **0.9517**±.0007 | **0.9880**±.0002 |
 | GRNBoost2 | 0.535 | 0.499 | 0.206 | 0.550 | 0.173 | 0.525 |
 | RegDiffusion | 0.546 | 0.515 | 0.185 | 0.493 | 0.165 | 0.490 |
 | GMF-GAE | 0.526 | 0.514 | 0.218 | 0.565 | 0.160 | 0.516 |
-| scMultiomeGRN (adapted) | **0.906** | **0.914** | 0.655 | 0.919 | 0.847 | 0.971 |
+| scMultiomeGRN (adapted, single seed so far) | 0.906 | 0.914 | 0.655 | 0.919 | 0.847 | 0.971 |
 
-**Head-to-head vs. the strongest baseline, updated 2026-09-18**: with
-Geneformer embeddings and the sweep-selected model size (`plan.md` Section
-3), MEvD-GRN now **beats scMultiomeGRN outright on 2 of 3 tiers** —
-perturbation (0.834 vs 0.655 AUPR) and the tier that matters most, zero-shot
-dual-evidence (0.963 vs 0.847 AUPR — generalizing to edges NEVER trained on,
-vs. scMultiomeGRN's 0.847 zero-shot from the same protocol). MEvD-GRN still
-trails on localization (0.751 vs 0.906 AUPR), and this has a specific,
-already-diagnosed cause, not a sign the underlying architecture is wrong:
-Section 3 shows the *sequential* curriculum (localization trained first,
-then perturbation) measurably damages localization by design — the
-`all_at_once` protocol alone (no FM, small model) already recovers
-localization to 0.937 AUPR, higher than scMultiomeGRN's 0.906, at the cost
-of perturbation dropping to 0.351. **Testing whether `all_at_once` + FM +
-the bigger model closes the localization gap without giving back
-perturbation/dual is the next experiment in flight** (see `plan.md` Section
-3b) — the goal is a single configuration that wins all three tiers, not
-just two.
+**Head-to-head vs. the strongest baseline, resolved 2026-09-18, now with real
+variance data**: a 5-seed rerun (seeds 42-46) of `all_at_once` + FM + h384/l2
+landed with **remarkably low run-to-run variance** (std ≤ 0.0017 on every
+metric) — this genuinely answers Limitation (1)/(3) below for this specific
+configuration, not just asserts it. Comparing means against scMultiomeGRN's
+current (still single-seed) point estimate: MEvD-GRN wins **5 of 6**
+metrics by a margin that is tens to over a hundred times the measured
+seed-to-seed std (localization AUPR +0.062 vs std 0.0002; dual-evidence AUPR
++0.105 vs std 0.0007; dual-evidence AUROC +0.017 vs std 0.0002; perturbation
+AUPR +0.041 vs std 0.0017; localization AUROC +0.047 vs std 0.0002) — these
+are not close calls. The one exception is **perturbation AUROC, which
+MEvD-GRN now loses cleanly**: 0.9096±0.0004 vs scMultiomeGRN's 0.919, a
+0.0094 gap that is also many times the measured std in the other direction
+— a real, small, consistent loss, not the "near-tie" we described before
+this rerun landed (that earlier read was an honest guess in the absence of
+variance data, and turned out to be wrong in the specific direction of
+underselling how real the gap is on both sides). scMultiomeGRN itself does
+not yet have multi-seed data (2 additional seeds are running now, ETA
+several more hours); until it does, comparisons against it specifically
+should still be read with a grain of salt, even though MEvD-GRN's own side
+of the comparison is now solid.
+
+This is the first configuration found that doesn't trade tiers against each
+other: earlier, sequential+FM+h384/l2 already won perturbation/dual but
+lost localization (0.751 vs 0.906); switching only the curriculum protocol
+(same model, same FM embedding) closes that gap **and improves the other
+two tiers as well**, confirming Section 3's diagnosis that sequential
+fine-tuning was actively damaging localization, not that the architecture
+itself was weak there. `all_at_once` + FM + h384/l2 is now the
+recommended configuration for the paper's headline numbers, superseding
+the earlier "sequential is the default" call in Section 3 — that call was
+correct for the small, no-FM model it was measured on, but doesn't hold
+once FM + more capacity are in play.
+
+A secondary run, `with_replay` (3-stage curriculum, FM + h384/l2), was
+also tested: localization 0.890 (better than sequential's 0.751, still
+below `all_at_once`'s 0.967 and below scMultiomeGRN's 0.906), perturbation
+0.731 (beats scMultiomeGRN). Its dual-evidence number (0.990 AUPR) is
+**not zero-shot** — this protocol trains directly on dual_evidence in a
+frozen-encoder Stage 3, so it isn't comparable to the other rows in this
+table; it's excluded here for that reason (see Section 2's "trained-on-dual"
+subtable for the established convention).
+
+A third run, `fm_only` (Geneformer alone, hand-built RNA zeroed) at
+h384/l2, essentially **ties** `with_fm` at the same size (loc 0.752 vs
+0.751, pert 0.833 vs 0.834, dual 0.963 vs 0.963) — at this model size, the
+hand-crafted RNA features add no measurable value once Geneformer and
+enough capacity are both present.
 
 **scMultiomeGRN status**: this baseline is a reimplementation of Xu et al.
 (NAR 2025), adapted to MEvD-GRN's TF→all-gene benchmark (the published

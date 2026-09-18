@@ -269,15 +269,34 @@ richer model may have enough room to hold onto localization-relevant
 structure while still fitting perturbation well, where the tiny 307K-param
 model didn't.
 
-**Running now**: `all_at_once` and `with_replay` (the two curricula that
-previously showed the best localization recovery), both at h384/l2 + FM,
-to see if either wins all three tiers outright against scMultiomeGRN
-instead of trading two wins for one loss. Results land in `results.md`
-Section 7 once done. If neither closes the gap cleanly, the next thing to
-try is a hybrid protocol: joint (`all_at_once`) pretraining followed by a
-short, low-LR perturbation-only fine-tune (a lighter-touch version of the
-current Stage 2 than full sequential fine-tuning) — this hasn't been
-implemented yet and would be new code, not just a config change.
+**Resolved (2026-09-18): the tradeoff does not hold at this size.**
+`all_at_once` + FM + h384/l2 beats scMultiomeGRN on AUPR across all three
+tiers — localization 0.967 vs. 0.906, perturbation 0.690 vs. 0.655, and
+zero-shot dual-evidence 0.950 vs. 0.847 (AUROC: wins 2/3, within 0.011 on
+perturbation). The perturbation-dilution mechanism from Section 3 was real
+at 307K params; a 3.26M-param model with FM embeddings has enough capacity
+to fit both tiers without one crowding out the other, so joint training no
+longer costs anything on perturbation while still avoiding the sequential
+curriculum's localization damage.
+
+**`all_at_once` + FM + h384/l2 is now the recommended configuration for
+the paper's headline numbers**, replacing sequential as the default
+protocol at this model size (Section 3's "sequential is the default" call
+was correct for the small model it was measured on, not a general result).
+Practical next step: update `configs/k562.yaml` / a new default config to
+this protocol + size once the rest of the pipeline (motif graph, other
+cell types) is re-validated against it, so the paper reports one
+consistent configuration rather than mixing sequential and all_at_once
+numbers across sections.
+
+A secondary test, `with_replay` at the same size, does NOT close the gap
+(localization 0.890, still below both `all_at_once` and scMultiomeGRN) and
+its dual-evidence number trains directly on dual_evidence (not zero-shot),
+so it isn't a candidate for the headline config. `fm_only` at this size
+ties `with_fm` almost exactly (0.963 vs 0.963 dual AUPR) — a secondary
+finding that hand-crafted RNA features add ~nothing once Geneformer + a
+big-enough model are both present, not the primary question this section
+was testing.
 
 ---
 
@@ -574,3 +593,75 @@ each claim:
 - Every one of these claims has an ablation test behind it in
   `results/ablations/`, and is written up plainly in `results.md` and the
   paper draft.
+
+---
+
+## 9. Independent critical review, and fixing what it found (2026-09-18)
+
+Two fresh-context subagents (mine and a concurrent teammate session working
+on the same repo) independently reviewed the codebase for publication
+readiness, playing skeptical reviewer against both an ICLR/ICML-caliber
+methods bar and a PLOS One/Bioinformatics-caliber journal bar. Both
+converged on nearly the same findings (see `critical_review_independent.md`
+at repo root for the full writeup), which is itself a useful signal that
+the findings are real rather than an artifact of one review's framing.
+Headline verdict from both: solid, honestly-reported empirical work, not
+publication-ready as-is, better suited to a bioinformatics venue than a
+top-tier ML conference given the architecture recombines known components
+rather than introducing a new one.
+
+**Fixed as a direct result of this review:**
+- **A new, previously-undiscovered bug**: MEvD-GRN's own training scripts
+  (`03_train.py`, `06_ablation.py`) never seeded model weight
+  initialization anywhere -- only the scMultiomeGRN DDP script did. Every
+  "same seed 42" rerun was silently using different random initial
+  weights. Fixed by adding `torch.manual_seed`/`np.random.seed`/
+  `random.seed` before model construction in both scripts, plus a
+  `--seed` CLI override for multi-seed sweeps. Verified locally (same seed
+  -> identical init, different seed -> different init).
+- **The `all_at_once` split-safety issue** (Section 3b above): fixed by a
+  teammate session to build the merged train/val/test split from the union
+  of each tier's already-persisted, leak-checked splits, with an explicit
+  runtime assertion, instead of re-splitting raw evidence independently
+  (which was leak-free only by seed/nesting/sort-order coincidence).
+  Verified the merged train-positive count is unchanged (964,360), so this
+  does not invalidate the numbers already in Section 7 -- it makes the
+  guarantee behind them real instead of coincidental.
+- **`results/` was entirely gitignored** -- nothing under it had ever been
+  tracked in git, so every number in this file, `results.md`, and the paper
+  citing a `results/ablations`/`results/baselines` JSON was unreproducible
+  from a fresh clone regardless of what was on any one machine's disk.
+  Fixed by carving out `.gitignore` exceptions for the small JSON result
+  files (checkpoints/logs stay ignored). While syncing, discovered several
+  results already written up in this file had never actually been
+  transferred from Ada to any local disk at all -- not just untracked, but
+  missing outright (the full model-size sweep, most of the multi-cell-type
+  transfer runs). All synced and committed now.
+- **`paper/main.tex`'s entire body was pre-bugfix** and directly
+  contradicted its own Abstract (dual AUPR 0.558 in one table, 0.881 in the
+  Abstract, for the same claim). Full rewrite pass: current numbers
+  throughout, EPR description fixed to match the actual (already-corrected)
+  code, baseline-fairness caveats added explicitly, Limitations expanded
+  from 4 to 8 items to cover everything both reviews raised. Compiles
+  cleanly.
+
+**Running now, not yet landed:** a 5-seed rerun of the recommended headline
+configuration (`all_at_once` + FM + h384/l2), to finally answer whether the
+close comparisons throughout this document (e.g. the 0.011 AUROC gap vs.
+scMultiomeGRN on perturbation) are real or within run-to-run noise; plus
+the `motif_graph_only`/`gated_relations` ablations rerun with the real
+28,204-edge motif graph for the first time, and 2 additional scMultiomeGRN
+seeds for the baseline side of the same question. Results will replace the
+single-run point estimates in `results.md` Section 7 and the paper once
+they land.
+
+**Confirmed true, not yet fixed (a judgment call, not just an edit):**
+dual-evidence AUPR has been the deciding metric for roughly six major
+project decisions (curriculum protocol chosen and reversed, ATAC fix
+validated, model size chosen, FM adopted, joint-training recipe chosen) --
+not literal leakage, but the multiple-comparisons pattern where the
+supposedly-untouched generalization metric was also the tuning signal.
+Flagged explicitly as Limitation (2) in the paper. The real fix (a truly
+untouched final-check split, never used for any prior decision) is a
+bigger methodological call than a same-session edit, and is left as an
+open recommendation rather than something unilaterally implemented.
