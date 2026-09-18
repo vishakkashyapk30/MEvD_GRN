@@ -67,6 +67,13 @@ model:
   # signal removed).
   use_fm: false
   fm_in_dim: 768             # Geneformer-V2-104M hidden_size
+  # Real TF motif graph (src/data/motif_scan.py), a 3rd relation alongside
+  # coexpr/TF-candidate. Off by default: requires atac.genome_fasta and
+  # atac.jaspar_pfm_path to be configured and scripts/02_preprocess.py to
+  # have been rerun with them set (falls back to an empty 3rd relation
+  # otherwise, which is a no-op). Ablation name: motif_graph_only (graph_mode
+  # "motif" isolates it, mirroring coexpr_only/tf_cand_only).
+  use_motif: false
 
 curriculum:
   # protocol: "sequential" (default) trains the stages list below one tier
@@ -159,3 +166,10 @@ atac:
   # aggregation -- see plan.md Section 2.
   rp_decay_bp: 10_000    # weight = exp(-|distance| / rp_decay_bp)
   rp_top_k: 10           # peaks kept per gene for the locus-shape descriptor
+  # Real TF motif scanning (src/data/motif_scan.py) -- builds a 3rd,
+  # genuinely motif-informed graph relation, replacing the accessibility-only
+  # heuristic. Both null by default: gracefully degrades to an empty motif
+  # graph (n_relations stays 2) when unavailable, same pattern as gtf_path.
+  genome_fasta: null      # e.g. data/raw/genome/hg38.fa (UCSC/Ensembl, ~3GB)
+  jaspar_pfm_path: null   # e.g. data/raw/motifs/JASPAR2024_CORE_vertebrates.txt
+  motif_score_frac: 0.75  # fraction of a PWM's max possible score counted as a hit

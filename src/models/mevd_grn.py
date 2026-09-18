@@ -30,7 +30,7 @@ from src.models.fusion import ConcatFusion, GatedFusion
 from src.models.gnn import GNNBackbone
 
 Emb = Tuple[torch.Tensor, torch.Tensor]
-_GRAPH_MODES = ("both", "coexpr", "tf_candidate")
+_GRAPH_MODES = ("both", "coexpr", "tf_candidate", "motif")
 
 
 class MEvDGRN(nn.Module):
@@ -41,7 +41,8 @@ class MEvDGRN(nn.Module):
                  graph_mode: str = "both",
                  use_edge_mlp: bool = False,
                  combine_mode: str = "sum",
-                 use_fm: bool = False, fm_in_dim: int = 768):
+                 use_fm: bool = False, fm_in_dim: int = 768,
+                 use_motif: bool = False):
         super().__init__()
         if graph_mode not in _GRAPH_MODES:
             raise ValueError(f"graph_mode must be one of {_GRAPH_MODES}, got {graph_mode!r}")
@@ -52,6 +53,12 @@ class MEvDGRN(nn.Module):
         self.use_edge_mlp = use_edge_mlp
         self.combine_mode = combine_mode
         self.use_fm = use_fm
+        self.use_motif = use_motif
+        # 2 relations (coexpr, TF-candidate) by default; 3 once a real motif
+        # graph is available (plan.md Section 2's "still open" item, now closed
+        # behind this opt-in flag -- off by default so existing checkpoints/
+        # configs are unaffected).
+        self.n_relations = 3 if use_motif else 2
         self.rna_encoder = RNAEncoder(rna_in_dim, hidden_dim // 2, hidden_dim, dropout)
         self.atac_encoder = ATACEncoder(atac_in_dim, hidden_dim // 2, hidden_dim, dropout)
         # Pretrained foundation-model gene embedding (plan.md Section 5), fused
@@ -61,16 +68,16 @@ class MEvDGRN(nn.Module):
 
         if integration == "role_aware":
             self.gnn_rna = GNNBackbone(hidden_dim, hidden_dim, n_gnn_layers, dropout,
-                                       combine_mode=combine_mode) if use_gnn else None
+                                       combine_mode=combine_mode, n_relations=self.n_relations) if use_gnn else None
             self.gnn_atac = GNNBackbone(hidden_dim, hidden_dim, n_gnn_layers, dropout,
-                                        combine_mode=combine_mode) if use_gnn else None
+                                        combine_mode=combine_mode, n_relations=self.n_relations) if use_gnn else None
             self.fusion = None
             self.gnn = None
             self.decoder = RoleAwareDecoder(hidden_dim, use_edge_mlp=use_edge_mlp)
         else:                                                # legacy fused integrations (ablations)
             self.fusion = GatedFusion(hidden_dim) if integration == "gated" else ConcatFusion(hidden_dim)
             self.gnn = GNNBackbone(hidden_dim, hidden_dim, n_gnn_layers, dropout,
-                                   combine_mode=combine_mode) if use_gnn else None
+                                   combine_mode=combine_mode, n_relations=self.n_relations) if use_gnn else None
             self.gnn_rna = self.gnn_atac = None
             self.decoder = BilinearDecoder(hidden_dim)
 
@@ -86,27 +93,36 @@ class MEvDGRN(nn.Module):
                     out[name] = w
         return out
 
-    def _select_graphs(self, coexpr_edges: torch.Tensor,
-                       tf_candidate_edges: torch.Tensor) -> List[torch.Tensor]:
+    def _select_graphs(self, coexpr_edges: torch.Tensor, tf_candidate_edges: torch.Tensor,
+                       motif_edges: Optional[torch.Tensor] = None) -> List[torch.Tensor]:
         """Pick which structural prior(s) feed the relational GraphSAGE."""
-        empty = torch.zeros((2, 0), dtype=torch.long, device=coexpr_edges.device)
+        device = coexpr_edges.device
+        empty = torch.zeros((2, 0), dtype=torch.long, device=device)
+        motif = motif_edges if (self.use_motif and motif_edges is not None) else empty
         if self.graph_mode == "coexpr":
-            return [coexpr_edges, empty]
-        if self.graph_mode == "tf_candidate":
-            return [empty, tf_candidate_edges]
-        return [coexpr_edges, tf_candidate_edges]
+            graphs = [coexpr_edges, empty]
+        elif self.graph_mode == "tf_candidate":
+            graphs = [empty, tf_candidate_edges]
+        elif self.graph_mode == "motif":
+            graphs = [empty, empty]
+        else:
+            graphs = [coexpr_edges, tf_candidate_edges]
+        if self.use_motif:
+            graphs.append(motif if self.graph_mode in ("both", "motif") else empty)
+        return graphs
 
     # -------------------------------------------------------------------------
     def encode(self, rna_features: torch.Tensor, atac_features: torch.Tensor,
                coexpr_edges: torch.Tensor, tf_candidate_edges: torch.Tensor,
-               fm_features: Optional[torch.Tensor] = None) -> Emb:
+               fm_features: Optional[torch.Tensor] = None,
+               motif_edges: Optional[torch.Tensor] = None) -> Emb:
         """Returns (h_rna, h_target-context). For role_aware the two channels stay
         separate; for fused integrations both entries are the shared fused embedding."""
         h_rna = self.rna_encoder(rna_features)
         if self.use_fm and fm_features is not None and fm_features.numel():
             h_rna = h_rna + self.fm_encoder(fm_features)
         h_atac = self.atac_encoder(atac_features) if self.use_atac else torch.zeros_like(h_rna)
-        graphs = self._select_graphs(coexpr_edges, tf_candidate_edges)
+        graphs = self._select_graphs(coexpr_edges, tf_candidate_edges, motif_edges)
         if self.integration == "role_aware":
             if self.use_gnn:
                 h_rna = self.gnn_rna(h_rna, graphs)
@@ -135,9 +151,9 @@ class MEvDGRN(nn.Module):
 
     def forward(self, rna_features, atac_features, coexpr_edges, tf_candidate_edges,
                 tf_idx, target_idx, signatures=None, openness=None,
-                fm_features=None) -> torch.Tensor:
+                fm_features=None, motif_edges=None) -> torch.Tensor:
         emb = self.encode(rna_features, atac_features, coexpr_edges, tf_candidate_edges,
-                          fm_features)
+                          fm_features, motif_edges)
         return self.decode(emb, tf_idx, target_idx, signatures, openness)
 
     @torch.no_grad()

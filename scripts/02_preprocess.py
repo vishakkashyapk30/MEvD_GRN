@@ -20,6 +20,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.data import graph_builder as gb
+from src.data import motif_scan
 from src.data.preprocessing import _resolve_glob, preprocess_scatac, preprocess_scrna
 from src.utils.io import ensure_dir, load_config, save_json
 
@@ -67,7 +68,7 @@ def main():
     except FileNotFoundError:
         atac_path = None
         print("[load] no scATAC file found; ATAC features will be zero.", flush=True)
-    atac_aligned, openness = preprocess_scatac(atac_path, universe, gene_index, pcfg)
+    atac_aligned, openness, gene_top_peaks = preprocess_scatac(atac_path, universe, gene_index, pcfg)
 
     # 4. evidence edges + nesting -----------------------------------------
     evidence = gb.build_evidence_edges(network_paths, gene_index)
@@ -78,7 +79,8 @@ def main():
 
     # 5. message-passing graphs -------------------------------------------
     #   (a) co-expression kNN (gene-gene); (b) TF-specific accessible+co-expressed
-    #   candidates (replaces the old TF-agnostic global accessibility ranking).
+    #   candidates; (c) real TF motif hits (plan.md Section 2), if a genome
+    #   FASTA + JASPAR motif file are configured -- empty otherwise.
     tf_indices = sorted(gene_index[g] for g in tf_names if g in gene_index)
     coexpr_edges = gb.build_coexpression_graph(sig_aligned, k=int(dcfg.get("coexpr_knn_k", 20)))
     tf_candidate_edges = gb.build_prior_graph(
@@ -86,6 +88,15 @@ def main():
         top_k=int(dcfg.get("tf_candidate_topk", dcfg["top_k_prior_targets"])),
         signatures=sig_aligned, openness=openness, evidence=evidence,
         exclude_positives=bool(dcfg.get("prior_exclude_positives", True)))
+    atac_cfg = cfg.get("atac", {}) or {}
+    inv_gene_index = {i: g for g, i in gene_index.items()}
+    tf_names_by_index = {i: inv_gene_index[i] for i in tf_indices}
+    motif_edges = motif_scan.build_motif_graph(
+        gene_index, tf_indices, tf_names_by_index, gene_top_peaks,
+        fasta_path=atac_cfg.get("genome_fasta"), jaspar_path=atac_cfg.get("jaspar_pfm_path"),
+        score_frac=float(atac_cfg.get("motif_score_frac", 0.75)),
+        evidence=evidence, exclude_positives=bool(dcfg.get("prior_exclude_positives", True)),
+        candidate_edges=tf_candidate_edges)
 
     # 6. negative pool: random TF×gene non-positive edges -----------------
     neg_pool = gb.create_negative_pool(evidence, tf_indices, len(universe),
@@ -101,6 +112,7 @@ def main():
     save_json(tf_indices, out_dir / "tf_indices.json")
     torch.save(tf_candidate_edges, out_dir / "tf_candidate_edges.pt")
     torch.save(coexpr_edges, out_dir / "coexpr_edges.pt")
+    torch.save(motif_edges, out_dir / "motif_edges.pt")
     torch.save(neg_pool, out_dir / "negative_pool.pt")
     for tier, e in evidence.items():
         torch.save(e, out_dir / f"evidence_{tier}.pt")
@@ -143,6 +155,7 @@ def main():
         "openness_any_peak_in_window_frac": float((openness[:, 3] > 0).mean()),
         "openness_proximal_frac": float((openness[:, 1] > 0.1).mean()),
         "tf_candidate_edges": int(tf_candidate_edges.shape[1]),
+        "motif_edges": int(motif_edges.shape[1]),
         "coexpr_edges": int(coexpr_edges.shape[1]),
         "negative_pool": int(neg_pool.shape[1]),
         "evidence_sizes": {t: int(e.shape[1]) for t, e in evidence.items()},

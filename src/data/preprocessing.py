@@ -396,22 +396,24 @@ def _peak_gene_weighted_incidence(peaks: pd.DataFrame, tss: pd.DataFrame,
     weights_arr = np.asarray(weights, dtype=np.float32)
     dists_arr = np.asarray(dists, dtype=np.int64)
     cols_arr = np.asarray(cols, dtype=np.int64)
+    rows_arr = np.asarray(rows, dtype=np.int64)                # == peak_idx per (peak,gene) pair
     incidence = sp.csr_matrix((weights_arr, (rows, cols_arr)), shape=(n_peaks, n_genes))
 
-    per_gene: Dict[int, Tuple[np.ndarray, np.ndarray]] = {}
+    per_gene: Dict[int, Tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
     order = np.argsort(cols_arr)
     cols_sorted = cols_arr[order]
     w_sorted = weights_arr[order]
     d_sorted = dists_arr[order]
+    pk_sorted = rows_arr[order]
     boundaries = np.searchsorted(cols_sorted, np.arange(n_genes + 1))
     for gi in range(n_genes):
         s, e = boundaries[gi], boundaries[gi + 1]
         if e > s:
-            per_gene[gi] = (w_sorted[s:e], d_sorted[s:e])
+            per_gene[gi] = (w_sorted[s:e], d_sorted[s:e], pk_sorted[s:e])
     return incidence, per_gene
 
 
-def _regulatory_potential_descriptor(per_gene: Dict[int, Tuple[np.ndarray, np.ndarray]],
+def _regulatory_potential_descriptor(per_gene: Dict[int, Tuple[np.ndarray, np.ndarray, np.ndarray]],
                                      n_genes: int, top_k: int) -> np.ndarray:
     """Per-gene locus-SHAPE descriptor (n_genes, 4), replacing the old
     single collapsed `openness` scalar (which was 96%+ correlated with the
@@ -424,7 +426,7 @@ def _regulatory_potential_descriptor(per_gene: Dict[int, Tuple[np.ndarray, np.nd
       col 3: peak count / top_k, clipped to 1 (how many peaks are in-window)
     """
     rp = np.zeros((n_genes, 4), dtype=np.float32)
-    for gi, (w, d) in per_gene.items():
+    for gi, (w, d, _pk) in per_gene.items():
         order = np.argsort(-w)[:top_k]
         w_top, d_top = w[order], d[order]
         rp[gi, 0] = float(w_top.mean())
@@ -434,13 +436,36 @@ def _regulatory_potential_descriptor(per_gene: Dict[int, Tuple[np.ndarray, np.nd
     return rp
 
 
+def gene_top_peak_coords(per_gene: Dict[int, Tuple[np.ndarray, np.ndarray, np.ndarray]],
+                         peaks: pd.DataFrame, top_k: int) -> Dict[int, List[Tuple[str, int, int]]]:
+    """Per-gene top-K peak GENOMIC COORDINATES (chrom, start, end), by RP
+    weight -- needed downstream for sequence-based TF motif scanning
+    (src/data/motif_scan.py), which `_regulatory_potential_descriptor`'s
+    purely numeric summary can't support. Returns {gene_idx: [(chrom,
+    start, end), ...]}, at most `top_k` peaks per gene, empty if a gene has
+    no mapped peaks.
+    """
+    peak_coord = peaks.set_index("peak_idx")[["chrom", "start", "end"]]
+    out: Dict[int, List[Tuple[str, int, int]]] = {}
+    for gi, (w, _d, pk) in per_gene.items():
+        order = np.argsort(-w)[:top_k]
+        coords = []
+        for p in pk[order]:
+            row = peak_coord.loc[int(p)]
+            coords.append((str(row["chrom"]), int(row["start"]), int(row["end"])))
+        out[gi] = coords
+    return out
+
+
 def preprocess_scatac(atac_path: str, gene_names: List[str], gene_index: Dict[str, int],
-                      cfg: dict) -> Tuple[np.ndarray, np.ndarray]:
+                      cfg: dict) -> Tuple[np.ndarray, np.ndarray, Dict[int, List[Tuple[str, int, int]]]]:
     """RP-weighted gene-activity-score features + a locus-shape descriptor per gene.
 
     Returns (atac_features [n_genes, 3] = [mean, var, detection_rate] of
     RP-weighted gene activity, regulatory_potential [n_genes, 4] -- see
-    `_regulatory_potential_descriptor`).
+    `_regulatory_potential_descriptor`, gene_top_peaks -- per-gene top-K peak
+    genomic coordinates for downstream motif scanning, see
+    `gene_top_peak_coords`).
 
     This replaces the earlier binary +/-window aggregation (every peak in
     window counted identically regardless of distance) with an exponential
@@ -457,7 +482,7 @@ def preprocess_scatac(atac_path: str, gene_names: List[str], gene_index: Dict[st
     decay_bp = float(atac.get("rp_decay_bp", 10_000))
     top_k = int(atac.get("rp_top_k", 10))
     gtf_path = atac.get("gtf_path")
-    zero = np.zeros((n_genes, 3), dtype=np.float32), np.zeros((n_genes, 4), dtype=np.float32)
+    zero = (np.zeros((n_genes, 3), dtype=np.float32), np.zeros((n_genes, 4), dtype=np.float32), {})
 
     if not atac_path:
         print("[scATAC] no ATAC path; returning zero features.", flush=True)
@@ -493,6 +518,7 @@ def preprocess_scatac(atac_path: str, gene_names: List[str], gene_index: Dict[st
     feats = np.stack([mean, var, detection], axis=1).astype(np.float32)
 
     reg_potential = _regulatory_potential_descriptor(per_gene, n_genes, top_k)
+    top_peaks = gene_top_peak_coords(per_gene, peaks, top_k)
 
     nz = int((feats[:, 0] > 0).sum())
     proximal = int((reg_potential[:, 1] > 0.1).sum())            # peak within ~ln(10)*decay_bp
@@ -501,4 +527,4 @@ def preprocess_scatac(atac_path: str, gene_names: List[str], gene_index: Dict[st
           f"PROXIMAL peak (max RP>0.1, ~{decay_bp*np.log(10):.0f}bp) "
           f"({100*proximal/max(n_genes,1):.1f}%); mean(mean_topK_RP)={reg_potential[:,0].mean():.4f}",
           flush=True)
-    return feats, reg_potential
+    return feats, reg_potential, top_peaks

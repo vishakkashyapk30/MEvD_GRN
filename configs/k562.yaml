@@ -25,3 +25,5 @@ paths:
 
 atac:
   gtf_path: data/raw/gtf/gencode.v38.gtf.gz     # hg38 (K562 is human)
+  genome_fasta: data/raw/genome/hg38.fa
+  jaspar_pfm_path: data/raw/motifs/JASPAR2024_CORE_vertebrates_non-redundant_pfms_jaspar.txt

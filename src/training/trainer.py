@@ -43,7 +43,7 @@ class MEvDTrainer:
     def _encode(self):
         return self.model.encode(self.data.rna_features, self.data.atac_features,
                                  self.data.coexpr_edges, self.data.tf_candidate_edges,
-                                 self.data.fm_embeddings)
+                                 self.data.fm_embeddings, self.data.motif_edges)
 
     def _decode(self, emb, tf_idx, target_idx) -> torch.Tensor:
         return self.model.decode(emb, tf_idx, target_idx,

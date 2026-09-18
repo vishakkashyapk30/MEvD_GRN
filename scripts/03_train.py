@@ -53,6 +53,7 @@ def main():
         use_edge_mlp=bool(mcfg.get("use_edge_mlp", False)),
         combine_mode=mcfg.get("combine_mode", "sum"),
         use_fm=bool(mcfg.get("use_fm", False)), fm_in_dim=int(mcfg.get("fm_in_dim", 768)),
+        use_motif=bool(mcfg.get("use_motif", False)),
     )
     print(f"[model] MEvD-GRN parameters: {model.count_parameters():,} "
           f"(graph_mode={model.graph_mode}, edge_mlp={model.use_edge_mlp})", flush=True)
