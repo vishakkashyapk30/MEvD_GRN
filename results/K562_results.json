@@ -1,0 +1,35 @@
+{
+  "cell_type": "K562",
+  "train_seconds": 966.2991716861725,
+  "n_params": 306691,
+  "curriculum": {
+    "Stage1_Localization": 0.9401869305361154,
+    "Stage2_Perturbation": 0.6298150699344627
+  },
+  "test": {
+    "localization": {
+      "auroc": 0.5101526786390241,
+      "aupr": 0.5686579668473555,
+      "early_precision": 0.5377117991447449,
+      "epr": 0.9979842865287546,
+      "n_pos": 175237,
+      "n_total": 325237
+    },
+    "perturbation": {
+      "auroc": 0.8949845353145466,
+      "aupr": 0.627449567631032,
+      "early_precision": 0.578402042388916,
+      "epr": 3.0963318203248185,
+      "n_pos": 34457,
+      "n_total": 184457
+    },
+    "dual_evidence": {
+      "auroc": 0.9672859337433627,
+      "aupr": 0.8686624747936386,
+      "early_precision": 0.7800579071044922,
+      "epr": 4.680347442626953,
+      "n_pos": 7943,
+      "n_total": 47658
+    }
+  }
+}

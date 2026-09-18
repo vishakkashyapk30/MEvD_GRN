@@ -1,0 +1,40 @@
+{
+  "ablation": "with_fm",
+  "cell_type": "K562",
+  "tag": "h128l3",
+  "n_params": 562567,
+  "hidden_dim": 128,
+  "n_gnn_layers": 3,
+  "key_tier": "dual_evidence",
+  "trained_tiers": [
+    "localization",
+    "perturbation"
+  ],
+  "results": {
+    "localization": {
+      "auroc": 0.7147488120849669,
+      "aupr": 0.6893917101510362,
+      "early_precision": 0.6961714625358582,
+      "epr": 1.2920828247503375,
+      "n_pos": 175237,
+      "n_total": 325237
+    },
+    "perturbation": {
+      "auroc": 0.9563369638486615,
+      "aupr": 0.8040087777228057,
+      "early_precision": 0.7435353994369507,
+      "epr": 3.9803322742531737,
+      "n_pos": 34457,
+      "n_total": 184457
+    },
+    "dual_evidence": {
+      "auroc": 0.9889057339790499,
+      "aupr": 0.9514519556901679,
+      "early_precision": 0.8724663257598877,
+      "epr": 5.234797954559326,
+      "n_pos": 7943,
+      "n_total": 47658
+    }
+  },
+  "relation_weights": {}
+}

@@ -1,0 +1,19 @@
+{
+  "ablation": "loc_only",
+  "cell_type": "Macrophage",
+  "key_tier": "localization",
+  "trained_tiers": [
+    "localization"
+  ],
+  "results": {
+    "localization": {
+      "auroc": 0.9146101314600693,
+      "aupr": 0.8408079458705194,
+      "early_precision": 0.7532328963279724,
+      "epr": 2.388916243627439,
+      "n_pos": 16858,
+      "n_total": 53466
+    }
+  },
+  "relation_weights": {}
+}

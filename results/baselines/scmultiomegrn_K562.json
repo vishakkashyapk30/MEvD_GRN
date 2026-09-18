@@ -1,0 +1,31 @@
+{
+  "baseline": "scmultiomegrn",
+  "cell_type": "K562",
+  "note": "Full 2-tier DDP run (world_size=4, epochs=2000, edge_cap=200000); ['dual_evidence'] scored zero-shot from the last trained tier's model, matching MEvD-GRN's own curriculum.main_curriculum_tiers protocol.",
+  "results": {
+    "localization": {
+      "auroc": 0.9141454141153601,
+      "aupr": 0.9059334413602683,
+      "early_precision": 0.8497634631955581,
+      "epr": 1.5771470607196751,
+      "n_pos": 175237,
+      "n_total": 325237
+    },
+    "perturbation": {
+      "auroc": 0.9185305204554467,
+      "aupr": 0.6549897591668236,
+      "early_precision": 0.6112255855123777,
+      "epr": 3.2720445142309735,
+      "n_pos": 34457,
+      "n_total": 184457
+    },
+    "dual_evidence": {
+      "auroc": 0.9705167035130339,
+      "aupr": 0.8466054488480469,
+      "early_precision": 0.7840866171471736,
+      "epr": 4.704519702883042,
+      "n_pos": 7943,
+      "n_total": 47658
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "ablation": "tf_cand_only",
+  "cell_type": "K562",
+  "key_tier": "dual_evidence",
+  "trained_tiers": [
+    "localization",
+    "perturbation"
+  ],
+  "results": {
+    "localization": {
+      "auroc": 0.49154292717862097,
+      "aupr": 0.5654970446807822,
+      "early_precision": 0.5148627161979675,
+      "epr": 0.9555767630584772,
+      "n_pos": 175237,
+      "n_total": 325237
+    },
+    "perturbation": {
+      "auroc": 0.8746089721488619,
+      "aupr": 0.5896856110277888,
+      "early_precision": 0.5497286319732666,
+      "epr": 2.9428358321354975,
+      "n_pos": 34457,
+      "n_total": 184457
+    },
+    "dual_evidence": {
+      "auroc": 0.9502842335551163,
+      "aupr": 0.8271571911791393,
+      "early_precision": 0.7352385520935059,
+      "epr": 4.411431312561035,
+      "n_pos": 7943,
+      "n_total": 47658
+    }
+  }
+}

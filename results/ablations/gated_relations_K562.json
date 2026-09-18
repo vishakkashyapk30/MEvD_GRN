@@ -1,0 +1,61 @@
+{
+  "ablation": "gated_relations",
+  "cell_type": "K562",
+  "tag": null,
+  "n_params": 315023,
+  "hidden_dim": 128,
+  "n_gnn_layers": 2,
+  "key_tier": "dual_evidence",
+  "trained_tiers": [
+    "localization",
+    "perturbation"
+  ],
+  "results": {
+    "localization": {
+      "auroc": 0.5121088474656228,
+      "aupr": 0.5704638496576067,
+      "early_precision": 0.5392183065414429,
+      "epr": 1.0007803395665256,
+      "n_pos": 175237,
+      "n_total": 325237
+    },
+    "perturbation": {
+      "auroc": 0.899527014830078,
+      "aupr": 0.6416911520500251,
+      "early_precision": 0.5876889824867249,
+      "epr": 3.146047149855002,
+      "n_pos": 34457,
+      "n_total": 184457
+    },
+    "dual_evidence": {
+      "auroc": 0.9690580004209458,
+      "aupr": 0.8760595138352714,
+      "early_precision": 0.7910109758377075,
+      "epr": 4.746065855026245,
+      "n_pos": 7943,
+      "n_total": 47658
+    }
+  },
+  "relation_weights": {
+    "rna": [
+      [
+        0.493540495634079,
+        0.5064595341682434
+      ],
+      [
+        0.47954967617988586,
+        0.5204503536224365
+      ]
+    ],
+    "atac": [
+      [
+        0.45750564336776733,
+        0.5424942970275879
+      ],
+      [
+        0.44957730174064636,
+        0.5504226684570312
+      ]
+    ]
+  }
+}
