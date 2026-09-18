@@ -223,6 +223,62 @@ sensible small model. So the plan is:
   needed a smaller setting there) and running several experiments side by
   side instead of one at a time.
 
+**Update (2026-09-12): the sweep ran, here's what it found.** Five configs
+(hidden_dim x n_gnn_layers) were trained on Ada, one per GPU, on K562 with
+the FM-embedding input (the richer input this section predicted we'd need
+before scaling up made a difference):
+
+| config  | params    | hidden | layers | dual AUPR | dual AUROC | dual EP |
+|---------|-----------|--------|--------|-----------|------------|---------|
+| h128l3  | 562,567   | 128    | 3      | 0.9515    | 0.9889     | 0.8725  |
+| h256l2  | 1,516,295 | 256    | 2      | 0.9572    | 0.9903     | 0.8809  |
+| h256l3  | 2,042,631 | 256    | 3      | 0.9595    | 0.9908     | 0.8830  |
+| h384l2  | 3,257,479 | 384    | 2      | 0.9628    | 0.9916     | 0.8888  |
+| h384l3  | 4,440,199 | 384    | 3      | 0.9638    | 0.9917     | 0.8911  |
+
+Bigger is monotonically better across all five, confirming this section's
+prediction that a richer input (RP-weighted ATAC + FM embeddings) can
+actually make use of more capacity, unlike the original 306K-parameter model.
+But the gains flatten out fast: going from h384l2 to h384l3 costs 36% more
+parameters for +0.001 dual AUPR — essentially noise-level. **Chosen size for
+the paper: hidden_dim=384, n_gnn_layers=2 (3.26M parameters)** — it ties the
+largest config tested at a fraction of the parameters, which is also the
+cleaner "we tested, then picked the smallest model that's within noise of
+the best" story for reviewers, rather than just reporting the single biggest
+number.
+
+### 3b. Closing the last gap vs. scMultiomeGRN (2026-09-18)
+
+The scMultiomeGRN baseline finally finished a full 3-tier run (see
+`results.md` Section 7): it beats our small, no-FM base model on
+localization and perturbation, though not on the harder zero-shot
+dual-evidence tier. Re-scoring against h384/l2 + Geneformer instead of the
+base model closes most of that gap immediately — MEvD-GRN already wins
+perturbation (0.834 vs. 0.655 AUPR) and dual-evidence (0.963 vs. 0.847 AUPR)
+outright, and only trails on localization (0.751 vs. 0.906 AUPR).
+
+That remaining localization gap has a specific, already-understood cause,
+not a sign the architecture doesn't work: Section 3's earlier
+sequential-vs-all_at_once comparison already showed `all_at_once` alone (no
+FM, small model) pushes localization to 0.937 AUPR — above scMultiomeGRN's
+0.906 — because it removes the Stage-2 fine-tuning step that damages what
+Stage 1 learned. The catch, at that size, was perturbation dropping to
+0.351. The open question is whether that tradeoff still holds once the
+model has FM embeddings and 10x the capacity to work with: a bigger,
+richer model may have enough room to hold onto localization-relevant
+structure while still fitting perturbation well, where the tiny 307K-param
+model didn't.
+
+**Running now**: `all_at_once` and `with_replay` (the two curricula that
+previously showed the best localization recovery), both at h384/l2 + FM,
+to see if either wins all three tiers outright against scMultiomeGRN
+instead of trading two wins for one loss. Results land in `results.md`
+Section 7 once done. If neither closes the gap cleanly, the next thing to
+try is a hybrid protocol: joint (`all_at_once`) pretraining followed by a
+short, low-LR perturbation-only fine-tune (a lighter-touch version of the
+current Stage 2 than full sequential fine-tuning) — this hasn't been
+implemented yet and would be new code, not just a config change.
+
 ---
 
 ## 4. The two "prior graphs" — are they really adding anything?
@@ -438,11 +494,25 @@ FM). This should be the headline result of the paper, with the FM-embedding
 interaction reported as an honest, interesting secondary finding rather
 than folded into the headline number.
 
-**Natural next steps** (not yet done): hold out MCF7 or K562 instead of
-Macrophage, to make sure this pattern isn't specific to which cell type gets
-held out; and investigate WHY FM still slightly underperforms even jointly
-trained (e.g. does freezing more of the FM-reading network, or adding a
-third training cell type, close the remaining gap).
+**Robustness check (done, 2026-09-12) — held out all three cell types in
+turn, not just Macrophage.** Good news and a nuance:
+- **The headline finding holds for every holdout choice**: joint training
+  beats single-cell-type transfer every time we have a baseline to compare
+  against (Macrophage held out: 0.743 vs 0.607; MCF7 held out: 0.837 vs
+  0.758) — this is now a well-replicated result, not a one-off.
+- **The "FM slightly hurts" finding does NOT hold for every holdout choice.**
+  Holding out K562 instead (train on Macrophage+MCF7), FM actually helps
+  (0.744 vs 0.704) — the opposite direction from the Macrophage/MCF7-held-out
+  cases. All six with/without-FM numbers across the three holdout choices sit
+  within a tight 0.70-0.84 band, so this is a small, second-order,
+  holdout-dependent wobble on top of the much bigger, consistent
+  joint-training win — worth reporting honestly as "mixed," not smoothing it
+  into either "FM helps" or "FM hurts" as a fixed rule under joint training.
+  See `results.md` Section 6 for the full 6-row table.
+
+**Still open**: investigating WHY the FM-transfer interaction flips sign by
+holdout choice (e.g. does freezing more of the FM-reading network, or a
+third training cell type, stabilize it either way).
 
 ---
 

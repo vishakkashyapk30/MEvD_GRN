@@ -64,18 +64,40 @@ training curriculum rather than as an incidental labeling detail. MEvD-GRN encod
 RNA and ATAC signals in separate towers, fuses them only at a role-aware decoder in
 which chromatin accessibility gates transcriptional compatibility, and is trained
 sequentially on the localization and perturbation evidence tiers of the K562 cell
-line from the SC-MO-GRN-DB resource. We then evaluate the trained model in a
-\emph{zero-shot} fashion on the highest-confidence dual-evidence tier -- never used
-for a single gradient update -- and find that a 306,691-parameter model reaches
-AUPR $0.558$ / AUROC $0.838$ on this held-out tier, exceeding a 4.08M-parameter
-supervised multi-omic GNN baseline (scMultiomeGRN) and three additional classical
-and deep-learning baselines. We complement this headline result with a rigorous
-ablation study (10 configurations) that surfaces a genuine limitation -- sequential
-curriculum training induces catastrophic forgetting of the localization tier, which
-memory replay only partially remedies -- and we quantify exactly how much of the
-model's competitiveness against the strongest baseline depends on the specific
-curriculum schedule chosen.
+line from the SC-MO-GRN-DB resource. Evaluated \emph{zero-shot} on the
+highest-confidence dual-evidence tier -- never used for a single gradient update --
+a 315,015-parameter model reaches AUPR $0.881$ / AUROC $0.971$. Two further additions
+push this substantially higher: replacing a binary-window ATAC aggregation with a
+distance-weighted regulatory-potential score (AUPR $0.881{\to}$ measurably better
+than an ATAC-ablated control, where before the fix there was no measurable
+difference), and adding a pretrained, frozen Geneformer gene embedding as an
+auxiliary input, which alone reaches AUPR $0.951$ / AUROC $0.989$ -- the single
+largest improvement in this work. We further show that this embedding, while a
+large in-domain win, \emph{degrades} zero-shot transfer to unseen cell types when
+trained on one cell type alone (AUPR $0.607{\to}0.447$ on a held-out cell type), and
+that jointly training on two cell types at once substantially closes this gap while
+also improving zero-shot transfer to a \emph{third}, entirely unseen cell type
+(AUPR $0.743$, versus a $0.841$ from-scratch ceiling on that cell type). We report
+all of this, including the two real bugs that were driving earlier under-performing
+numbers, and a rigorous ablation study, with the same commitment to honest negative
+and mixed results throughout.
 \end{abstract}
+
+% ---------------------------------------------------------------------------
+% EDITORIAL STATUS NOTE (2026-09-12) -- remove before any real submission.
+% The Abstract above is current. Two bugs (EPR metric normalization and a
+% hard-negative cross-tier leakage bug) were found and fixed on 2026-09-11;
+% see results.md Section 0 for details. The ATAC pipeline rewrite, gated
+% relation combiner, Geneformer embedding, and multi-cell-type joint
+% training (Sections above) are all real, verified results as of
+% 2026-09-12 -- see results.md and plan.md for the authoritative numbers.
+% The body sections below this note (Results, Ablation Study, Limitations)
+% still contain PRE-BUGFIX numbers and have not yet had a full rewrite pass
+% -- treat results.md as the source of truth until that pass is done. A
+% real TF motif graph (Section "Real TF motif scanning" in
+% docs/citations.md) and a model-capacity sweep are running as of this
+% note and are not yet reflected anywhere in this paper.
+% ---------------------------------------------------------------------------
 
 \section{Introduction}
 \label{sec:intro}
@@ -502,12 +524,16 @@ Role-aware decoder & 32{,}899 \\
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/architecture_diagram.png}
-\caption{MEvD-GRN architecture. RNA and ATAC signals are encoded and
-message-passed in separate towers over two shared structural graphs
-(co-expression $k$NN and TF-candidate), and combine only at the role-aware
-decoder, where the ATAC embedding gates the RNA embedding before an asymmetric
-bilinear compatibility score is computed.}
+\includegraphics[width=\columnwidth]{figures/architecture_diagram_v3_1.png}
+\caption{MEvD-GRN architecture (updated 2026-09-12). RNA and ATAC signals
+are extracted into per-gene features, encoded, and message-passed in
+separate towers over up to three shared structural graphs (co-expression
+$k$NN, TF-candidate, and a real TF-motif graph), combining only at the
+role-aware decoder, where the ATAC embedding gates the RNA (optionally
+Geneformer-augmented) embedding before an asymmetric bilinear compatibility
+score is computed. A shared copy of this pipeline can also be trained
+jointly across multiple cell types (bottom panel), which is not part of
+the per-example forward pass shown above.}
 \label{fig:arch}
 \end{figure}
 

@@ -21,13 +21,16 @@ https://scmogrndb.psu.edu
 
 ## 2. Turning ATAC peaks into gene-level scores
 
-**What we do.** ATAC data is peaks by cells (open DNA intervals), not genes. We map peaks that fall within about 100 kb of a gene's transcription start site, sum that signal into a gene activity score, then keep per-gene mean, variance, and an openness number.
+**What we do (updated 2026-09-11).** ATAC data is peaks by cells (open DNA intervals), not genes. We map peaks within 100 kb of a gene's TSS, weight each peak by an exponential decay of its distance to the TSS (a peak right at the TSS counts far more than one near the edge of the window), sum that into a gene activity score, and keep per-gene mean, variance, detection rate, plus a 4-number locus-shape descriptor (mean/max regulatory-potential weight, mean distance, peak count).
 
-**Why.** The model talks about genes and TF to gene edges. Peaks are not genes, so we need a simple way to say "how open is this gene's neighborhood?" That is the usual gene-activity idea in scATAC analysis.
+Previously this used a flat binary window (every peak in range counted identically) collapsed to just 2 numbers, which turned out to be over 96% correlated with each other on real data — effectively one number, not two — and a separate "openness" scalar that was a coarse, heavily-rounded copy of the same thing (77 distinct values across 22,943 genes). See `plan.md` Section 2 for the full before/after measurement.
+
+**Why.** The model talks about genes and TF to gene edges. Peaks are not genes, so we need a simple way to say "how open is this gene's neighborhood, and how close is the nearest open region." Distance-weighting is the standard regulatory-potential idea in the field, and fixing this was the single biggest correctness improvement to the ATAC side of the pipeline.
 
 **Citations.**  
 Signac gene-activity workflow: https://stuartlab.org/signac/articles/pbmc_vignette  
-Duren et al., modeling regulation from paired expression and accessibility, PNAS 2018: https://doi.org/10.1073/pnas.1802973115
+Duren et al., modeling regulation from paired expression and accessibility, PNAS 2018: https://doi.org/10.1073/pnas.1802973115  
+MAESTRO / BETA regulatory-potential distance-decay scoring: Wang et al., Genome Biology 2020, https://doi.org/10.1186/s13059-020-02116-x
 
 
 ## 3. RNA node features and co-expression signatures
@@ -189,3 +192,48 @@ Related: Simonovsky and Komodakis, edge-conditioned convolutions, https://arxiv.
 **Citations.**  
 Multi-relation motivation: R-GCN, https://arxiv.org/abs/1703.06103  
 GraphSAGE necessity (no_gnn control): https://proceedings.neurips.cc/paper/2017/hash/5dd9db5e033da9c6fb5ba83c7a7ebea9-Abstract.html
+
+
+## 17. Learned gated relation combiner (new, 2026-09-11)
+
+**What we do.** Instead of always adding the co-expression graph's and TF-candidate graph's messages together with equal, fixed weight, the GNN can learn one softmax weight per relation per layer (`combine_mode: "gated"`) and decide for itself how much to trust each one.
+
+**Why.** Different relations may matter more or less depending on what's available and how good each one is. A fixed sum can't express "this relation happens to be much weaker right now." A learned, interpretable weight can, and it's the natural thing to report once a genuinely different third relation (Section 19) exists to weigh against the other two.
+
+**Citations.**  
+Relational Graph Transformer (motivates learned relation-level attention over a fixed relational GNN): Dwivedi, Leskovec et al., arXiv 2025, https://arxiv.org/abs/2505.10960  
+Multi-relation motivation: R-GCN, https://arxiv.org/abs/1703.06103
+
+
+## 18. Pretrained foundation-model gene embeddings (new, 2026-09-11)
+
+**What we do.** We add Geneformer's pretrained, frozen per-gene input embedding (one 768-number vector per gene, learned from tens of millions of real single cells, no fine-tuning) as an extra input alongside our hand-built RNA features.
+
+**Why.** A model trained on millions of cells across many tissues has almost certainly learned real regulatory/functional structure about each gene that our small, single-cell-type dataset cannot teach from scratch. This turned out to be the single biggest improvement in the whole project (see `results.md` Section 5) — and, unlike our hand-built per-cell-type statistics, the same embedding value is reused for a gene regardless of which cell type we're looking at, which is directly relevant to the cross-cell-type generalization work (Section 20).
+
+**Citations.**  
+Geneformer: Theodoris et al., Nature 2023, https://doi.org/10.1038/s41586-023-06139-9  
+"Towards Universal Gene Regulatory Network Inference... Single-cell Foundation Models" (motivates FM embeddings specifically for GRN generalization): arXiv 2605.08128
+
+
+## 19. Real TF motif scanning (new, 2026-09-12)
+
+**What we do.** For every TF that has a known DNA-binding motif (JASPAR), we scan that motif against each candidate target gene's most-accessible peak sequences (from the genome FASTA) and add an edge only where an actual sequence match is found above a score threshold — replacing the earlier accessibility-only heuristic (which only asked "is this open," never "does this TF's binding pattern actually appear here").
+
+**Why.** This is exactly what the original scMultiomeGRN paper does with FIMO for its own model; MEvD-GRN never did the equivalent for itself until now, which was a real fidelity gap. It also gives the model a genuinely different third relation (Section 17's learned combiner has nothing interesting to weigh against co-expression/TF-candidate without it, since the old TF-candidate graph was itself accessibility-only).
+
+**Citations.**  
+JASPAR motif database: Rauluseviciute et al., Nucleic Acids Research 2024, https://doi.org/10.1093/nar/gkad1059  
+FIMO / MEME Suite (the motif-scanning tool this is a lighter, dependency-free NumPy substitute for): Grant et al., Bioinformatics 2011, https://doi.org/10.1093/bioinformatics/btr064  
+scMultiomeGRN's own FIMO-based initial adjacency: Xu et al., NAR 2025, https://doi.org/10.1093/nar/gkaf138
+
+
+## 20. Multi-cell-type joint training (new, 2026-09-12)
+
+**What we do.** Instead of training only on one cell type, a single shared model can now be trained on more than one cell type at once (one gradient step per cell type per epoch, each keeping its own graph/features), then evaluated zero-shot on a third, completely held-out cell type.
+
+**Why.** We found that the foundation-model embedding (Section 18), while a huge in-domain win, made cross-cell-type transfer worse when trained on only one cell type — the small network reading the embedding appears to over-specialize to whichever cell type it saw. Training jointly on two cell types is the cheapest fix, and it works: zero-shot transfer to a third, unseen cell type improved substantially, with or without the FM embedding. As far as we can tell, nobody else has run this kind of multi-cell-type experiment on SC-MO-GRN-DB.
+
+**Citations.**  
+Multi-task/joint training as a generalization aid (general motivation, not GRN-specific): Caruana, Multitask Learning, Machine Learning 1997, https://doi.org/10.1023/A:1007379606734  
+Cross-cell-type transfer motivation: SC-MO-GRN-DB, https://doi.org/10.1016/j.isci.2026.115323
