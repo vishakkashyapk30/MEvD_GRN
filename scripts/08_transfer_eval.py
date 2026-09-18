@@ -88,7 +88,8 @@ def main():
                     use_edge_mlp=bool(m.get("use_edge_mlp", False)),
                     combine_mode=m.get("combine_mode", "sum"),
                     use_fm=bool(m.get("use_fm", False)),
-                    fm_in_dim=int(m.get("fm_in_dim", 768)))
+                    fm_in_dim=int(m.get("fm_in_dim", 768)),
+                    use_motif=bool(m.get("use_motif", False)))
 
     trainer = MEvDTrainer(model, data, scfg, device)
     trainer.load_checkpoint(args.checkpoint)

@@ -29,6 +29,9 @@ class CellTypeData:
                                          # embeddings (plan.md Section 5); zeros if
                                          # scripts/11_extract_fm_embeddings.py hasn't
                                          # been run for this cell type yet.
+    motif_edges: torch.Tensor = None     # (2, E) TF -> gene with an actual PWM hit in a
+                                         # top-K accessible peak (src/data/motif_scan.py);
+                                         # empty if no genome FASTA/JASPAR file configured.
 
     @property
     def n_genes(self) -> int:
@@ -44,6 +47,8 @@ class CellTypeData:
         self.tf_indices = self.tf_indices.to(device)
         if self.fm_embeddings is not None:
             self.fm_embeddings = self.fm_embeddings.to(device)
+        if self.motif_edges is not None:
+            self.motif_edges = self.motif_edges.to(device)
         return self
 
 
@@ -74,8 +79,10 @@ def load_celltype_data(processed_dir: str, evidence_tiers: List[str]) -> CellTyp
     fm_path = d / "fm_gene_embeddings.npy"
     fm_embeddings = (torch.from_numpy(np.load(fm_path)).float() if fm_path.exists()
                      else torch.zeros((rna.shape[0], 0)))
+    motif_path = d / "motif_edges.pt"
+    motif_edges = torch.load(motif_path) if motif_path.exists() else torch.zeros((2, 0), dtype=torch.long)
     return CellTypeData(cell_type, rna, atac, tf_cand, coexpr, signature, openness,
-                        gene_index, tf_indices, evidence, neg_pool, fm_embeddings)
+                        gene_index, tf_indices, evidence, neg_pool, fm_embeddings, motif_edges)
 
 
 def load_splits(splits_dir: str, cell_type: str, tier: str) -> Dict[str, Dict[str, torch.Tensor]]:

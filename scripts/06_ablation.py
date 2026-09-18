@@ -67,7 +67,7 @@ ABLATIONS = [
     "full_curriculum", "loc_only", "pert_only", "dual_only", "all_at_once",
     "rna_only", "gated_fusion", "concat_fusion", "no_gnn", "with_replay",
     "coexpr_only", "tf_cand_only", "edge_mlp", "gated_relations",
-    "with_fm", "fm_only",
+    "with_fm", "fm_only", "motif_graph_only",
 ]
 
 
@@ -83,16 +83,20 @@ def build_model(cfg, ablation):
         graph_mode = "coexpr"
     elif ablation == "tf_cand_only":
         graph_mode = "tf_candidate"
+    elif ablation == "motif_graph_only":
+        graph_mode = "motif"
     use_edge_mlp = bool(m.get("use_edge_mlp", False)) or (ablation == "edge_mlp")
     combine_mode = m.get("combine_mode", "sum")
     if ablation == "gated_relations":
         combine_mode = "gated"
     use_fm = bool(m.get("use_fm", False)) or (ablation in ("with_fm", "fm_only"))
+    use_motif = bool(m.get("use_motif", False)) or (ablation == "motif_graph_only")
     return MEvDGRN(
         rna_in_dim=m["rna_in_dim"], atac_in_dim=m["atac_in_dim"], hidden_dim=m["hidden_dim"],
         n_gnn_layers=m["n_gnn_layers"], dropout=m["dropout"],
         use_atac=(ablation != "rna_only"),
         use_gnn=(ablation != "no_gnn"),
+        use_motif=use_motif,
         integration=integration,
         graph_mode=graph_mode,
         use_edge_mlp=use_edge_mlp,
