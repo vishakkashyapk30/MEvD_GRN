@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:        #17181c;
+    --ink-2:      #52545c;
+    --ink-3:      #8a8d96;
+    --surface:    #fbfbfa;
+    --line:       #d8d9dd;
+
+    /* categorical roles, from the validated palette (dataviz skill) */
+    --rna:        #2a78d6;   /* blue    */
+    --rna-bg:     #eaf2fc;
+    --atac:       #eb6834;   /* orange  */
+    --atac-bg:    #fdefe8;
+    --fm:         #4a3aa7;   /* violet  */
+    --fm-bg:      #efecfa;
+    --graph:      #b8860b;   /* graph/structural gold, distinct from categorical set */
+    --graph-bg:   #fbf3df;
+    --decoder:    #17181c;
+    --decoder-bg: #17181c;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 52px 40px;
+    font-family: 'Poppins', sans-serif;
+    background: var(--surface);
+    color: var(--ink);
+    width: 1180px;
+  }
+  .mono { font-family: 'Roboto Mono', monospace; }
+
+  .title { text-align: center; font-size: 25px; font-weight: 700; letter-spacing: -0.01em; }
+  .subtitle { text-align: center; font-size: 13px; color: var(--ink-2); margin-top: 4px; margin-bottom: 40px; }
+
+  .flow { display: flex; flex-direction: column; align-items: center; gap: 0; }
+
+  .tier-label {
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--ink-3); margin-bottom: 10px; text-align: center;
+  }
+
+  .row { display: flex; justify-content: center; align-items: stretch; gap: 16px; width: 100%; }
+
+  .card {
+    border-radius: 10px; padding: 12px 14px; font-size: 12.5px; line-height: 1.4;
+    border: 1.5px solid var(--line); background: white;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .card b { display: block; font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .card .sub { color: var(--ink-2); font-size: 11.5px; }
+
+  .w-source { width: 200px; }
+  .w-feat   { width: 200px; }
+  .w-graph  { width: 190px; }
+  .w-enc    { width: 200px; }
+
+  .tag {
+    display: inline-block; font-size: 9.5px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 1px 7px; border-radius: 20px; margin-bottom: 6px;
+  }
+  .tag-rna   { background: var(--rna-bg);   color: var(--rna); }
+  .tag-atac  { background: var(--atac-bg);  color: var(--atac); }
+  .tag-fm    { background: var(--fm-bg);    color: var(--fm); }
+  .tag-graph { background: var(--graph-bg); color: var(--graph); }
+  .tag-new   { background: #17181c; color: white; }
+
+  .rna-border   { border-color: var(--rna); }
+  .atac-border  { border-color: var(--atac); }
+  .fm-border    { border-color: var(--fm); }
+  .graph-border { border-color: var(--graph); border-style: dashed; }
+
+  .rna-fill   { background: var(--rna);   color: white; border-color: var(--rna); }
+  .atac-fill  { background: var(--atac);  color: white; border-color: var(--atac); }
+  .fm-fill    { background: var(--fm);    color: white; border-color: var(--fm); }
+  .graph-fill { background: #fdf6e3; border-color: var(--graph); }
+
+  .arrow-col { display: flex; flex-direction: column; align-items: center; }
+  .arrow {
+    width: 2px; height: 22px; background: var(--ink-3);
+    position: relative;
+  }
+  .arrow::after {
+    content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 7px solid var(--ink-3);
+  }
+  .plus {
+    font-size: 20px; font-weight: 600; color: var(--ink-3); align-self: center; margin: 0 4px;
+  }
+
+  .stack-wrap { position: relative; padding: 10px 14px 10px 14px; }
+  .stack-badge {
+    position: absolute; top: -11px; right: 6px; background: var(--ink); color: white;
+    font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+    font-family: 'Roboto Mono', monospace;
+  }
+  .stack-shadow-1, .stack-shadow-2 {
+    position: absolute; inset: 0; border: 1.5px solid var(--line); border-radius: 12px; background: white;
+  }
+  .stack-shadow-1 { transform: translate(5px, 5px); z-index: 0; }
+  .stack-shadow-2 { transform: translate(10px, 10px); z-index: -1; opacity: 0.6; }
+  .stack-front { position: relative; z-index: 1; border: 1.5px solid var(--ink); border-radius: 12px;
+    background: white; padding: 14px 16px; }
+
+  .relation-pill {
+    display: flex; align-items: center; gap: 6px; font-size: 11px; padding: 5px 9px;
+    border-radius: 7px; border: 1.5px solid var(--line); background: #fcfcfb;
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+  .decoder-box {
+    background: var(--decoder-bg); color: white; border-radius: 12px; padding: 18px 22px;
+    width: 760px;
+  }
+  .decoder-box b { font-size: 16px; font-weight: 600; }
+  .eq-row { display: flex; justify-content: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .eq {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 6px; padding: 7px 11px; font-size: 12px; font-family: 'Roboto Mono', monospace;
+  }
+
+  .decoder-steps { display: flex; align-items: stretch; gap: 0; margin-top: 16px; }
+  .dstep {
+    flex: 1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 8px; padding: 10px 12px; position: relative;
+  }
+  .dstep .step-tag {
+    font-size: 9px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: rgba(255,255,255,0.55); margin-bottom: 5px;
+  }
+  .dstep .step-eq {
+    font-family: 'Roboto Mono', monospace; font-size: 12.5px; font-weight: 500;
+  }
+  .dstep .step-note {
+    font-size: 10px; color: rgba(255,255,255,0.6); margin-top: 5px; line-height: 1.35;
+  }
+  .dstep-arrow {
+    flex: 0 0 26px; display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.45); font-size: 16px;
+  }
+  .dstep-final {
+    margin-top: 10px; text-align: center; font-family: 'Roboto Mono', monospace;
+    font-size: 12.5px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 8px; padding: 9px 12px;
+  }
+  .dstep-final .step-note { text-align: left; }
+
+  .output-box {
+    background: white; border: 2.5px solid var(--ink); border-radius: 10px;
+    padding: 12px 22px; text-align: center; font-size: 14px; font-weight: 600;
+  }
+
+  .banner {
+    margin-top: 34px; border: 1.5px dashed var(--line); border-radius: 10px;
+    padding: 14px 20px; font-size: 11.5px; color: var(--ink-2); line-height: 1.5;
+    max-width: 980px; text-align: center;
+  }
+  .banner b { color: var(--ink); }
+
+  .legend { display: flex; justify-content: center; gap: 22px; margin-top: 30px; font-size: 11px; color: var(--ink-2); flex-wrap: wrap; }
+  .legend .item { display: flex; align-items: center; gap: 6px; }
+  .legend .sw { width: 12px; height: 12px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+  <div class="title">MEvD-GRN</div>
+  <div class="subtitle">TF &rarr; target-gene regulatory edge prediction from paired scRNA-seq / scATAC-seq &nbsp;&middot;&nbsp; 306,691 params (base) / 430,471 (+ Geneformer)</div>
+
+  <div class="flow">
+
+    <!-- TIER 0: raw data -->
+    <div class="tier-label">Raw inputs</div>
+    <div class="row">
+      <div class="card w-source rna-border"><span class="tag tag-rna">RNA</span><b>scRNA-seq matrix</b><span class="sub">953&ndash;3143 cells &times; genes</span></div>
+      <div class="card w-source atac-border"><span class="tag tag-atac">ATAC</span><b>scATAC-seq matrix</b><span class="sub">peaks &times; barcodes</span></div>
+      <div class="card w-source fm-border"><span class="tag tag-fm">FM</span><b>Geneformer (frozen)</b><span class="sub">pretrained on ~30M+ cells</span></div>
+    </div>
+
+    <div class="row">
+      <div class="arrow-col" style="width:200px"><div class="arrow"></div></div>
+      <div class="arrow-col" style="width:200px"><div class="arrow"></div></div>
+      <div class="arrow-col" style="width:200px"><div class="arrow"></div></div>
+    </div>
+
+    <!-- TIER 1: feature extraction -->
+    <div class="tier-label">Per-gene feature extraction</div>
+    <div class="row">
+      <div class="card w-feat rna-border">
+        <b>RNA statistics</b>
+        <span class="sub">[mean, var, detection] (3-d)<br>+ co-expression signature (50-d)</span>
+      </div>
+      <div class="card w-feat atac-border">
+        <b>RP-weighted activity</b>
+        <span class="sub">[mean, var, detection] (3-d),<br>distance-decay weighted (not binary)</span>
+      </div>
+      <div class="card w-feat fm-border">
+        <b>Embedding lookup</b>
+        <span class="sub">768-d per gene, no fine-tuning,<br>cell-type&#8209;invariant</span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="arrow-col" style="width:200px"><div class="arrow"></div></div>
+      <div class="arrow-col" style="width:200px"><div class="arrow"></div></div>
+      <div class="arrow-col" style="width:200px"><div class="arrow"></div></div>
+    </div>
+
+    <!-- TIER 2: structural graphs (shared) -->
+    <div class="tier-label">Structural priors &mdash; shared by both towers</div>
+    <div class="row" style="gap:14px;">
+      <div class="relation-pill"><span class="dot" style="background:var(--graph)"></span>Co-expression kNN &middot; gene&ndash;gene, k=20</div>
+      <div class="relation-pill"><span class="dot" style="background:var(--graph)"></span>TF-candidate &middot; RP-gated top-500</div>
+    </div>
+
+    <div class="row" style="margin-top:14px;">
+      <div class="arrow-col"><div class="arrow"></div></div>
+    </div>
+
+    <!-- TIER 3: encoders -->
+    <div class="tier-label">Modality encoders</div>
+    <div class="row" style="align-items:center;">
+      <div class="card w-enc rna-fill"><b>RNA Encoder</b><span class="sub" style="color:rgba(255,255,255,0.85)">MLP 3&rarr;64&rarr;128</span></div>
+      <div class="plus">+</div>
+      <div class="card w-enc fm-fill"><b>FM Encoder (new)</b><span class="sub" style="color:rgba(255,255,255,0.85)">MLP 768&rarr;128&rarr;128</span></div>
+      <div style="width:60px"></div>
+      <div class="card w-enc atac-fill"><b>ATAC Encoder</b><span class="sub" style="color:rgba(255,255,255,0.85)">MLP 3&rarr;64&rarr;128</span></div>
+    </div>
+    <div class="row" style="font-size:11px;color:var(--ink-3);margin-top:6px;">
+      <div style="width:462px;text-align:center;">fused additively &rarr; <span class="mono">h_rna</span></div>
+      <div style="width:60px"></div>
+      <div style="width:200px;text-align:center;"><span class="mono">h_atac</span></div>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <div class="arrow-col" style="width:522px"><div class="arrow"></div></div>
+      <div class="arrow-col" style="width:200px"><div class="arrow"></div></div>
+    </div>
+
+    <!-- TIER 4: relational GNN, Nx stack (transformer-style) -->
+    <div class="tier-label">Relational message passing</div>
+    <div class="row" style="align-items:flex-start;">
+      <div class="stack-wrap" style="width:340px;">
+        <div class="stack-shadow-2"></div>
+        <div class="stack-shadow-1"></div>
+        <div class="stack-front">
+          <div class="stack-badge mono">&times;2 layers</div>
+          <b style="font-size:13.5px;">GNN<sub>RNA</sub></b>
+          <div class="sub" style="margin:6px 0 8px;">Relational GraphSAGE, 128-d</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <span class="relation-pill" style="font-size:10px;padding:3px 7px;"><span class="dot" style="width:7px;height:7px;background:var(--graph)"></span>coexpr</span>
+            <span class="relation-pill" style="font-size:10px;padding:3px 7px;"><span class="dot" style="width:7px;height:7px;background:var(--graph)"></span>TF-cand</span>
+          </div>
+          <div class="sub mono" style="margin-top:8px;font-size:10.5px;">combine_mode: sum | gated (new)</div>
+        </div>
+      </div>
+      <div class="stack-wrap" style="width:290px;">
+        <div class="stack-shadow-2"></div>
+        <div class="stack-shadow-1"></div>
+        <div class="stack-front">
+          <div class="stack-badge mono">&times;2 layers</div>
+          <b style="font-size:13.5px;">GNN<sub>ATAC</sub></b>
+          <div class="sub" style="margin:6px 0 8px;">Relational GraphSAGE, 128-d</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <span class="relation-pill" style="font-size:10px;padding:3px 7px;"><span class="dot" style="width:7px;height:7px;background:var(--graph)"></span>coexpr</span>
+            <span class="relation-pill" style="font-size:10px;padding:3px 7px;"><span class="dot" style="width:7px;height:7px;background:var(--graph)"></span>TF-cand</span>
+          </div>
+          <div class="sub mono" style="margin-top:8px;font-size:10.5px;">combine_mode: sum | gated (new)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:16px;">
+      <div class="arrow-col" style="width:340px"><div class="arrow"></div></div>
+      <div class="arrow-col" style="width:290px"><div class="arrow"></div></div>
+    </div>
+    <div class="row" style="font-size:11px;color:var(--ink-3);">
+      <div style="width:340px;text-align:center;"><span class="mono">h_rna(TF<sub>i</sub>), h_rna(gene<sub>j</sub>)</span></div>
+      <div style="width:290px;text-align:center;"><span class="mono">h_atac(gene<sub>j</sub>)</span></div>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <div class="arrow-col" style="width:661px"><div class="arrow"></div></div>
+    </div>
+
+    <!-- TIER 5: decoder -->
+    <div class="tier-label">Role-aware decoder</div>
+    <div class="row">
+      <div class="decoder-box">
+        <b>Accessibility gates transcriptional compatibility</b>
+        <div class="sub" style="color:rgba(255,255,255,0.7);margin-top:4px;">ATAC gates the target &middot; RNA (+FM) drives TF activity &amp; co-expression</div>
+
+        <div class="decoder-steps">
+          <div class="dstep">
+            <div class="step-tag">1 &middot; Accessibility gate</div>
+            <div class="step-eq">a<sub>j</sub> = &sigma;(W<sub>gate</sub> h<sub>atac,j</sub>)</div>
+            <div class="step-note">target's ATAC embedding &rarr; per-dim gate &isin; [0,1]<sup>d</sup></div>
+          </div>
+          <div class="dstep-arrow">&rarr;</div>
+          <div class="dstep">
+            <div class="step-tag">2 &middot; Regulatable state</div>
+            <div class="step-eq">z<sub>j</sub> = h<sub>rna,j</sub> &middot; a<sub>j</sub></div>
+            <div class="step-note">target's RNA (+FM) embedding, gated by accessibility</div>
+          </div>
+          <div class="dstep-arrow">&rarr;</div>
+          <div class="dstep">
+            <div class="step-tag">3 &middot; TF&rarr;target compatibility</div>
+            <div class="step-eq">raw = h<sub>rna,i</sub><sup>T</sup> W z<sub>j</sub></div>
+            <div class="step-note">asymmetric bilinear score, TF<sub>i</sub> vs. gated target<sub>j</sub></div>
+          </div>
+        </div>
+
+        <div class="dstep-final">
+          <span class="mono">logit = raw&nbsp;+&nbsp;w<sub>c</sub>&middot;coexpr(i,j)&nbsp;+&nbsp;open_proj(openness<sub>j</sub>)&nbsp;+&nbsp;b</span>
+          <div class="step-note">+ structural / edge term &middot; <span class="mono">use_edge_mlp=True</span> replaces the last 3 terms with a small learned edge MLP over [coexpr, openness]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row"><div class="arrow-col"><div class="arrow"></div></div></div>
+
+    <div class="row">
+      <div class="output-box">logit &rarr; &sigma;(&middot;) &nbsp;=&nbsp; P(TF<sub>i</sub> &rarr; Gene<sub>j</sub> regulates)</div>
+    </div>
+
+    <div class="banner">
+      <b>Training-level addition, not part of the per-example forward pass above:</b>
+      a shared copy of this whole pipeline can be trained JOINTLY across more than one
+      cell type at once (alternating gradient steps, each cell type keeping its own
+      graphs/features), then evaluated zero-shot on a held-out THIRD cell type &mdash;
+      the strongest generalization result found so far (AUPR 0.74 vs. a 0.84
+      from-scratch ceiling). See <span class="mono">scripts/12_joint_train.py</span> and results.md.
+    </div>
+
+    <div class="legend">
+      <div class="item"><span class="sw" style="background:var(--rna)"></span>RNA pathway</div>
+      <div class="item"><span class="sw" style="background:var(--atac)"></span>ATAC pathway</div>
+      <div class="item"><span class="sw" style="background:var(--fm)"></span>Foundation-model embedding</div>
+      <div class="item"><span class="sw" style="background:var(--graph);border-radius:50%;width:12px;height:12px;"></span>Structural graph (shared)</div>
+    </div>
+
+  </div>
+</body>
+</html>

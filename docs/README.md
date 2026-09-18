@@ -8,9 +8,17 @@ This directory holds supporting material:
 
 - `citations.md` — design rationale + literature citations for every model
   component.
-- `figures/` — architecture diagrams. `architecture_diagram_v2.png` is
-  current (2026-09-11); `architecture_diagram.png` is the original,
-  pre-foundation-model version, kept for comparison.
+- `figures/` — architecture diagrams. `architecture_diagram_v3_1.png` is
+  current (2026-09-12: v3's top-to-bottom data-flow redesign, with the PWM
+  motif prior removed since no training run has actually used it yet, and
+  a clearer step-by-step role-aware decoder panel). `architecture_diagram_v3_2.png`
+  is an alternate, more didactic view of the SAME architecture, restructured
+  into 5 explicit bounded blocks (RNA processing / ATAC processing / prior
+  graphs & ground-truth networks side by side / encoders+GraphSAGE / role-aware
+  decoder) — useful when the audience needs the prior-graphs-vs-ground-truth-networks
+  distinction spelled out explicitly. `architecture_diagram_v3.png`,
+  `architecture_diagram_v2.png` and `architecture_diagram.png` are earlier
+  iterations, kept for comparison.
 - `reference/` — external reference material: the SC-MO-GRN-DB dataset
   catalog (`SC_MO_GRN_DB.md`, `dataset_info.md`), the Ada HPC cluster guide
   (`ada.md`), and the scMultiomeGRN baseline paper PDF.
