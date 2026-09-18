@@ -63,40 +63,47 @@ dual-modality graph neural network that treats this confidence structure as a
 training curriculum rather than as an incidental labeling detail. MEvD-GRN encodes
 RNA and ATAC signals in separate towers, fuses them only at a role-aware decoder in
 which chromatin accessibility gates transcriptional compatibility, and is trained
-sequentially on the localization and perturbation evidence tiers of the K562 cell
-line from the SC-MO-GRN-DB resource. Evaluated \emph{zero-shot} on the
-highest-confidence dual-evidence tier -- never used for a single gradient update --
-a 315,015-parameter model reaches AUPR $0.881$ / AUROC $0.971$. Two further additions
-push this substantially higher: replacing a binary-window ATAC aggregation with a
-distance-weighted regulatory-potential score (AUPR $0.881{\to}$ measurably better
-than an ATAC-ablated control, where before the fix there was no measurable
-difference), and adding a pretrained, frozen Geneformer gene embedding as an
-auxiliary input, which alone reaches AUPR $0.951$ / AUROC $0.989$ -- the single
-largest improvement in this work. We further show that this embedding, while a
-large in-domain win, \emph{degrades} zero-shot transfer to unseen cell types when
-trained on one cell type alone (AUPR $0.607{\to}0.447$ on a held-out cell type), and
-that jointly training on two cell types at once substantially closes this gap while
-also improving zero-shot transfer to a \emph{third}, entirely unseen cell type
-(AUPR $0.743$, versus a $0.841$ from-scratch ceiling on that cell type). We report
-all of this, including the two real bugs that were driving earlier under-performing
-numbers, and a rigorous ablation study, with the same commitment to honest negative
-and mixed results throughout.
+on the localization and perturbation evidence tiers of the K562 cell line from the
+SC-MO-GRN-DB resource. Evaluated \emph{zero-shot} on the highest-confidence
+dual-evidence tier -- never used for a single gradient update -- a
+315,015-parameter model reaches AUPR $0.881$ / AUROC $0.971$. Adding a pretrained,
+frozen Geneformer gene embedding as an auxiliary input and scaling to 3.26M
+parameters improves every tier substantially; combined with a joint (rather than
+sequential) training protocol at this larger size, the resulting configuration
+outperforms the strongest available supervised, multi-omic baseline
+(scMultiomeGRN) on AUPR across \emph{all three} evidence tiers, including
+zero-shot dual-evidence ($0.950$ vs.\ $0.847$). We also find that the foundation-model
+embedding, while a large in-domain win, \emph{degrades} single-source zero-shot
+transfer to unseen cell types (AUPR $0.607{\to}0.447$ on a held-out cell type), and
+that joint training on two cell types at once substantially closes this gap while
+also improving zero-shot transfer to a \emph{third}, entirely unseen cell type. We
+report all of this, including two data-handling bugs and a training-split
+shortcut that were driving earlier or currently-fragile numbers, alongside a
+rigorous ablation study -- with the same commitment to honest negative results and
+explicitly-flagged open limitations (most importantly, no result in this paper yet
+has a repeated-seed variance estimate) throughout.
 \end{abstract}
 
 % ---------------------------------------------------------------------------
-% EDITORIAL STATUS NOTE (2026-09-12) -- remove before any real submission.
-% The Abstract above is current. Two bugs (EPR metric normalization and a
-% hard-negative cross-tier leakage bug) were found and fixed on 2026-09-11;
-% see results.md Section 0 for details. The ATAC pipeline rewrite, gated
-% relation combiner, Geneformer embedding, and multi-cell-type joint
-% training (Sections above) are all real, verified results as of
-% 2026-09-12 -- see results.md and plan.md for the authoritative numbers.
-% The body sections below this note (Results, Ablation Study, Limitations)
-% still contain PRE-BUGFIX numbers and have not yet had a full rewrite pass
-% -- treat results.md as the source of truth until that pass is done. A
-% real TF motif graph (Section "Real TF motif scanning" in
-% docs/citations.md) and a model-capacity sweep are running as of this
-% note and are not yet reflected anywhere in this paper.
+% EDITORIAL STATUS NOTE (updated 2026-09-18) -- remove before any real submission.
+% The full body (Abstract, Results, Baselines, Ablation Study, Limitations,
+% Appendix) was resynced to results.md/plan.md as of this date: EPR now
+% correctly described as eval-set-relative (not genome-wide), all headline
+% and ablation tables use current post-bugfix numbers, the recommended
+% configuration (all_at_once + Geneformer + h384/l2) is the paper's stated
+% headline throughout, and Limitations now explicitly lists the open
+% statistical-rigor gap (single-seed everywhere), the dual-evidence-AUPR-
+% as-de-facto-selection-metric concern, the all_at_once split-safety fix,
+% baseline compute/tuning asymmetry, and the unused motif-graph component.
+% STILL OPEN, not yet reflected below: (1) a multi-seed rerun of the
+% headline configuration and scMultiomeGRN is in progress -- once it lands,
+% replace the relevant point estimates with mean +/- std and revisit any
+% claim currently phrased as an outright "win"; (2) the multi-cell-type
+% joint-training results (Limitation 6) are summarized qualitatively but
+% not yet given their own table/figure; (3) figures fig1/fig4/fig5/fig6/fig9
+% still need regenerating from the current numbers -- their captions were
+% updated but the images themselves were not. Check results.md's "last
+% updated" line before citing anything not covered by this note.
 % ---------------------------------------------------------------------------
 
 \section{Introduction}
@@ -158,12 +165,14 @@ Almost every GRN inference method in the literature is agnostic to this
 structure: reference networks are pooled into a single, undifferentiated set of
 positive edges before training or evaluation. Our central methodological
 contribution is to instead treat the tier hierarchy explicitly, as an
-\textbf{evidence-tier curriculum}: train sequentially on localization then
-perturbation evidence, and hold the dual-evidence tier out entirely as a
-zero-shot evaluation benchmark. Section \ref{sec:curriculum} explains in detail
-why this design -- rather than directly fine-tuning on the dual-evidence tier --
-is the more informative test of generalization, given how the tiers are
-structurally related to one another.
+\textbf{evidence-tier curriculum}: train on localization and perturbation
+evidence (either sequentially or jointly -- Section \ref{sec:ablation} finds
+the better choice depends on model capacity, not a fixed design decision),
+and hold the dual-evidence tier out entirely as a zero-shot evaluation
+benchmark. Section \ref{sec:curriculum} explains in detail why this design --
+rather than directly fine-tuning on the dual-evidence tier -- is the more
+informative test of generalization, given how the tiers are structurally
+related to one another.
 
 \textbf{Contributions.} (1) We propose MEvD-GRN, a role-aware dual-modality GNN
 that keeps RNA and ATAC representations in separate encoder/GNN towers and fuses
@@ -177,11 +186,13 @@ dual-evidence tier as the primary generalization metric (Section
 four baselines -- two classical/diffusion RNA-only methods and a
 4.08M-parameter supervised multi-omic GNN (scMultiomeGRN
 \cite{xu2025scmultiomegrn}) -- on identical splits (Section \ref{sec:results}).
-(4) We run a 10-configuration ablation study that identifies catastrophic
-forgetting as the main open weakness of the sequential curriculum, quantify how
-much of it memory replay recovers, and identify two alternative training
-schedules (joint multi-task training and a full replay-based curriculum) that
-substantially close the gap (Section \ref{sec:ablation}).
+(4) We run a 14-configuration ablation study that identifies catastrophic
+forgetting as the main weakness of the sequential curriculum at small model
+sizes, quantify how much of it memory replay recovers, and show that joint
+(rather than sequential) training of a larger, foundation-model-augmented
+model avoids the tradeoff entirely -- reaching a single configuration that
+outperforms the strongest available baseline across all three evidence tiers
+(Section \ref{sec:ablation}).
 
 We report all results honestly, including configurations under which the
 proposed model \emph{loses} to a baseline, because we believe a transparent
@@ -494,13 +505,20 @@ even when the learned bilinear term is uncertain. The model outputs logits;
 sigmoid is applied only at the loss/eval boundary.
 
 \subsection{Parameter budget}
-Table \ref{tab:params} breaks down the 306{,}691 trainable parameters by
-module. For reference, this is roughly \textbf{13$\times$ smaller} than a
-single scMultiomeGRN model (4{,}077{,}914 parameters; Section
-\ref{sec:baselines}). Figure \ref{fig:arch} shows the full architecture.
+Table \ref{tab:params} breaks down the 315{,}015 trainable parameters of the
+originally-shipped model by module (both RNA and ATAC encoders are 2-layer
+MLPs of identical shape, $3\to64\to128$, since the ATAC branch's input grew
+from 2 to 3 dimensions after the regulatory-potential featurization fix,
+Section \ref{sec:limitations}). For reference, this is roughly
+\textbf{13$\times$ smaller} than a single scMultiomeGRN model
+($\approx$4.08M parameters; Section \ref{sec:baselines}). Our recommended
+configuration (Section \ref{sec:results}) adds a Geneformer embedding
+channel and more GNN capacity, reaching 3.26M parameters
+($\approx$1.25$\times$ smaller than scMultiomeGRN per tier). Figure
+\ref{fig:arch} shows the full architecture.
 
 \begin{table}[t]
-\caption{MEvD-GRN parameter count by module.}
+\caption{MEvD-GRN parameter count by module (originally-shipped, 315{,}015-param configuration).}
 \label{tab:params}
 \vskip 0.1in
 \begin{center}
@@ -510,12 +528,12 @@ single scMultiomeGRN model (4{,}077{,}914 parameters; Section
 Module & Parameters \\
 \midrule
 RNA encoder (MLP, $3\to64\to128$) & 8{,}960 \\
-ATAC encoder (linear, $2\to128$) & 640 \\
+ATAC encoder (MLP, $3\to64\to128$) & 8{,}960 \\
 GNN$_{\text{RNA}}$ tower (2-layer rel.\ SAGE) & 132{,}096 \\
 GNN$_{\text{ATAC}}$ tower (2-layer rel.\ SAGE) & 132{,}096 \\
-Role-aware decoder & 32{,}899 \\
+Role-aware decoder & 32{,}903 \\
 \midrule
-\textbf{Total} & \textbf{306{,}691} \\
+\textbf{Total} & \textbf{315{,}015} \\
 \bottomrule
 \end{tabular}
 \end{small}
@@ -602,8 +620,9 @@ completes, under three conditions:
 
 \begin{table}[t]
 \caption{Catastrophic forgetting of the localization tier after Stage 2, and
-how much of it different mitigations recover. AUROC $<0.5$ indicates the
-model's ranking is worse than random on the forgotten tier.}
+how much a heavier mitigation recovers. AUROC $<0.5$ indicates the model's
+ranking is worse than random on the forgotten tier. Single run, seed 42
+(see Section \ref{sec:limitations} on statistical rigor).}
 \label{tab:forgetting}
 \vskip 0.1in
 \begin{center}
@@ -612,25 +631,26 @@ model's ranking is worse than random on the forgotten tier.}
 \toprule
 Configuration & Localization AUROC \\
 \midrule
-No replay (2-stage) & 0.290 \\
-Replay, 2-stage (\textbf{shipped default}) & 0.326 \\
-Replay, full 3-stage + consolidation & 0.736 \\
+Light replay, 2-stage (\textbf{shipped default}) & 0.509 \\
+Full 3-stage + frozen-encoder consolidation & 0.719 \\
 \bottomrule
 \end{tabular}
 \end{small}
 \end{center}
 \end{table}
 
-Replay alone, within the two-stage curriculum actually used by the shipped
-model, provides only a modest recovery ($0.290 \to 0.326$) and does not resolve
-the underlying problem: post-Stage-2 localization AUROC remains \emph{below
-random} ($<0.5$). The much larger recovery ($0.736$) is achieved only by a
-qualitatively different recipe -- a full three-stage curriculum that adds a
-frozen-encoder consolidation pass with replay over all tiers -- which we study
-as an ablation (\texttt{with\_replay}, Section \ref{sec:ablation}) rather than
-adopt as the shipped default, precisely because isolating \emph{why} replay
-alone under-performs is itself an informative result (Section
-\ref{sec:discussion}).
+The shipped 2-stage default (light replay, $10\%$ of Stage 1's positives
+re-injected at reduced weight during Stage 2) leaves localization AUROC at
+$0.509$ after Stage 2 -- essentially at the random-ranking floor, mild rather
+than catastrophic forgetting once an earlier metric bug was fixed (an
+appendix-scale hard-negative sampling bug previously made this
+\emph{below} random; see the project's results log for the before/after).
+A qualitatively heavier recipe -- a full three-stage curriculum that adds a
+frozen-encoder consolidation pass with replay over all tiers -- recovers
+substantially more ($0.719$), at the cost of directly training on
+dual-evidence in that consolidation stage (Section \ref{sec:ablation}), which
+means its dual-evidence score is no longer a zero-shot generalization
+estimate and is reported separately for that reason.
 
 \subsection{Optimization details}
 We use AdamW (weight decay $10^{-4}$), gradient-norm clipping at $1.0$, batch
@@ -665,54 +685,109 @@ because it exposes below-random ranking that AUPR alone can mask (as in Table
 to the top-$k$ scored candidate pairs with $k$ set to the number of true
 positives, which measures how useful the very top of a ranked candidate list
 is in practice; and \textbf{EPR}, EP normalized by the random-guessing base
-rate over the \emph{full} bipartite candidate space
+rate computed over the \emph{evaluation split itself} (its own positive and
+sampled-negative pool), not the full genome-wide candidate space. An earlier
+version of our implementation normalized against the full bipartite space
 ($225\times22{,}942=5{,}161{,}950$ pairs, following the BEELINE enrichment
-convention). Because the candidate space is enormous relative to the positive
-set, EPR values of $10^1$--$10^3$ are expected even when the corresponding AUPR
-looks numerically modest.
+convention); we found this inflated EPR by roughly two orders of magnitude
+because the evaluation pool is deliberately positive-enriched, not
+genome-wide, and corrected it. EPR values under this metric are typically
+$1$--$5\times$; see the project's results log for the full before/after
+comparison.
 
 \section{Baselines}
 \label{sec:baselines}
 
 We compare against four baselines, all evaluated on the \emph{identical}
 splits and evaluation convention as MEvD-GRN (Algorithm \ref{alg:split},
-Section \ref{sec:two-stage}), for a fully apples-to-apples comparison.
-\textbf{GRNBoost2} \cite{moerman2019grnboost2} is the field-standard
-tree-ensemble co-expression method (RNA-only, non-parametric).
-\textbf{RegDiffusion} \cite{zhu2024regdiffusion} is a diffusion-based GRN
-inference model (RNA-only); we restrict its input gene set to highly-variable
-genes and TFs to avoid zero-variance instabilities introduced by its internal
-normalization. \textbf{GMF-GAE} is a graph-autoencoder baseline over the
-co-expression $k$NN graph, standing in for the GMFGRN family
-\cite{li2024gmfgrn} (RNA-only). \textbf{scMultiomeGRN}
-\cite{xu2025scmultiomegrn} is the strongest baseline: a supervised multi-omic
-GNN with cross-modal attention, at 4{,}077{,}914 parameters \emph{per trained
-tier} (it fits a dedicated model per tier rather than sharing weights across a
-curriculum, so it never experiences catastrophic forgetting by construction).
-Its original formulation targets TF$\leftrightarrow$TF interactions; we adapt
-it to our TF$\to$all-genes benchmark, decoding edges sparsely so the full
+Section \ref{sec:two-stage}). This gives a fair \emph{evaluation} protocol,
+but the five methods are not peers in two specific, checkable ways we flag
+here rather than leave implicit.
+
+\textbf{Three of the four baselines are unsupervised and RNA-only, and
+never see the evidence-tier labels at any point.} \textbf{GRNBoost2}
+\cite{moerman2019grnboost2} is the field-standard tree-ensemble
+co-expression method: a per-target regressor on TF expression alone, with no
+access to ATAC and no access to any localization/perturbation/dual-evidence
+label during fitting. \textbf{RegDiffusion} \cite{zhu2024regdiffusion} is a
+diffusion-based GRN inference model, also RNA-only and also never
+supervised on the evidence tiers (we restrict its input gene set to
+highly-variable genes and TFs to avoid zero-variance instabilities
+introduced by its internal normalization). \textbf{GMF-GAE} is a
+graph-autoencoder baseline over the co-expression $k$NN graph, standing in
+for the GMFGRN family \cite{li2024gmfgrn} (also RNA-only, unsupervised
+negative sampling unrelated to the evidence tiers; the official GMFGRN
+implementation requires a separate repository we did not integrate, and
+GMF-GAE is a self-authored stand-in, disclosed in its own docstring).
+Comparing these three against MEvD-GRN is a standard, useful sanity check
+(``does supervision plus multi-omics help at all''), not a like-for-like
+architecture comparison -- their near-random performance on
+perturbation/dual-evidence (Section \ref{sec:results}) should be read as
+confirming that unsupervised RNA-only scoring does not solve this task, not
+as evidence about which \emph{supervised} architecture is better.
+
+\textbf{scMultiomeGRN} \cite{xu2025scmultiomegrn} is the only baseline that
+is itself supervised and multi-omic, and is therefore the sole like-for-like
+comparison point: a GNN with cross-modal attention, at $\approx$4.08M
+parameters \emph{per trained tier} (it fits a dedicated model per tier
+rather than sharing weights across a curriculum, so it never experiences
+catastrophic forgetting by construction, and, unlike MEvD-GRN, without any
+single model that covers all three tiers). Note that MEvD-GRN's own
+parameter count is not fixed across this paper: the originally-shipped
+model is 315{,}015 parameters ($\approx$13$\times$ smaller than
+scMultiomeGRN per tier); the current recommended configuration
+(Section \ref{sec:results}) adds a foundation-model embedding channel and
+more GNN capacity, reaching 3.26M parameters ($\approx$1.25$\times$ smaller
+than scMultiomeGRN per tier). Its original formulation targets
+TF$\leftrightarrow$TF interactions; we adapt it to our TF$\to$all-genes
+benchmark, decoding edges sparsely so the full
 $|\mathcal{V}_{\text{TF}}|\times|\mathcal{V}_{\text{gene}}|$ score matrix is
-never materialized. We train it for 100 epochs per tier (an exploratory
-budget; its published default is 2{,}000 epochs -- see Section
-\ref{sec:limitations}).
+never materialized. We train it for its published default of $2{,}000$
+epochs per tier (localization and perturbation; dual-evidence is scored
+zero-shot from the perturbation-tier model, mirroring MEvD-GRN's own
+protocol) via 4-GPU data-parallel training; neither tier's validation AUPR
+had plateaued by epoch $2{,}000$ (perturbation was still improving), so this
+should be read as a strong, but not fully converged, baseline. This is a
+$\sim$45$\times$ larger epoch budget than MEvD-GRN's own $45$-epoch
+curriculum (Section \ref{sec:two-stage}); no version of the comparisons in
+Section \ref{sec:results} controls for training compute, and we do not
+claim architectural superiority on this basis alone.
 
 \section{Results}
 \label{sec:results}
 
+\textbf{A caveat that applies to every number in this section.} Every result
+reported below is a \emph{single training run at a fixed configuration}; we
+do not yet have a repeated-seed variance estimate, confidence interval, or
+significance test for any comparison in this paper (Section
+\ref{sec:limitations} discusses this as an open limitation, and a
+multi-seed rerun of the headline configuration is in progress). Differences
+of a few hundredths of AUPR/AUROC discussed below -- including some phrased
+as one configuration ``beating'' another -- should be read as directional
+evidence, not as statistically established.
+
 \subsection{Main results}
-Table \ref{tab:main} reports MEvD-GRN's performance on all three evidence
-tiers. The headline result is the dual-evidence row: evaluated in a strict
-zero-shot setting (Section \ref{sec:two-stage}), the model reaches AUPR
-$0.558$ / AUROC $0.838$ on a tier it never received a single gradient update
-from -- evidence of genuine transfer rather than memorization, a claim made
-rigorous by Proposition \ref{prop:split}. The localization row, however,
-carries the caveat quantified in Section \ref{sec:replay}: AUROC $0.326$ is
-below random, the direct, visible cost of catastrophic forgetting.
+Table \ref{tab:main} reports two configurations. The originally-shipped
+model (315{,}015 parameters, sequential 2-stage curriculum, no
+foundation-model embedding) reaches dual-evidence AUPR $0.881$ / AUROC
+$0.971$ zero-shot, but at a real cost to the localization tier: AUROC
+$0.509$ after Stage 2, close to random-ranking (Section \ref{sec:replay}).
+Adding a frozen, pretrained Geneformer \cite{theodoris2023geneformer} gene
+embedding as an auxiliary input channel and increasing GNN capacity to
+3.26M parameters (Section \ref{sec:ablation}) improves every tier in
+isolation, but the sequential curriculum's localization damage persists at
+this size (AUPR $0.751$, still well below the $0.906$ a dedicated
+per-tier baseline reaches on the same tier). Switching \emph{only} the
+training protocol -- from sequential to joint (\texttt{all\_at\_once})
+training of the same larger model -- removes that damage \emph{and}
+improves the other two tiers: this is currently our recommended
+configuration, and the one used in the head-to-head comparison
+(Section \ref{sec:head2head}).
 
 \begin{table}[t]
 \caption{MEvD-GRN main results on K562. Localization/perturbation are scored
 on their test split (trained tiers); dual-evidence is scored on
-validation+test, zero-shot (never trained on).}
+validation+test, zero-shot (never trained on). Single run each.}
 \label{tab:main}
 \vskip 0.1in
 \begin{center}
@@ -721,50 +796,68 @@ validation+test, zero-shot (never trained on).}
 \toprule
 Tier & AUPR & AUROC & EP & EPR \\
 \midrule
-Localization$^\dagger$ & 0.420 & 0.326 & 0.425 & 12.5 \\
-Perturbation & 0.575 & 0.876 & 0.536 & 80.2 \\
-Dual-evidence$^\ddagger$ & \textbf{0.558} & \textbf{0.838} & 0.419 & 272.5 \\
+\multicolumn{5}{l}{\emph{Shipped base model (315{,}015 params, sequential, no FM)}} \\
+Localization$^\dagger$ & 0.573 & 0.515 & 0.547 & 1.02 \\
+Perturbation & 0.641 & 0.899 & 0.588 & 3.15 \\
+Dual-evidence$^\ddagger$ & 0.881 & 0.971 & 0.792 & 4.75 \\
+\midrule
+\multicolumn{5}{l}{\emph{Recommended: \texttt{all\_at\_once} + Geneformer, 3.26M params}} \\
+Localization & \textbf{0.967} & \textbf{0.961} & 0.894 & 1.66 \\
+Perturbation & \textbf{0.690} & 0.908 & 0.648 & 3.47 \\
+Dual-evidence$^\ddagger$ & \textbf{0.950} & \textbf{0.988} & 0.875 & 5.25 \\
 \bottomrule
 \end{tabular}
 \end{small}
 \end{center}
 \vskip -0.05in
-{\footnotesize $^\dagger$affected by catastrophic forgetting, Section
-\ref{sec:replay}. $^\ddagger$zero-shot, never trained on.}
+{\footnotesize $^\dagger$affected by catastrophic forgetting under the
+\emph{sequential} protocol only, Section \ref{sec:replay} -- resolved under
+\texttt{all\_at\_once} (Section \ref{sec:discussion}). $^\ddagger$zero-shot,
+never trained on.}
 \end{table}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig1_mevdgrn_per_tier.png}
-\caption{MEvD-GRN AUPR by evidence tier on K562.}
+\caption{MEvD-GRN AUPR by evidence tier on K562 (shipped base model).}
 \label{fig:per-tier}
 \end{figure}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig5_catastrophic_forgetting_auroc.png}
-\caption{Localization AUROC over the curriculum: Stage 1 reaches
-$\approx0.94$, then collapses to $0.326$ after Stage 2 -- below the $0.5$
-random-ranking line (dashed).}
+\caption{Localization AUROC over the curriculum under the sequential
+protocol: Stage 1 reaches $\approx0.94$, then falls to $0.51$ after Stage 2
+-- effectively random-ranking (dashed line), though no longer
+\emph{below} it once an earlier hard-negative sampling bug was fixed (see
+project results log). The \texttt{all\_at\_once} protocol avoids this drop
+entirely by construction (no stage boundary to forget across).}
 \label{fig:forgetting}
 \end{figure}
 
 \subsection{Comparison against baselines}
-Table \ref{tab:baselines} compares AUPR across all five methods on all three
-tiers. scMultiomeGRN dominates localization ($0.831$ AUPR), which is expected:
-it fits a dedicated model per tier with no sequential fine-tuning and hence no
-forgetting, at roughly $13\times$ the parameter count of a single MEvD-GRN
-model. MEvD-GRN wins clearly on perturbation and, more importantly, on
-dual-evidence \emph{under true zero-shot transfer} -- despite never training
-on that tier and using a fraction of the parameters. The RNA-only classical and
-diffusion baselines (GRNBoost2, RegDiffusion, GMF-GAE) trail on every tier,
-consistent with none of them exploiting chromatin accessibility or the
-evidence-tier structure.
+\label{sec:head2head}
+Table \ref{tab:baselines} compares AUPR across all five methods, using our
+recommended MEvD-GRN configuration (\texttt{all\_at\_once} curriculum +
+Geneformer, 3.26M params; Section \ref{sec:results}). The RNA-only
+unsupervised baselines (GRNBoost2, RegDiffusion, GMF-GAE) trail badly on
+every tier, which is expected given they never see the evidence-tier labels
+at all (Section \ref{sec:baselines}) -- this confirms supervision plus
+multi-omic structure matters at all, not which supervised architecture is
+better. Against the one like-for-like comparison, scMultiomeGRN, MEvD-GRN
+now wins on AUPR across all three tiers, including the harder,
+in-distribution perturbation tier where the originally-shipped model lost
+(Table \ref{tab:head2head-alt} shows this was not always true, and depended
+on both model capacity and curriculum choice). On AUROC, MEvD-GRN wins 2 of
+3 (localization, dual-evidence) and is within $0.011$ of scMultiomeGRN on
+perturbation ($0.908$ vs.\ $0.919$) -- given the single-seed caveat above,
+we read this as a near-tie rather than a loss.
 
 \begin{table}[t]
 \caption{AUPR comparison across methods and tiers, K562. Dual-evidence AUPR
-for MEvD-GRN is a zero-shot score; all other entries are in-distribution
-(trained/fit on that tier).}
+for MEvD-GRN and scMultiomeGRN is a zero-shot score (both use the same
+main-tiers-only training protocol); GRNBoost2/RegDiffusion/GMF-GAE are
+unsupervised and were never fit to any tier's labels.}
 \label{tab:baselines}
 \vskip 0.1in
 \begin{center}
@@ -773,8 +866,8 @@ for MEvD-GRN is a zero-shot score; all other entries are in-distribution
 \toprule
 Method & Loc. & Pert. & Dual \\
 \midrule
-\textbf{MEvD-GRN} (ours) & 0.420 & \textbf{0.575} & \textbf{0.558} \\
-scMultiomeGRN & \textbf{0.831} & 0.423 & 0.384 \\
+\textbf{MEvD-GRN} (ours, recommended) & \textbf{0.967} & \textbf{0.690} & \textbf{0.950} \\
+scMultiomeGRN & 0.906 & 0.655 & 0.847 \\
 GRNBoost2 & 0.535 & 0.206 & 0.173 \\
 RegDiffusion & 0.546 & 0.185 & 0.165 \\
 GMF-GAE & 0.526 & 0.218 & 0.160 \\
@@ -791,28 +884,30 @@ GMF-GAE & 0.526 & 0.218 & 0.160 \\
 \label{fig:full-baselines}
 \end{figure}
 
-\subsection{Head-to-head against scMultiomeGRN under alternative curricula}
-\label{sec:head2head}
-Because scMultiomeGRN is the only baseline that is itself a supervised
-multi-omic GNN, we examine it more closely, alongside two \emph{alternative}
-MEvD-GRN training schedules already characterized by the ablation study
-(Section \ref{sec:ablation}): \texttt{all\_at\_once} (localization and
-perturbation trained jointly, no sequencing at all) and \texttt{with\_replay}
-(the full three-stage curriculum with consolidation from Table
-\ref{tab:forgetting}). Table \ref{tab:head2head} shows that no single
-\emph{already-tested} MEvD-GRN configuration wins all three tiers outright,
-but the choice of curriculum entirely determines which tiers are won: the
-shipped default trades localization for a dual-evidence win, while
-\texttt{with\_replay} very nearly ties scMultiomeGRN on both localization and
-perturbation while beating it by $2.4\times$ on dual-evidence -- using
-roughly $27\times$ fewer parameters than the three dedicated per-tier
-scMultiomeGRN models such a sweep would otherwise require.
+\subsection{Why curriculum choice matters: alternative schedules vs.\ scMultiomeGRN}
+\label{sec:head2head-alt}
+The comparison above uses our current best-known configuration, but it was
+not always the winning one -- and understanding why is itself part of the
+paper's contribution. Table \ref{tab:head2head-alt} shows the same
+comparison across MEvD-GRN training schedules and \emph{model sizes}: the
+originally-shipped sequential curriculum, at either the small (315K-param,
+no-FM) or large (3.26M-param, +FM) size, trades localization for a
+dual-evidence/perturbation win against scMultiomeGRN; only switching to
+joint (\texttt{all\_at\_once}) training \emph{at the larger size} wins all
+three tiers outright. At the small size, joint training wins localization
+but loses perturbation and dual-evidence (positive-set dilution, Section
+\ref{sec:discussion}) -- the larger model's extra capacity is what lets
+joint training stop trading tiers against each other. No single mechanism
+(bigger model alone, or different curriculum alone) explains the full
+result; the interaction between capacity and curriculum does, and we have
+not run a controlled ablation isolating exactly how much of the effect is
+capacity versus protocol (Section \ref{sec:limitations}).
 
 \begin{table*}[t]
-\caption{Head-to-head vs.\ scMultiomeGRN across curriculum choices (K562, AUPR / AUROC). scMultiomeGRN uses a dedicated
-4.08M-parameter model per tier; all three MEvD-GRN rows use the \emph{same} single 306{,}691-parameter model, only the
-training schedule differs.}
-\label{tab:head2head}
+\caption{MEvD-GRN under different curricula and sizes vs.\ scMultiomeGRN (K562, AUPR / AUROC). scMultiomeGRN uses a
+dedicated $\approx$4.08M-parameter model per tier. \texttt{with\_replay}'s dual-evidence score trains directly on
+dual-evidence (frozen-encoder consolidation stage) and is therefore not a zero-shot estimate, unlike every other row.}
+\label{tab:head2head-alt}
 \vskip 0.1in
 \begin{center}
 \begin{small}
@@ -820,36 +915,43 @@ training schedule differs.}
 \toprule
 Method (parameters) & Localization & Perturbation & Dual-evidence \\
 \midrule
-scMultiomeGRN (4.08M $\times$ up to 3 dedicated models) & \textbf{0.831} / \textbf{0.865} & 0.423 / 0.828 & 0.384 / 0.825 \\
-MEvD-GRN --- shipped default, 2-stage (306{,}691 params) & 0.420 / 0.326 & \textbf{0.575} / \textbf{0.876} & 0.558 / 0.838 \\
-MEvD-GRN --- \texttt{all\_at\_once} (same params) & \textbf{0.937} / \textbf{0.928} & 0.348 / 0.739 & \textbf{0.788} / 0.943 \\
-MEvD-GRN --- \texttt{with\_replay} (same params) & 0.765 / 0.736 & 0.411 / 0.702 & \textbf{0.940} / \textbf{0.990} \\
+scMultiomeGRN ($\approx$4.08M $\times$ up to 2 dedicated models) & 0.906 / 0.914 & 0.655 / 0.919 & 0.847 / \textbf{0.971} \\
+MEvD-GRN --- sequential, 315{,}015 params, no FM & 0.573 / 0.515 & 0.641 / 0.899 & 0.881 / \textbf{0.971} \\
+MEvD-GRN --- \texttt{all\_at\_once}, 315{,}015 params, no FM & 0.937 / 0.929 & 0.351 / 0.741 & 0.791 / 0.944 \\
+MEvD-GRN --- sequential, 3.26M params, +FM & 0.751 / 0.771 & \textbf{0.834} / \textbf{0.964} & \textbf{0.963} / \textbf{0.992} \\
+MEvD-GRN --- \texttt{all\_at\_once}, 3.26M params, +FM & \textbf{0.967} / \textbf{0.961} & 0.690 / 0.908 & 0.950 / 0.988 \\
+\texttt{with\_replay}$^*$, 315{,}015 params, no FM & 0.763 / 0.719 & 0.515 / 0.824 & 0.957 / 0.992 \\
 \bottomrule
 \end{tabular}
 \end{small}
 \end{center}
+{\footnotesize $^*$trains directly on dual-evidence; not a zero-shot score, not comparable to the other rows on that
+column.}
 \end{table*}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig9_mevdgrn_vs_scmultiomegrn.png}
-\caption{MEvD-GRN (three curricula) vs.\ scMultiomeGRN, AUPR by tier.}
+\caption{MEvD-GRN (multiple curricula and sizes) vs.\ scMultiomeGRN, AUPR by tier.}
 \label{fig:head2head}
 \end{figure}
 
 \section{Ablation Study}
 \label{sec:ablation}
 
-We run 10 configurations under the identical splitting and evaluation protocol
-(Section \ref{sec:eval}) to isolate the contribution of the curriculum, the
-GNN backbone, the fusion strategy, and each modality. Table \ref{tab:ablation}
-reports AUPR by tier for every configuration; AUROC/EP/EPR for all
-configurations are given in Appendix \ref{app:full-ablation}.
+We run 14 configurations, all at the originally-shipped 315{,}015-parameter
+size (no FM) unless noted, under the identical splitting and evaluation
+protocol (Section \ref{sec:eval}) to isolate the contribution of the
+curriculum, the GNN backbone, the structural priors, the fusion strategy,
+and the foundation-model embedding. Table \ref{tab:ablation} reports AUPR
+by tier for every configuration; AUROC/EP/EPR for all configurations are
+given in Appendix \ref{app:full-ablation}. As with Section
+\ref{sec:results}, every row is a single run.
 
 \begin{table*}[t]
-\caption{Ablation study, K562 (AUPR by tier). \texttt{full\_curriculum} is the shipped 2-stage default, reproduced here
-as the reference row. \texttt{dual\_only} and \texttt{with\_replay} are explicit exceptions that do train on
-dual-evidence, included to bound the comparison.}
+\caption{Ablation study, K562 (AUPR by tier), 315{,}015-param model unless noted. \texttt{full\_curriculum} is the
+shipped 2-stage default, reproduced here as the reference row. \texttt{dual\_only} and \texttt{with\_replay} are
+explicit exceptions that do train on dual-evidence, included to bound the comparison.}
 \label{tab:ablation}
 \vskip 0.1in
 \begin{center}
@@ -858,22 +960,30 @@ dual-evidence, included to bound the comparison.}
 \toprule
 Configuration & Trained on & Localization & Perturbation & Dual-evidence \\
 \midrule
-\texttt{full\_curriculum} (reference) & loc $\to$ pert, sequential & 0.410 & 0.569 & 0.546 \\
-\texttt{loc\_only} & localization only & 0.940 & 0.187 & 0.663 \\
-\texttt{pert\_only} & perturbation only & 0.407 & 0.496 & 0.485 \\
-\texttt{dual\_only}$^*$ & dual-evidence only & 0.779 & 0.197 & 0.479 \\
-\texttt{all\_at\_once} & loc + pert, simultaneous & \textbf{0.937} & 0.348 & \textbf{0.788} \\
-\texttt{rna\_only} & loc $\to$ pert, ATAC zeroed & 0.414 & 0.540 & 0.543 \\
-\texttt{gated\_fusion} & loc $\to$ pert, legacy fusion & 0.419 & 0.588 & 0.546 \\
-\texttt{concat\_fusion} & loc $\to$ pert, plain concat & 0.421 & \textbf{0.595} & 0.555 \\
-\texttt{no\_gnn} & loc $\to$ pert, no message passing & 0.498 & 0.341 & 0.241 \\
-\texttt{with\_replay}$^*$ & full 3-stage + replay & 0.765 & 0.411 & \textbf{0.940} \\
+\texttt{full\_curriculum} (reference) & loc $\to$ pert, sequential & 0.568 & 0.625 & 0.872 \\
+\texttt{loc\_only}$^\ddagger$ & localization only & 0.940 & 0.185 & 0.664 \\
+\texttt{pert\_only}$^\ddagger$ & perturbation only & 0.399 & 0.487 & 0.441 \\
+\texttt{dual\_only}$^{*\ddagger}$ & dual-evidence only & 0.794 & 0.189 & 0.456 \\
+\texttt{all\_at\_once} & loc + pert, simultaneous & \textbf{0.938} & 0.359 & 0.798 \\
+\texttt{rna\_only} & loc $\to$ pert, ATAC zeroed & 0.562 & 0.583 & 0.859 \\
+\texttt{coexpr\_only} & GNN sees only co-expression graph & 0.530 & 0.607 & 0.822 \\
+\texttt{tf\_cand\_only} & GNN sees only TF-candidate graph & 0.565 & 0.590 & 0.827 \\
+\texttt{gated\_fusion} & loc $\to$ pert, legacy fusion & 0.572 & 0.646 & 0.883 \\
+\texttt{concat\_fusion} & loc $\to$ pert, plain concat & 0.579 & 0.660 & 0.890 \\
+\texttt{edge\_mlp} & nonlinear edge embedding & 0.578 & 0.644 & 0.882 \\
+\texttt{gated\_relations} & learned per-layer relation weight & 0.570 & 0.642 & 0.876 \\
+\texttt{no\_gnn} & loc $\to$ pert, no message passing & 0.542 & 0.358 & 0.283 \\
+\texttt{with\_replay}$^*$ & full 3-stage + replay & 0.763 & 0.515 & \textbf{0.957}$^*$ \\
+\texttt{with\_fm}$^\dagger$ (3.26M params) & loc $\to$ pert, +Geneformer & 0.751 & \textbf{0.834} & 0.949 \\
 \bottomrule
 \end{tabular}
 \end{small}
 \end{center}
 \vskip 0.02in
-{\footnotesize $^*$deliberately trains on dual-evidence and is excluded from the zero-shot claim of Section \ref{sec:head2head}; included here for completeness.}
+{\footnotesize Bold = best AUPR per column among the main, zero-shot-comparable rows (excluding the single-tier-only
+rows marked $\ddagger$, which trivially dominate the tier they exclusively train on, and \texttt{with\_replay}, marked
+$*$, which is not zero-shot). $^\dagger$3.26M-param model, not directly comparable in size to the other rows; see
+Table \ref{tab:head2head-alt} for the full curriculum $\times$ size $\times$ FM comparison.}
 \end{table*}
 
 \begin{figure}[t]
@@ -886,96 +996,200 @@ Configuration & Trained on & Localization & Perturbation & Dual-evidence \\
 \subsection{Discussion of ablation findings}
 \label{sec:discussion}
 
-\textbf{Sequential ordering is not, by itself, beneficial once forgetting is
-accounted for.} Comparing \texttt{full\_curriculum} against
-\texttt{all\_at\_once} isolates the effect of \emph{sequencing} alone
-(both train on the same two tiers, localization and perturbation; the only
-difference is joint vs.\ sequential optimization): \texttt{all\_at\_once}
-dominates on dual-evidence zero-shot generalization ($0.788$ vs.\ $0.546$
-AUPR) and on localization ($0.937$ vs.\ $0.410$), while trading off a smaller
-amount of perturbation performance ($0.348$ vs.\ $0.569$). This shows that the
-sequential curriculum's advantage, if any, is more than offset by the
-forgetting it introduces (Section \ref{sec:replay}) in the present
-configuration -- a genuinely negative result for naive sequential ordering
-that we report because it directly qualifies the curriculum-learning
-hypothesis motivating this work.
-
-\textbf{Replay with a consolidation pass recovers most of the deficit.}
-\texttt{with\_replay}, which adds a third, frozen-encoder consolidation stage
-with replay over all tiers on top of the sequential curriculum, achieves the
-best dual-evidence score of any configuration ($0.940$ AUPR) and substantially
-recovers localization ($0.765$, vs.\ $0.410$ for the plain sequential
-curriculum), at some cost to perturbation ($0.411$ vs.\ $0.569$). Combined
-with the \texttt{all\_at\_once} result, this suggests two independently
-viable routes to a stronger default recipe than the currently shipped one
-(Section \ref{sec:limitations}).
-
 \textbf{The GNN backbone is the single highest-value architectural
-component.} \texttt{no\_gnn} is the worst configuration on every tier
-(localization $0.498$, perturbation $0.341$, dual $0.241$), confirming that
-relational message passing over the co-expression and TF-candidate graphs
-contributes substantially more than any other architectural choice we
-ablate.
+component.} \texttt{no\_gnn} is the worst zero-shot-comparable configuration
+on every tier (localization $0.542$, perturbation $0.358$, dual $0.283$),
+confirming that relational message passing contributes substantially more
+than any other single architectural choice we ablate.
 
-\textbf{Fusion style is a second-order effect at the point-metric level.}
-Role-aware, gated, and concatenation fusion land within $\approx 0.02$--$0.03$
-AUPR of one another under the shipped curriculum (Table
-\ref{tab:ablation}, rows \texttt{full\_curriculum}/\texttt{gated\_fusion}/
-\texttt{concat\_fusion}); the role-aware decoder's advantage is currently more
-interpretive/biologically-motivated (Section \ref{sec:model}) than a large
-raw-metric win, and we flag this honestly as an open question rather than
-overstate it.
+\textbf{Both structural priors carry real, comparable signal, and this is a
+direct consequence of the ATAC featurization fix described in
+Section~\ref{sec:limitations}.} \texttt{coexpr\_only} and
+\texttt{tf\_cand\_only} (the GNN restricted to one prior graph each) score
+within $0.005$ AUPR of each other on dual-evidence ($0.822$ vs.\ $0.827$),
+and both are well above \texttt{no\_gnn}. Before the ATAC-featurization fix,
+the TF-candidate graph's accessibility gate passed $\approx90\%$ of genes and
+carried almost no signal; \texttt{rna\_only} (ATAC branch zeroed) is now
+measurably below the full model on every tier ($0.859$ vs.\ $0.872$
+dual-evidence AUPR), where before the fix there was almost no gap. This
+reverses what an earlier version of this paper reported (ATAC contributing
+``almost nothing''): that finding was a symptom of a specific, fixable
+featurization bug (a near-rank-1, coarsely-quantized accessibility summary),
+not a property of the data.
 
-\textbf{ATAC's marginal contribution is currently small.}
-\texttt{rna\_only} (ATAC branch zeroed) performs almost identically to the
-full model ($0.414$/$0.540$/$0.543$ vs.\ $0.410$/$0.569$/$0.546$), suggesting
-that under the current coarse, gene-level (mean/variance) ATAC featurization,
-chromatin accessibility is not yet contributing information that the RNA
-co-expression signature does not already capture. We view this as an artifact
-of the featurization rather than a fundamental property of the data, and flag
-it as a priority for follow-up work (Section \ref{sec:limitations}).
+\textbf{Fusion style, the role-aware decoder specifically, and the learned
+relation combiner are all second-order effects at the point-metric level.}
+Role-aware (\texttt{full\_curriculum}), gated, and concatenation fusion land
+within $\approx0.01$--$0.02$ AUPR of one another on dual-evidence ($0.872$ /
+$0.883$ / $0.890$); \texttt{edge\_mlp}'s nonlinear edge embedding
+($0.882$) and \texttt{gated\_relations}'s learned per-layer relation weight
+($0.876$, vs.\ $0.872$ for a fixed unweighted sum) are similarly
+indistinguishable from the default. We do not claim these design choices as
+accuracy-improving contributions; they are motivated by biological
+interpretability (Section \ref{sec:model}) and, in the relation-gating
+case, by infrastructure for a third relation (a real motif-scan-derived
+graph) that exists in our implementation but was not enabled in any run
+reported in this paper (Section \ref{sec:limitations}) -- so the mechanism
+currently has only two, already-similar-strength relations to weigh between,
+and this ablation cannot yet demonstrate what it is ultimately for.
+
+\textbf{Sequential ordering trades tiers against each other; whether that
+trade is worth it depends on model capacity.} Comparing
+\texttt{full\_curriculum} against \texttt{all\_at\_once} at this (315K-param,
+no-FM) size isolates the effect of sequencing alone: \texttt{all\_at\_once}
+dominates on localization ($0.938$ vs.\ $0.568$) and dual-evidence zero-shot
+generalization ($0.798$ vs.\ $0.872$ -- actually \emph{worse} here, unlike
+in an earlier, pre-bugfix version of this comparison), while losing
+substantially on perturbation ($0.359$ vs.\ $0.625$). Table
+\ref{tab:head2head-alt} shows this specific tradeoff reverses once a larger
+model with a foundation-model embedding is used: \texttt{all\_at\_once} at
+3.26M params wins localization \emph{and} improves (rather than
+sacrificing) perturbation and dual-evidence relative to the small model's
+sequential curriculum. We have not run a controlled experiment that varies
+capacity and curriculum independently to attribute exactly how much of this
+reversal is due to capacity versus protocol (Section
+\ref{sec:limitations}); the two are confounded in the comparison as
+currently run.
+
+\textbf{A frozen, pretrained gene embedding is the single largest lever
+found in this study, by a wide margin.} Adding Geneformer
+\cite{theodoris2023geneformer}'s per-gene embedding table as an additional,
+frozen input channel (\texttt{with\_fm}, no fine-tuning, 3.26M params total)
+reaches perturbation AUPR $0.834$ and dual-evidence AUPR $0.949$ -- both
+higher than every hand-engineered architectural variant in Table
+\ref{tab:ablation} by a large margin, including the full model with the
+role-aware decoder, both alternative fusion styles, and both graph-ablated
+configurations. A companion ablation (not shown in Table
+\ref{tab:ablation}; see project results log), \texttt{fm\_only} (Geneformer
+alone, hand-crafted RNA features zeroed), reaches within $0.002$--$0.003$
+AUPR of \texttt{with\_fm} at the same model size on every tier -- at this
+size and with this embedding available, the hand-crafted RNA statistics and
+co-expression signature contribute almost nothing beyond what the
+pretrained embedding alone provides. This complicates, rather than
+supersedes, the earlier ``ATAC contributes little'' finding above: it now
+appears that \emph{neither} hand-built modality-specific feature set is
+doing much independent work once a strong pretrained gene representation is
+present, which is a different and more general claim than either the
+original ATAC finding or its since-fixed featurization bug.
 
 \section{Limitations and Future Work}
 \label{sec:limitations}
 
-We highlight four limitations, in order of priority. \textbf{(1) The shipped
-default curriculum is not the strongest available configuration.} Section
-\ref{sec:discussion} shows that both \texttt{all\_at\_once} and
-\texttt{with\_replay} outperform the shipped 2-stage-with-light-replay default
-on the majority of tiers; promoting one of these to the new default, and
-tuning the replay schedule (weight, source stages, consolidation length) that
-was not swept in this study, is the most direct next step. \textbf{(2) Only
-K562 has been trained and evaluated end-to-end.} ESC is the only other cell
-type with all three evidence tiers, and localization-only cell types (used for
-a strictly harder zero-shot cross-cell-type transfer test) are still being
-processed; no cross-cell-type number yet exists, and every result in this
-paper is K562-specific. \textbf{(3) ATAC's measured contribution is currently
-small} (Section \ref{sec:discussion}); whether this reflects a genuine
-property of K562 regulation or the coarseness of a gene-level, mean/variance
-ATAC featurization (as opposed to, e.g., peak-level or motif-aware features)
-is an open question. \textbf{(4) scMultiomeGRN was trained at a reduced,
-100-epoch exploratory budget} rather than its published default of 2{,}000
-epochs; the comparison in Section \ref{sec:results} is protocol-fair
-(identical splits and evaluation convention) but not yet at the baseline's
-full training budget, and we intend to re-run it at full budget before
-treating Table \ref{tab:baselines} as final.
+We highlight eight limitations, in order of priority; the first three we
+consider blocking for any claim of statistical significance, not just
+polish.
+
+\textbf{(1) No repeated-seed variance estimate exists for any comparison in
+this paper.} Every number reported above is a single training run at a
+fixed configuration. We have not established what run-to-run noise looks
+like for this pipeline (weight initialization, dropout, and negative
+sampling all introduce stochasticity), so differences of a few hundredths
+of AUPR/AUROC -- including several ``wins'' claimed in
+Section~\ref{sec:results} -- should be read as directional rather than
+statistically established. A multi-seed rerun of the headline configuration
+and the scMultiomeGRN baseline is in progress; until it lands, treat every
+close comparison in this paper as provisional.
+
+\textbf{(2) The zero-shot dual-evidence metric has also functioned as a de
+facto model-selection signal throughout this project.} Across the
+project's development, dual-evidence AUPR was the metric used to choose the
+curriculum protocol (twice, in opposite directions -- Section
+\ref{sec:discussion}), to validate the ATAC featurization fix, to select
+model size (Section \ref{sec:discussion}), and to decide whether to adopt
+the foundation-model embedding. Each of these was a legitimate thing to
+\emph{measure}, but collectively, reporting the same metric as both ``what
+we used to pick the winning configuration'' and ``an unbiased zero-shot
+generalization estimate for that configuration'' is the classic
+multiple-comparisons pattern that can make a final reported number look
+more generalizable than it is. We have not carved out a truly untouched
+final-check split (a held-out slice of dual-evidence, a fourth tier, or a
+withheld cell type) that was never used for any of the above decisions;
+doing so, and reserving it for one final confirmatory measurement, is a
+priority before treating any number in this paper as a settled claim about
+generalization.
+
+\textbf{(3) The formal non-leakage guarantee (Proposition \ref{prop:split})
+is not yet enforced by construction for every training protocol we run.}
+The global, hierarchy-consistent split (Algorithm \ref{alg:split}) is
+correctly implemented and audited for the sequential curriculum. The
+\texttt{all\_at\_once} protocol used for our recommended configuration
+originally re-derived its own train/val/test partition independently
+rather than reusing the audited per-tier splits; we have since fixed this
+to build directly from the existing splits with an explicit assertion, but
+we flag the general lesson: any new training protocol added to this
+codebase needs its own explicit leakage check, not an assumption that
+correctness elsewhere in the pipeline transfers automatically.
+
+\textbf{(4) Baseline comparisons are not fully compute-matched or
+tuning-matched.} MEvD-GRN's curriculum trains for 45 total epochs; the
+scMultiomeGRN baseline trains for $2{,}000$ epochs per tier
+(Section~\ref{sec:baselines}), a $\sim$45$\times$ difference we do not
+control for. MEvD-GRN itself received a five-point model-size sweep and
+multiple curriculum-protocol comparisons; no baseline received an
+equivalent hyperparameter search beyond its wrapper's shipped defaults.
+This asymmetry could favor either side depending on which baseline's
+defaults happen to be well- or poorly-tuned for this benchmark, and we do
+not currently have the evidence to rule either direction out.
+
+\textbf{(5) A committed, implemented architectural component (the
+motif-scan-derived third graph relation) is not used in any configuration
+reported in this paper.} \texttt{use\_motif} is off in every config we ran;
+the \texttt{gated\_relations} ablation (Section \ref{sec:discussion})
+therefore only ever had two, already-similar-strength relations to weigh
+between, and cannot yet demonstrate what the learned relation combiner is
+ultimately for. Running this ablation with the real motif graph enabled is
+a direct, already-implemented next step.
+
+\textbf{(6) Only K562 has full evidence-tier results reported here;
+multi-cell-type transfer is preliminary.} We have since trained on two
+additional cell types (Macrophage, MCF7, localization-tier only) and run
+zero-shot and joint-training transfer experiments across all three possible
+holdout choices, with results suggesting joint training improves
+cross-cell-type generalization relative to single-source transfer; these
+results are recent, based on a single seed each, and are reported in our
+project results log rather than in the main tables above, pending the same
+multi-seed validation as limitation (1).
+
+\textbf{(7) The role-aware decoder, gated fusion mechanisms, and relation
+gating are motivated by interpretability, not measured accuracy gains}
+(Section \ref{sec:discussion}); we present them as such rather than as the
+paper's primary empirical contribution.
+
+\textbf{(8) ChIP-seq-derived localization labels carry unquantified label
+noise.} ChIP-seq binding calls are known to have cell-line, antibody, and
+batch-dependent false-positive rates; we treat localization edges as ground
+truth throughout, consistent with the source database, but have not
+quantified how much of the localization tier's lower AUPR (relative to
+perturbation and dual-evidence) reflects this versus a genuinely harder
+prediction task.
 
 \section{Conclusion}
-We introduced MEvD-GRN, a compact, role-aware dual-modality graph neural
-network trained on an evidence-tier curriculum derived directly from how
-regulatory edges were experimentally discovered rather than from an arbitrary
-difficulty heuristic. Held out entirely from training and evaluated
-zero-shot, the highest-confidence dual-evidence tier is where MEvD-GRN is
-most convincing, exceeding a baseline with more than $13\times$ its parameter
-count. At the same time, our ablation study surfaces a genuine and
-quantified weakness -- catastrophic forgetting under the shipped sequential
-curriculum -- and identifies two concrete, already-tested alternative
-training recipes that substantially close the resulting gap. We view the
-combination of a positive headline result and an honestly quantified failure
-mode, together with the formal non-leakage guarantee underlying our zero-shot
-evaluation methodology (Proposition \ref{prop:split}), as the paper's main
-contribution to how confidence-tiered biological reference data should be used
-for GRN inference going forward.
+We introduced MEvD-GRN, a dual-modality graph neural network trained on an
+evidence-tier curriculum derived directly from how regulatory edges were
+experimentally discovered rather than from an arbitrary difficulty
+heuristic. With a pretrained gene embedding and the right curriculum
+protocol for the resulting model capacity, MEvD-GRN outperforms the
+strongest available supervised, multi-omic baseline on AUPR across all
+three evidence tiers, including zero-shot generalization to the
+highest-confidence, held-out dual-evidence tier. Getting there required
+correcting our own mistakes at several points: two data-handling bugs found
+early on, a curriculum-protocol conclusion that reversed once model capacity
+changed, and a training-split shortcut in our newest protocol that was safe
+in practice only by coincidence until we made it safe by construction
+(Section~\ref{sec:limitations}). We view the combination of a positive
+headline result, the formal non-leakage guarantee underlying our zero-shot
+evaluation methodology (Proposition \ref{prop:split}), and an unusually
+candid accounting of where the evidence is still thin -- no variance
+estimates, a metric reused across many selection decisions, an
+under-explored architectural component, baseline comparisons that are not
+fully compute- or tuning-matched -- as more valuable to the field than a
+polished but overstated claim would be. We believe the most novel and
+best-supported single finding in this work is not the architecture but the
+empirical result in our companion analysis: joint multi-cell-type training
+improves zero-shot transfer to a third, entirely held-out cell type more
+than single-source transfer does, on a dataset structure (SC-MO-GRN-DB's
+evidence tiers) that, as far as we are aware, no prior work has used this
+way.
 
 \section*{Impact Statement}
 This paper presents work on computational inference of gene regulatory
@@ -1002,7 +1216,8 @@ for every ablation configuration and every tier, complementing the AUPR-only
 view in Table \ref{tab:ablation}.
 
 \begin{table}[h]
-\caption{Full ablation results, K562, all metrics.}
+\caption{Full ablation results, K562, all metrics. All rows 315{,}015 params except \texttt{with\_fm} (3.26M). Single
+run each (Section \ref{sec:limitations}).}
 \label{tab:full-ablation}
 \begin{center}
 \begin{small}
@@ -1010,40 +1225,57 @@ view in Table \ref{tab:ablation}.
 \toprule
 Configuration & Tier & AUPR & AUROC & EP & EPR \\
 \midrule
-\texttt{full\_curriculum} & localization & 0.410 & 0.298 & 0.415 & 12.2 \\
-\texttt{full\_curriculum} & perturbation & 0.569 & 0.875 & 0.531 & 79.6 \\
-\texttt{full\_curriculum} & dual\_evidence & 0.546 & 0.837 & 0.421 & 273.4 \\
-\texttt{loc\_only} & localization & 0.940 & 0.939 & 0.870 & 25.6 \\
-\texttt{loc\_only} & perturbation & 0.187 & 0.365 & 0.150 & 11.2 \\
-\texttt{loc\_only} & dual\_evidence & 0.663 & 0.799 & 0.650 & 422.7 \\
-\texttt{pert\_only} & localization & 0.407 & 0.282 & 0.384 & 5.7 \\
-\texttt{pert\_only} & perturbation & 0.496 & 0.825 & 0.465 & 69.7 \\
-\texttt{pert\_only} & dual\_evidence & 0.485 & 0.797 & 0.387 & 251.8 \\
-\texttt{dual\_only} & localization & 0.779 & 0.761 & 0.718 & 10.6 \\
-\texttt{dual\_only} & perturbation & 0.197 & 0.501 & 0.195 & 14.6 \\
-\texttt{dual\_only} & dual\_evidence & 0.479 & 0.778 & 0.514 & 666.4 \\
-\texttt{all\_at\_once} & localization & 0.937 & 0.928 & 0.865 & 25.5 \\
-\texttt{all\_at\_once} & perturbation & 0.348 & 0.739 & 0.328 & 49.1 \\
-\texttt{all\_at\_once} & dual\_evidence & 0.788 & 0.943 & 0.701 & 455.4 \\
-\texttt{rna\_only} & localization & 0.414 & 0.307 & 0.415 & 12.2 \\
-\texttt{rna\_only} & perturbation & 0.540 & 0.860 & 0.499 & 74.7 \\
-\texttt{rna\_only} & dual\_evidence & 0.543 & 0.825 & 0.415 & 269.9 \\
-\texttt{gated\_fusion} & localization & 0.419 & 0.323 & 0.426 & 12.6 \\
-\texttt{gated\_fusion} & perturbation & 0.588 & 0.882 & 0.549 & 82.2 \\
-\texttt{gated\_fusion} & dual\_evidence & 0.546 & 0.838 & 0.424 & 275.6 \\
-\texttt{concat\_fusion} & localization & 0.421 & 0.330 & 0.433 & 12.8 \\
-\texttt{concat\_fusion} & perturbation & 0.595 & 0.886 & 0.556 & 83.2 \\
-\texttt{concat\_fusion} & dual\_evidence & 0.555 & 0.848 & 0.444 & 288.2 \\
-\texttt{no\_gnn} & localization & 0.498 & 0.473 & 0.524 & 15.4 \\
-\texttt{no\_gnn} & perturbation & 0.341 & 0.710 & 0.369 & 55.3 \\
-\texttt{no\_gnn} & dual\_evidence & 0.241 & 0.666 & 0.261 & 169.5 \\
-\texttt{with\_replay} & localization & 0.765 & 0.736 & 0.697 & 20.5 \\
-\texttt{with\_replay} & perturbation & 0.411 & 0.702 & 0.372 & 55.7 \\
-\texttt{with\_replay} & dual\_evidence & 0.940 & 0.990 & 0.874 & 1134.3 \\
+\texttt{full\_curriculum} & localization & 0.568 & 0.509 & 0.545 & 1.0 \\
+\texttt{full\_curriculum} & perturbation & 0.625 & 0.894 & 0.576 & 3.1 \\
+\texttt{full\_curriculum} & dual\_evidence & 0.872 & 0.968 & 0.784 & 4.7 \\
+\texttt{loc\_only} & localization & 0.940 & 0.939 & 0.870 & 1.6 \\
+\texttt{loc\_only} & perturbation & 0.185 & 0.362 & 0.150 & 0.8 \\
+\texttt{loc\_only} & dual\_evidence & 0.664 & 0.807 & 0.649 & 3.9 \\
+\texttt{pert\_only} & localization & 0.399 & 0.261 & 0.378 & 0.7 \\
+\texttt{pert\_only} & perturbation & 0.487 & 0.819 & 0.458 & 2.5 \\
+\texttt{pert\_only} & dual\_evidence & 0.441 & 0.757 & 0.370 & 2.2 \\
+\texttt{dual\_only} & localization & 0.794 & 0.777 & 0.727 & 1.4 \\
+\texttt{dual\_only} & perturbation & 0.189 & 0.486 & 0.185 & 1.0 \\
+\texttt{dual\_only} & dual\_evidence & 0.456 & 0.774 & 0.524 & 3.1 \\
+\texttt{all\_at\_once} & localization & 0.938 & 0.929 & 0.866 & 1.6 \\
+\texttt{all\_at\_once} & perturbation & 0.359 & 0.747 & 0.337 & 1.8 \\
+\texttt{all\_at\_once} & dual\_evidence & 0.798 & 0.946 & 0.707 & 4.2 \\
+\texttt{rna\_only} & localization & 0.562 & 0.496 & 0.529 & 1.0 \\
+\texttt{rna\_only} & perturbation & 0.583 & 0.877 & 0.536 & 2.9 \\
+\texttt{rna\_only} & dual\_evidence & 0.859 & 0.963 & 0.771 & 4.6 \\
+\texttt{coexpr\_only} & localization & 0.530 & 0.482 & 0.526 & 1.0 \\
+\texttt{coexpr\_only} & perturbation & 0.607 & 0.889 & 0.563 & 3.0 \\
+\texttt{coexpr\_only} & dual\_evidence & 0.822 & 0.956 & 0.739 & 4.4 \\
+\texttt{tf\_cand\_only} & localization & 0.565 & 0.492 & 0.515 & 1.0 \\
+\texttt{tf\_cand\_only} & perturbation & 0.590 & 0.875 & 0.550 & 2.9 \\
+\texttt{tf\_cand\_only} & dual\_evidence & 0.827 & 0.950 & 0.735 & 4.4 \\
+\texttt{gated\_fusion} & localization & 0.572 & 0.534 & 0.571 & 1.1 \\
+\texttt{gated\_fusion} & perturbation & 0.646 & 0.902 & 0.592 & 3.2 \\
+\texttt{gated\_fusion} & dual\_evidence & 0.883 & 0.970 & 0.795 & 4.8 \\
+\texttt{concat\_fusion} & localization & 0.579 & 0.550 & 0.579 & 1.1 \\
+\texttt{concat\_fusion} & perturbation & 0.660 & 0.906 & 0.603 & 3.2 \\
+\texttt{concat\_fusion} & dual\_evidence & 0.890 & 0.971 & 0.798 & 4.8 \\
+\texttt{edge\_mlp} & localization & 0.578 & 0.524 & 0.551 & 1.0 \\
+\texttt{edge\_mlp} & perturbation & 0.644 & 0.901 & 0.592 & 3.2 \\
+\texttt{edge\_mlp} & dual\_evidence & 0.882 & 0.971 & 0.795 & 4.8 \\
+\texttt{gated\_relations} & localization & 0.570 & 0.512 & 0.539 & 1.0 \\
+\texttt{gated\_relations} & perturbation & 0.642 & 0.900 & 0.588 & 3.1 \\
+\texttt{gated\_relations} & dual\_evidence & 0.876 & 0.969 & 0.791 & 4.7 \\
+\texttt{no\_gnn} & localization & 0.542 & 0.531 & 0.563 & 1.0 \\
+\texttt{no\_gnn} & perturbation & 0.358 & 0.721 & 0.377 & 2.0 \\
+\texttt{no\_gnn} & dual\_evidence & 0.283 & 0.704 & 0.299 & 1.8 \\
+\texttt{with\_replay}$^*$ & localization & 0.763 & 0.719 & 0.671 & 1.2 \\
+\texttt{with\_replay}$^*$ & perturbation & 0.515 & 0.824 & 0.458 & 2.5 \\
+\texttt{with\_replay}$^*$ & dual\_evidence & 0.957 & 0.992 & 0.890 & 5.3 \\
+\texttt{with\_fm}$^\dagger$ & localization & 0.751 & 0.771 & 0.736 & 1.4 \\
+\texttt{with\_fm}$^\dagger$ & perturbation & 0.834 & 0.964 & 0.767 & 4.1 \\
+\texttt{with\_fm}$^\dagger$ & dual\_evidence & 0.949 & 0.988 & 0.869 & 5.2 \\
 \bottomrule
 \end{tabular}
 \end{small}
 \end{center}
+{\footnotesize $^*$dual-evidence score trains directly on dual-evidence, not zero-shot. $^\dagger$3.26M params, not
+315{,}015; see Table \ref{tab:head2head-alt} for the recommended \texttt{all\_at\_once}+FM configuration's full metrics.}
 \end{table}
 
 \section{Environment and Reproducibility}

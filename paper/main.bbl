@@ -1,4 +1,4 @@
-\begin{thebibliography}{12}
+\begin{thebibliography}{13}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -78,6 +78,14 @@ Rolnick, D., Ahuja, A., Schwarz, J., Lillicrap, T., and Wayne, G.
 \newblock Experience replay for continual learning.
 \newblock In \emph{Advances in Neural Information Processing Systems
   (NeurIPS)}, volume~32, 2019.
+
+\bibitem[Theodoris et~al.(2023)Theodoris, Xiao, Chopra, Chaffin, Al~Sayed,
+  Hill, Mantineo, Brydon, Zeng, Liu, and Ellinor]{theodoris2023geneformer}
+Theodoris, C.~V., Xiao, L., Chopra, A., Chaffin, M.~D., Al~Sayed, Z.~R., Hill,
+  M.~C., Mantineo, H., Brydon, E.~M., Zeng, Z., Liu, X.~S., and Ellinor, P.~T.
+\newblock Transfer learning enables predictions in network biology.
+\newblock \emph{Nature}, 618:\penalty0 616--624, 2023.
+\newblock \doi{10.1038/s41586-023-06139-9}.
 
 \bibitem[Valensi et~al.(2026)Valensi, Karamveer, Moeller, Ozdogan, Edwards, and
   Uzun]{valensi2026scmogrndb}
