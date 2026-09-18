@@ -7,10 +7,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import random
 import sys
 import time
 from pathlib import Path
 
+import numpy as np
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -28,6 +30,9 @@ def main():
     ap.add_argument("--config", required=True)
     ap.add_argument("--cell_type", default=None)
     ap.add_argument("--device", default=None)
+    ap.add_argument("--seed", type=int, default=None,
+                    help="override cfg['data']['seed'] for this run only (weight init "
+                         "and training-time sampling; does not change the on-disk splits)")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -36,6 +41,13 @@ def main():
     if device.startswith("cuda") and not torch.cuda.is_available():
         print("[warn] CUDA unavailable, falling back to CPU", flush=True)
         device = "cpu"
+    if args.seed is not None:
+        cfg["data"]["seed"] = args.seed
+    seed = int(cfg["data"]["seed"])
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)          # model weight init was previously UNSEEDED here
+    torch.cuda.manual_seed_all(seed)
     cfg["checkpoint_dir"] = f"results/checkpoints/{cell_type}"
 
     tiers = cfg["data"]["evidence_tiers"]
@@ -80,7 +92,7 @@ def main():
     protocol = cfg["curriculum"].get("protocol", "sequential")
     t0 = time.time()
     if protocol == "all_at_once":
-        stage, merged = build_all_at_once_stage(cfg, data, splits_per_tier)
+        stage, merged = build_all_at_once_stage(cfg, splits_per_tier)
         print(f"[curriculum] protocol=all_at_once; training jointly on tiers "
               f"{sorted(main_tiers)}; held out as zero-shot inference: {held_out_tiers}",
               flush=True)
