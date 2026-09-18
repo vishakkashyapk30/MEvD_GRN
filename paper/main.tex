@@ -756,14 +756,14 @@ claim architectural superiority on this basis alone.
 \section{Results}
 \label{sec:results}
 
-\textbf{A caveat that applies to every number in this section.} Every result
-reported below is a \emph{single training run at a fixed configuration}; we
-do not yet have a repeated-seed variance estimate, confidence interval, or
-significance test for any comparison in this paper (Section
-\ref{sec:limitations} discusses this as an open limitation, and a
-multi-seed rerun of the headline configuration is in progress). Differences
-of a few hundredths of AUPR/AUROC discussed below -- including some phrased
-as one configuration ``beating'' another -- should be read as directional
+\textbf{A caveat that applies to most numbers in this section.} Unless
+reported as mean$\pm$std over 5 seeds (our recommended configuration
+only -- Section \ref{sec:head2head}), every result below is a
+\emph{single training run at a fixed configuration}; we do not yet have a
+repeated-seed variance estimate for the ablation study (Section
+\ref{sec:ablation}) or for the scMultiomeGRN baseline (Section
+\ref{sec:limitations}). Differences of a few hundredths of AUPR/AUROC
+discussed in those single-run comparisons should be read as directional
 evidence, not as statistically established.
 
 \subsection{Main results}
@@ -787,7 +787,10 @@ configuration, and the one used in the head-to-head comparison
 \begin{table}[t]
 \caption{MEvD-GRN main results on K562. Localization/perturbation are scored
 on their test split (trained tiers); dual-evidence is scored on
-validation+test, zero-shot (never trained on). Single run each.}
+validation+test, zero-shot (never trained on). Base model: single run. Recommended
+configuration: AUPR/AUROC are the mean of 5 seeds (std $\leq0.002$ on every tier,
+Section \ref{sec:limitations}); EP/EPR are from a single seed (42) pending a full
+5-seed aggregation of those two metrics.}
 \label{tab:main}
 \vskip 0.1in
 \begin{center}
@@ -801,10 +804,10 @@ Localization$^\dagger$ & 0.573 & 0.515 & 0.547 & 1.02 \\
 Perturbation & 0.641 & 0.899 & 0.588 & 3.15 \\
 Dual-evidence$^\ddagger$ & 0.881 & 0.971 & 0.792 & 4.75 \\
 \midrule
-\multicolumn{5}{l}{\emph{Recommended: \texttt{all\_at\_once} + Geneformer, 3.26M params}} \\
-Localization & \textbf{0.967} & \textbf{0.961} & 0.894 & 1.66 \\
-Perturbation & \textbf{0.690} & 0.908 & 0.648 & 3.47 \\
-Dual-evidence$^\ddagger$ & \textbf{0.950} & \textbf{0.988} & 0.875 & 5.25 \\
+\multicolumn{5}{l}{\emph{Recommended: \texttt{all\_at\_once} + Geneformer, 3.26M params, mean over 5 seeds}} \\
+Localization & \textbf{0.9676} & \textbf{0.9609} & 0.894 & 1.66 \\
+Perturbation & \textbf{0.6955} & 0.9096 & 0.648 & 3.47 \\
+Dual-evidence$^\ddagger$ & \textbf{0.9517} & \textbf{0.9880} & 0.875 & 5.25 \\
 \bottomrule
 \end{tabular}
 \end{small}
@@ -839,25 +842,31 @@ entirely by construction (no stage boundary to forget across).}
 \label{sec:head2head}
 Table \ref{tab:baselines} compares AUPR across all five methods, using our
 recommended MEvD-GRN configuration (\texttt{all\_at\_once} curriculum +
-Geneformer, 3.26M params; Section \ref{sec:results}). The RNA-only
+Geneformer, 3.26M params; Section \ref{sec:results}), now backed by a
+5-seed mean$\pm$std (Section \ref{sec:limitations} (1)). The RNA-only
 unsupervised baselines (GRNBoost2, RegDiffusion, GMF-GAE) trail badly on
 every tier, which is expected given they never see the evidence-tier labels
 at all (Section \ref{sec:baselines}) -- this confirms supervision plus
 multi-omic structure matters at all, not which supervised architecture is
 better. Against the one like-for-like comparison, scMultiomeGRN, MEvD-GRN
-now wins on AUPR across all three tiers, including the harder,
-in-distribution perturbation tier where the originally-shipped model lost
-(Table \ref{tab:head2head-alt} shows this was not always true, and depended
-on both model capacity and curriculum choice). On AUROC, MEvD-GRN wins 2 of
-3 (localization, dual-evidence) and is within $0.011$ of scMultiomeGRN on
-perturbation ($0.908$ vs.\ $0.919$) -- given the single-seed caveat above,
-we read this as a near-tie rather than a loss.
+wins on AUPR across all three tiers by margins of tens to over a hundred
+times its own measured seed-to-seed standard deviation -- these are not
+close calls -- including the harder, in-distribution perturbation tier
+where the originally-shipped model lost (Table \ref{tab:head2head-alt}
+shows this was not always true, and depended on both model capacity and
+curriculum choice). On AUROC, MEvD-GRN wins 2 of 3 (localization,
+dual-evidence) by similarly large margins, but \textbf{loses cleanly on
+perturbation} ($0.9096\pm0.0004$ vs.\ scMultiomeGRN's $0.919$, a gap over
+$20\times$ the measured standard deviation) -- a real, small, consistent
+loss, not the near-tie an earlier, single-seed version of this comparison
+suggested. scMultiomeGRN itself does not yet have multi-seed data of its
+own (in progress); comparisons against it specifically should be read with
+that in mind even though MEvD-GRN's own numbers are now solid.
 
 \begin{table}[t]
-\caption{AUPR comparison across methods and tiers, K562. Dual-evidence AUPR
-for MEvD-GRN and scMultiomeGRN is a zero-shot score (both use the same
-main-tiers-only training protocol); GRNBoost2/RegDiffusion/GMF-GAE are
-unsupervised and were never fit to any tier's labels.}
+\caption{AUPR comparison across methods and tiers, K562. MEvD-GRN: mean over 5 seeds (std $\leq0.002$ on every
+tier). Dual-evidence AUPR for MEvD-GRN and scMultiomeGRN is a zero-shot score (both use the same main-tiers-only
+training protocol); GRNBoost2/RegDiffusion/GMF-GAE are unsupervised and were never fit to any tier's labels.}
 \label{tab:baselines}
 \vskip 0.1in
 \begin{center}
@@ -866,7 +875,7 @@ unsupervised and were never fit to any tier's labels.}
 \toprule
 Method & Loc. & Pert. & Dual \\
 \midrule
-\textbf{MEvD-GRN} (ours, recommended) & \textbf{0.967} & \textbf{0.690} & \textbf{0.950} \\
+\textbf{MEvD-GRN} (ours, recommended) & \textbf{0.9676} & \textbf{0.6955} & \textbf{0.9517} \\
 scMultiomeGRN & 0.906 & 0.655 & 0.847 \\
 GRNBoost2 & 0.535 & 0.206 & 0.173 \\
 RegDiffusion & 0.546 & 0.185 & 0.165 \\
@@ -919,7 +928,7 @@ scMultiomeGRN ($\approx$4.08M $\times$ up to 2 dedicated models) & 0.906 / 0.914
 MEvD-GRN --- sequential, 315{,}015 params, no FM & 0.573 / 0.515 & 0.641 / 0.899 & 0.881 / \textbf{0.971} \\
 MEvD-GRN --- \texttt{all\_at\_once}, 315{,}015 params, no FM & 0.937 / 0.929 & 0.351 / 0.741 & 0.791 / 0.944 \\
 MEvD-GRN --- sequential, 3.26M params, +FM & 0.751 / 0.771 & \textbf{0.834} / \textbf{0.964} & \textbf{0.963} / \textbf{0.992} \\
-MEvD-GRN --- \texttt{all\_at\_once}, 3.26M params, +FM & \textbf{0.967} / \textbf{0.961} & 0.690 / 0.908 & 0.950 / 0.988 \\
+MEvD-GRN --- \texttt{all\_at\_once}, 3.26M params, +FM (5-seed mean) & \textbf{0.968} / \textbf{0.961} & 0.696 / 0.910 & 0.952 / 0.988 \\
 \texttt{with\_replay}$^*$, 315{,}015 params, no FM & 0.763 / 0.719 & 0.515 / 0.824 & 0.957 / 0.992 \\
 \bottomrule
 \end{tabular}
@@ -1079,16 +1088,27 @@ We highlight eight limitations, in order of priority; the first three we
 consider blocking for any claim of statistical significance, not just
 polish.
 
-\textbf{(1) No repeated-seed variance estimate exists for any comparison in
-this paper.} Every number reported above is a single training run at a
-fixed configuration. We have not established what run-to-run noise looks
-like for this pipeline (weight initialization, dropout, and negative
-sampling all introduce stochasticity), so differences of a few hundredths
-of AUPR/AUROC -- including several ``wins'' claimed in
-Section~\ref{sec:results} -- should be read as directional rather than
-statistically established. A multi-seed rerun of the headline configuration
-and the scMultiomeGRN baseline is in progress; until it lands, treat every
-close comparison in this paper as provisional.
+\textbf{(1) Repeated-seed variance now exists for our recommended
+configuration, but not yet for the baseline it is compared against.} A
+5-seed rerun (seeds 42-46) of \texttt{all\_at\_once}+FM+h384/l2 found
+remarkably low run-to-run variance on every metric (standard deviation
+$\leq0.0017$; full breakdown in our project results log). Against
+scMultiomeGRN's current single-seed point estimate, this changes our
+reading of Table \ref{tab:baselines} in two ways, one making the paper's
+claim stronger and one making it more honest: five of the six method-tier
+cells favor MEvD-GRN by tens to over a hundred times the measured
+seed-to-seed standard deviation (e.g.\ dual-evidence AUPR: $+0.105$ vs.\
+$\sigma=0.0007$) -- these are not close calls, and should not have been
+hedged as such before this rerun landed. The sixth, perturbation AUROC, is
+the opposite: MEvD-GRN's mean ($0.9096\pm0.0004$) is reliably below
+scMultiomeGRN's $0.919$ by a margin ($0.0094$) that is also many times the
+measured standard deviation -- a real, small, consistent loss, which we had
+previously (and, it turns out, incorrectly) described as a ``near-tie''
+based on a single run in each direction. We do not yet have equivalent
+variance data for scMultiomeGRN itself (a 2-seed rerun is in progress, each
+taking $\sim$6 hours); until it lands, comparisons against scMultiomeGRN
+specifically should still be read with some caution, even though MEvD-GRN's
+own side of every comparison is now on solid statistical footing.
 
 \textbf{(2) The zero-shot dual-evidence metric has also functioned as a de
 facto model-selection signal throughout this project.} Across the
