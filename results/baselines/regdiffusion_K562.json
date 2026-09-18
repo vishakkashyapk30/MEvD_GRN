@@ -1,0 +1,30 @@
+{
+  "baseline": "regdiffusion",
+  "cell_type": "K562",
+  "results": {
+    "localization": {
+      "auroc": 0.5145311426430111,
+      "aupr": 0.5464586223050532,
+      "early_precision": 0.945936075143948,
+      "epr": 1.755641852300554,
+      "n_pos": 175237,
+      "n_total": 325237
+    },
+    "perturbation": {
+      "auroc": 0.49280640479438137,
+      "aupr": 0.18495400414998447,
+      "early_precision": 0.7249035029166787,
+      "epr": 3.88059103919383,
+      "n_pos": 34457,
+      "n_total": 184457
+    },
+    "dual_evidence": {
+      "auroc": 0.4897841157020049,
+      "aupr": 0.16487024870627986,
+      "early_precision": 0.6834949011708422,
+      "epr": 4.100969407025054,
+      "n_pos": 7943,
+      "n_total": 47658
+    }
+  }
+}

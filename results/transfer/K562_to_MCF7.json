@@ -1,0 +1,16 @@
+{
+  "source_cell_type": "K562",
+  "target_cell_type": "MCF7",
+  "tier": "localization",
+  "mode": "zero_shot_transfer",
+  "n_positives": 1209558,
+  "n_negatives": 1000000,
+  "result": {
+    "auroc": 0.55259690984558,
+    "aupr": 0.5971951933179287,
+    "early_precision": 0.5808683633804321,
+    "epr": 1.0611002856036178,
+    "n_pos": 1209558,
+    "n_total": 2209558
+  }
+}

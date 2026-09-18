@@ -3,8 +3,29 @@ data/raw/
 data/processed/
 data/splits/
 
-# Results / checkpoints / logs
-results/
+# Results / checkpoints / logs -- but DO track the small numeric-results JSONs
+# (results/ablations/*.json, results/baselines/*.json): these are what every
+# number in results.md/plan.md/paper/main.tex is supposed to be traceable to,
+# and until now NOTHING under results/ was ever in git, so those citations
+# were unreproducible from a fresh clone regardless of what happened to be on
+# any one machine's disk. Checkpoints and logs stay ignored (large, regenerable).
+# (Negation requires un-ignoring each parent dir explicitly -- git won't
+# recurse into an ignored directory to apply a deeper negation.)
+results/*
+!results/ablations/
+results/ablations/*
+!results/ablations/*.json
+!results/baselines/
+results/baselines/*
+!results/baselines/*.json
+!results/transfer/
+results/transfer/*
+!results/transfer/*.json
+!results/joint_training/
+results/joint_training/*
+!results/joint_training/*.json
+!results/K562_results.json
+!results/*_results.json
 result_logs/
 logs/
 *.pt

@@ -1,0 +1,16 @@
+{
+  "source_cell_type": "K562",
+  "target_cell_type": "Macrophage",
+  "tier": "localization",
+  "mode": "zero_shot_transfer",
+  "n_positives": 112383,
+  "n_negatives": 244049,
+  "result": {
+    "auroc": 0.6481661386711779,
+    "aupr": 0.4469267557203309,
+    "early_precision": 0.4384204149246216,
+    "epr": 1.39048668688692,
+    "n_pos": 112383,
+    "n_total": 356432
+  }
+}

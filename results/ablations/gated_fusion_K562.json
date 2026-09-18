@@ -1,0 +1,40 @@
+{
+  "ablation": "gated_fusion",
+  "cell_type": "K562",
+  "tag": null,
+  "n_params": 199297,
+  "hidden_dim": 128,
+  "n_gnn_layers": 2,
+  "key_tier": "dual_evidence",
+  "trained_tiers": [
+    "localization",
+    "perturbation"
+  ],
+  "results": {
+    "localization": {
+      "auroc": 0.5339083229378878,
+      "aupr": 0.5716400205271592,
+      "early_precision": 0.5706101059913635,
+      "epr": 1.059043004858067,
+      "n_pos": 175237,
+      "n_total": 325237
+    },
+    "perturbation": {
+      "auroc": 0.9015962779696433,
+      "aupr": 0.6462855845179001,
+      "early_precision": 0.5918681025505066,
+      "epr": 3.1684190321896506,
+      "n_pos": 34457,
+      "n_total": 184457
+    },
+    "dual_evidence": {
+      "auroc": 0.969591343801103,
+      "aupr": 0.8825636348147107,
+      "early_precision": 0.7954173684120178,
+      "epr": 4.772504210472107,
+      "n_pos": 7943,
+      "n_total": 47658
+    }
+  },
+  "relation_weights": {}
+}
