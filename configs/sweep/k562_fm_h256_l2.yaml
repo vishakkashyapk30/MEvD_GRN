@@ -1,0 +1,6 @@
+# Model-size sweep point: hidden_dim=256, n_gnn_layers=2 (plan.md Section 3)
+inherit: ../k562_fm.yaml
+model:
+  use_fm: true
+  hidden_dim: 256
+  n_gnn_layers: 2

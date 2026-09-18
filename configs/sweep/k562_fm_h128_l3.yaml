@@ -1,0 +1,5 @@
+inherit: ../k562_fm.yaml
+model:
+  use_fm: true
+  hidden_dim: 128
+  n_gnn_layers: 3
