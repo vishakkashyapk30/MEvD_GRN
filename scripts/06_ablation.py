@@ -49,9 +49,11 @@ from __future__ import annotations
 
 import argparse
 import copy
+import random
 import sys
 from pathlib import Path
 
+import numpy as np
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -131,6 +133,13 @@ def main():
                     help="optional suffix for the output filename, so multiple runs of "
                          "the same ablation/cell_type (e.g. a model-size sweep) don't "
                          "overwrite each other's results/checkpoints")
+    ap.add_argument("--seed", type=int, default=None,
+                    help="override cfg['data']['seed'] for this run only -- lets a "
+                         "multi-seed sweep vary model init / training stochasticity "
+                         "without duplicating config files. Does NOT change the "
+                         "on-disk train/val/test splits or negative pool (those are "
+                         "fixed at preprocessing time), only weight init and "
+                         "training-time sampling.")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -139,6 +148,14 @@ def main():
     if device.startswith("cuda") and not torch.cuda.is_available():
         device = "cpu"
     cfg = copy.deepcopy(cfg)
+    if args.seed is not None:
+        cfg["data"]["seed"] = args.seed
+    seed = int(cfg["data"]["seed"])
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)          # model weight init was previously UNSEEDED here --
+    torch.cuda.manual_seed_all(seed)  # every "same config" run silently used different
+                                      # initial weights; see critical_review_independent.md.
     out_tag = f"{args.ablation}{'_' + args.tag if args.tag else ''}_{cell_type}"
     cfg["checkpoint_dir"] = f"results/checkpoints/{cell_type}_ablation_{args.ablation}" + \
         (f"_{args.tag}" if args.tag else "")
@@ -173,7 +190,7 @@ def main():
         # Multi-task baseline: one stage on the UNION of the main tiers'
         # positives (dual_evidence excluded -- same held-out-inference
         # treatment as the main model gets, for a fair comparison).
-        stage, merged = build_all_at_once_stage(cfg, data, splits_per_tier)
+        stage, merged = build_all_at_once_stage(cfg, splits_per_tier)
         trainer.train_stage(stage, merged)
     else:
         trainer.run_full_curriculum(splits_per_tier, select_stages(cfg, args.ablation))

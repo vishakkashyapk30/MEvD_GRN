@@ -225,6 +225,9 @@ def main():
     ap.add_argument("--out-tag", default="", help="suffix for results/checkpoints paths, "
                     "e.g. '_smoketest' -- keeps a short exploratory run from clobbering "
                     "the real results/baselines/scmultiomegrn_<cell_type>.json")
+    ap.add_argument("--seed", type=int, default=None,
+                    help="override cfg['data']['seed'] for this run only, for multi-seed "
+                         "variance runs (does not change the on-disk splits)")
     args = ap.parse_args()
 
     rank = int(os.environ["RANK"])
@@ -244,7 +247,7 @@ def main():
 
     pcfg = dict(cfg["data"]); pcfg["genome"] = cfg.get("genome"); pcfg["atac"] = cfg.get("atac", {})
     rna_path = _resolve_glob(cfg["paths"]["single_cell"]["rna_glob"])
-    seed = int(cfg["data"]["seed"])
+    seed = args.seed if args.seed is not None else int(cfg["data"]["seed"])
 
     log0(rank, f"[scMultiomeGRN-DDP] world_size={world_size} tiers={tiers} main_tiers={main_tiers}")
 
