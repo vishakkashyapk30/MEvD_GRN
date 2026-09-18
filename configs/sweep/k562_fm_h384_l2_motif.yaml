@@ -1,0 +1,8 @@
+# Same as k562_fm_h384_l2.yaml, plus the real motif graph enabled as a 3rd
+# relation -- needed for gated_relations to actually have 3 differently-
+# strength relations to weigh (the ablation-name override for
+# motif_graph_only forces use_motif=True regardless of config, but
+# gated_relations does not, so it needs this explicitly).
+inherit: k562_fm_h384_l2.yaml
+model:
+  use_motif: true
