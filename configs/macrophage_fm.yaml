@@ -1,0 +1,5 @@
+# Macrophage + Geneformer foundation-model gene embeddings (plan.md Section 5/6).
+inherit: macrophage.yaml
+
+model:
+  use_fm: true
