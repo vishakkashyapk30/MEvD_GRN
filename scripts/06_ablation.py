@@ -127,6 +127,10 @@ def main():
     ap.add_argument("--config", required=True)
     ap.add_argument("--ablation", required=True, choices=ABLATIONS)
     ap.add_argument("--device", default=None)
+    ap.add_argument("--tag", default=None,
+                    help="optional suffix for the output filename, so multiple runs of "
+                         "the same ablation/cell_type (e.g. a model-size sweep) don't "
+                         "overwrite each other's results/checkpoints")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -135,7 +139,9 @@ def main():
     if device.startswith("cuda") and not torch.cuda.is_available():
         device = "cpu"
     cfg = copy.deepcopy(cfg)
-    cfg["checkpoint_dir"] = f"results/checkpoints/{cell_type}_ablation_{args.ablation}"
+    out_tag = f"{args.ablation}{'_' + args.tag if args.tag else ''}_{cell_type}"
+    cfg["checkpoint_dir"] = f"results/checkpoints/{cell_type}_ablation_{args.ablation}" + \
+        (f"_{args.tag}" if args.tag else "")
     if args.ablation == "with_replay":
         cfg["curriculum"]["use_memory_replay"] = True
 
@@ -181,10 +187,12 @@ def main():
         result[t] = trainer.evaluate_split({"pos": pos, "neg": neg})
     ensure_dir("results/ablations")
     relation_weights = {name: w.tolist() for name, w in model.get_relation_weights().items()}
-    save_json({"ablation": args.ablation, "cell_type": cell_type,
+    save_json({"ablation": args.ablation, "cell_type": cell_type, "tag": args.tag,
+               "n_params": model.count_parameters(),
+               "hidden_dim": cfg["model"]["hidden_dim"], "n_gnn_layers": cfg["model"]["n_gnn_layers"],
                "key_tier": key_tier, "trained_tiers": sorted(trained_tiers),
                "results": result, "relation_weights": relation_weights},
-              f"results/ablations/{args.ablation}_{cell_type}.json")
+              f"results/ablations/{out_tag}.json")
     m = result[key_tier]
     print(f"[ablation {args.ablation}] {key_tier} AUPR={m['aupr']:.4f} "
           f"AUROC={m['auroc']:.4f} EP={m['early_precision']:.4f}", flush=True)
