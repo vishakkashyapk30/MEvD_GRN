@@ -22,6 +22,7 @@ docs/
 ├── critical_review_independent.md     2026-09-18 independent critical review + its final status update
 ├── figures/                           architecture diagrams (PNG + HTML source)
 ├── reference/                         external reference material
+├── experiments/                       runbooks + findings for competitor-dataset benchmarks
 ├── weekly_updates/                    weekly-update decks (PDF) + markdown text for some of them
 └── archive/                           superseded documents, kept for the record
 ```
@@ -57,7 +58,19 @@ git history, e.g.
 ### `reference/`
 External reference material: the SC-MO-GRN-DB dataset catalog
 (`SC_MO_GRN_DB.md`, `dataset_info.md`), the Ada HPC cluster guide (`ada.md`),
-and the scMultiomeGRN baseline paper (`scMultiomeGRN.pdf`).
+the scMultiomeGRN baseline paper (`scMultiomeGRN.pdf`), and
+`literature_knowledge_base.md`. That last file covers the 17 competitor papers
+and theses in `~/research/`. It has a section per paper, a catalogue of which
+datasets each paper trains and evaluates on (and whether paired RNA+ATAC
+exists), the reported numbers MeVD-GRN must beat, and protocol caveats.
+
+### `experiments/`
+One runbook per competitor benchmark. It records the dataset, the competitor's
+exact protocol, the target numbers, the files that implement it, and the Ada
+launch commands.
+- `scmultiomegrn_generalization.md`: MeVD-GRN on scMultiomeGRN's fetal-lung
+  benchmark (GSM4508936). Built and smoke-tested on 2026-09-30; not yet run on
+  Ada.
 
 ### `weekly_updates/`
 Files are named `<start>_to_<end>_update_<NN>.<ext>` with ISO dates, so they

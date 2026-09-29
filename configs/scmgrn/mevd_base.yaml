@@ -1,0 +1,36 @@
+# MeVD-GRN on the scMultiomeGRN benchmark: base model (h128/l2, no FM).
+# Single evidence tier (motif-in-accessible-promoter ground truth) -> one
+# training stage; see docs/experiments/scmultiomegrn_generalization.md s5.
+# Every value here was fixed a priori (before any benchmark result existed).
+inherit: ../default.yaml
+
+data:
+  evidence_tiers: [tfbs_promoter]
+  tier_hierarchy: [tfbs_promoter]
+  # TF-only node set (~50-500 nodes): graph degrees scaled to keep the same
+  # relative sparsity as the SC-MO-GRN-DB configs (~2% candidate density).
+  coexpr_knn_k: 10
+  tf_candidate_topk: 10
+  prior_exclude_positives: false   # label-free graph (excluding positives would leak test labels)
+  # the official pipeline uses every cell of a cell type -> no cell QC
+  min_genes_per_cell: 0
+  min_cells_per_gene: 1
+  min_peaks_per_cell: 0
+
+model:
+  use_motif: false                 # GT is itself a motif scan -> MeVD-GRN's motif relation is disallowed
+  # (scripts/17 --obs_graph re-uses the 3rd relation slot for the fold's TRAIN adjacency)
+
+curriculum:
+  protocol: all_at_once
+  main_curriculum_tiers: [tfbs_promoter]
+  use_hard_negatives: false        # undefined with one tier
+  use_memory_replay: false
+  stages:
+    - {name: SingleTier, evidence_tier: tfbs_promoter, n_epochs: 2000, lr: 1.0e-3, neg_ratio: 5, freeze_encoder: false}
+
+training:
+  # budget matched to scMultiomeGRN's protocol: <= 2000 epochs, stop after
+  # 100 epochs without validation improvement (20 checks x eval_every 5)
+  eval_every: 5
+  early_stopping_patience: 20
