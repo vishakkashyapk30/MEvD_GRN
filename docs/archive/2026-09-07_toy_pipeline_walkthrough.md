@@ -1,5 +1,15 @@
 # Toy walkthrough: what happens to the data inside MEvD-GRN
 
+> **Archived. Describes the pipeline as of about 2026-09-07.** Later changes are
+> missing: the 2026-09-11 ATAC rewrite (distance-weighted regulatory
+> potential, 3-dim `[mean, var, detection]` ATAC features, a 4-dim
+> locus-shape descriptor in place of the scalar `openness`, and a 2-layer
+> `ATACEncoder`), the learned gated relation combiner, the Geneformer
+> embedding channel, and the motif relation. The shapes and the overall data
+> flow below still help as an introduction. For current details, see
+> `plan.md` Section 2 and `results.md` Section 4.
+> (Formerly `docs/archive/toy_example.md`.)
+
 This note follows one cell type (K562) through the pipeline. The goal is
 simple: see how raw RNA and ATAC files become a score for
 "does TF *i* regulate gene *j*?"

@@ -602,8 +602,8 @@ Two fresh-context subagents (mine and a concurrent teammate session working
 on the same repo) independently reviewed the codebase for publication
 readiness, playing skeptical reviewer against both an ICLR/ICML-caliber
 methods bar and a PLOS One/Bioinformatics-caliber journal bar. Both
-converged on nearly the same findings (see `critical_review_independent.md`
-at repo root for the full writeup), which is itself a useful signal that
+converged on nearly the same findings (see `docs/critical_review_independent.md`
+for the full writeup), which is itself a useful signal that
 the findings are real rather than an artifact of one review's framing.
 Headline verdict from both: solid, honestly-reported empirical work, not
 publication-ready as-is, better suited to a bioinformatics venue than a
@@ -655,6 +655,25 @@ seeds for the baseline side of the same question. Results will replace the
 single-run point estimates in `results.md` Section 7 and the paper once
 they land.
 
+> **Update (2026-09-18, later the same day; recorded here 2026-09-29):**
+> the 5-seed rerun (seeds 42-46) landed. It shows std ≤ 0.0017 on every
+> tier and metric. It confirmed that MEvD-GRN beats scMultiomeGRN on 5 of 6
+> metrics by margins far above the measured noise. It also showed that
+> perturbation AUROC is a small, real loss (0.9096±0.0004 vs. 0.919), not a
+> near-tie. Full numbers are in `results.md` Section 7, and the paper was
+> updated with them. `motif_graph_only` with the real motif graph also
+> landed (`results.md` Section 2). `gated_relations`, however, was
+> accidentally rerun without `use_motif: true`, so the 3-relation question
+> is still open (Section 10). The 2 extra scMultiomeGRN seeds were still
+> running at the last update, so the baseline side of the comparison is
+> still single-seed.
+>
+> A second, separately spawned review wrote its own report at
+> `.claude/worktrees/agent-ac4cbf373d32c1f24/critical_review.md`. That
+> worktree was never merged into main. It mostly repeats
+> `docs/critical_review_independent.md`. Its one extra point is the
+> dual-evidence-as-selection-metric concern in the next paragraph.
+
 **Confirmed true, not yet fixed (a judgment call, not just an edit):**
 dual-evidence AUPR has been the deciding metric for roughly six major
 project decisions (curriculum protocol chosen and reversed, ATAC fix
@@ -665,3 +684,90 @@ Flagged explicitly as Limitation (2) in the paper. The real fix (a truly
 untouched final-check split, never used for any prior decision) is a
 bigger methodological call than a same-session edit, and is left as an
 open recommendation rather than something unilaterally implemented.
+
+---
+
+## 10. Open items, deferred work, and working notes (2026-09-18 snapshot, merged 2026-09-29)
+
+This section takes in the unique content of the former local-only
+`status.md` TODO tracker (last updated 2026-09-18, removed in the
+2026-09-29 docs cleanup), so open items now live in this one tracked file.
+Where that tracker had since been overtaken by later work, this section
+says so.
+
+**Still open, in priority order:**
+
+1. **Make the recommended configuration the shipped default.** The
+   recommended configuration is `all_at_once` + FM + h384/l2 (Section 3b).
+   `configs/default.yaml` still ships `protocol: sequential`,
+   `hidden_dim: 128`, `use_fm: false` (checked 2026-09-29). To do:
+   (a) set `curriculum.protocol: all_at_once`, `model.use_fm: true`,
+   `model.hidden_dim: 384` (with `n_gnn_layers: 2`) for K562;
+   (b) rerun `results.md` Section 1/2's "current architecture" ablation
+   table at this config, because those sections still show the old
+   307K-param, sequential, no-FM model; (c) re-validate Macrophage/MCF7
+   transfer and joint training at the new config, since all of them were
+   tuned and tested at the old size.
+2. **Motif graph + gated relation combiner.** The motif scan finished on
+   2026-09-12 (noticed 2026-09-18). It took 35 minutes once a ~20x-oversized
+   scan was fixed, and produced 28,204 PWM-backed motif edges, compared with
+   871,450 co-expression and 112,500 TF-candidate edges. As of 2026-09-18
+   the populated `motif_edges.pt` was on Ada
+   (`/share1/.../data/processed/K562/`) and had not yet been synced back to
+   the local repo. `motif_graph_only` has since run (`results.md`
+   Section 2). The `gated_relations` rerun was launched without
+   `use_motif: true`, so whether the combiner does anything useful with 3
+   real relations is still open. The rerun is job
+   2701095, queued as of 2026-09-18. When it lands, make the
+   relation-weight interpretability figure. `use_motif` is still `false` in
+   every shipped config.
+3. **scMultiomeGRN multi-seed.** 2 more seeds were running as of
+   2026-09-18. Until they land, the baseline side of the `results.md`
+   Section 7 comparison is still n=1.
+4. **Open question:** why does the Geneformer transfer effect flip sign
+   depending on which cell type is held out under joint training
+   (Section 6)?
+5. **Methodological call still to be made:** add a truly untouched
+   final-check split, because dual-evidence AUPR has also been used as the
+   selection metric (Section 9).
+
+**Resolved since that tracker's snapshot** (details in Section 9 and
+`docs/critical_review_independent.md`): the `paper/main.tex` body was
+resynced to current numbers, including its stale editorial note; the
+5-seed variance for the headline configuration landed; the `all_at_once`
+split-safety coincidence was fixed with an explicit leak assertion, and
+the unused `data` parameter was dropped from `build_all_at_once_stage`
+and both of its call sites. Other small fixes made the same day for the
+2026-09-18 review:
+- The stale `src/training/curriculum.py::build_all_at_once_stage`
+  docstring, which still claimed "all_at_once beats sequential on every
+  metric", now describes the size-dependent finding.
+- The `docs/figures/architecture_diagram_v3_1` subtitle said 306,691 base
+  params. It now says 315,015, which was verified by instantiating
+  `MEvDGRN` and matches `results.md`/`paper/main.tex`. The +Geneformer
+  figure of 430,471 was already correct. The PNG was re-rendered.
+- The single-seed caveat was added at the top of `results.md`.
+
+**Caveats to keep stating explicitly** (both reviews): MEvD-GRN trains
+45 epochs in total (30 + 15) versus scMultiomeGRN's 2000 per tier, so the
+comparison is not compute-matched. GRNBoost2, RegDiffusion and GMF-GAE
+are unsupervised, RNA-only methods scored on a supervised multi-omic
+benchmark, which makes them a floor rather than peers. The role-aware
+decoder and the gated relation combiner show no measurable ablation gap,
+so frame them as interpretability choices, not accuracy contributions.
+
+**Lower priority / explicitly deferred:** a second foundation model
+(scGPT), more cell types beyond Macrophage/MCF7 (GM12878, HepG2), and the
+K562 scCRISPR angle.
+
+**Standing practice:** sync result artifacts (JSONs, logs) from Ada to the
+local repo *before* writing their numbers into `results.md`, this file, or
+the paper, not after. The 2026-09-18 review found cited numbers that had
+no matching file in the repo.
+
+**Workstream numbering** (used in code comments and older docs):
+Workstream 1 = curriculum protocol (Sections 1.2, 3b); Workstream 2 = ATAC
+pipeline (2a = the RP-weighting rewrite, and the motif-scanning half,
+Sections 2 and 7); Workstream 3 = gated relation combiner (Section 4);
+Workstream 4 = Geneformer embeddings (Section 5); Workstream 5 =
+multi-cell-type transfer and joint training (Section 6).
