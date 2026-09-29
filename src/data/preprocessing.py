@@ -166,9 +166,33 @@ def load_10x_h5(path: str, feature_type: str,
     return X, labels
 
 
+def load_mtx_dir(path: str) -> Tuple[sp.csr_matrix, List[str]]:
+    """Load a MatrixMarket FEATURES x CELLS directory (the layout used by the
+    scMultiomeGRN code: matrix.mtx + barcodes.tsv + peaks.tsv|genes.tsv).
+    `path` may be the directory or the matrix.mtx file itself. Returns
+    (X cells x features CSR float32, feature labels = first column of the
+    features file)."""
+    from scipy.io import mmread
+    d = Path(path)
+    if d.is_file():
+        d = d.parent
+    feat_file = next((d / n for n in ("peaks.tsv", "genes.tsv", "features.tsv", "peaks.bed")
+                      if (d / n).exists()), None)
+    if feat_file is None:
+        raise FileNotFoundError(f"no peaks.tsv/genes.tsv/features.tsv in {d}")
+    names = pd.read_csv(feat_file, sep="\t", header=None, dtype=str)
+    labels = (names.iloc[:, 0] if names.shape[1] < 3 or feat_file.name != "peaks.bed"
+              else names.iloc[:, 0] + ":" + names.iloc[:, 1] + "-" + names.iloc[:, 2])
+    M = mmread(str(d / "matrix.mtx")).tocsc().astype(np.float32)   # features x cells
+    return sp.csr_matrix(M.T), [str(x) for x in labels.tolist()]
+
+
 def load_features_by_cells(path: str) -> Tuple[sp.csr_matrix, List[str]]:
     """Load a FEATURES x CELLS matrix (tab- or comma-delimited); return
-    (X_cells_by_feat CSR float32, feature_names). Row labels = features."""
+    (X_cells_by_feat CSR float32, feature_names). Row labels = features.
+    A MatrixMarket directory (or its matrix.mtx) is also accepted."""
+    if Path(path).is_dir() or str(path).endswith(".mtx"):
+        return load_mtx_dir(path)
     sep = _sniff_delimiter(path)
     df = pd.read_csv(path, sep=sep, index_col=0, engine="c")
     feature_names = [str(f) for f in df.index.tolist()]

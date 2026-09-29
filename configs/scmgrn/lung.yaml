@@ -1,0 +1,44 @@
+# scMultiomeGRN benchmark: human fetal lung (Domcke et al. 2020, GEO GSM4508936).
+# All paths are relative to the benchmark root (--root / $SCMGRN_ROOT; on Ada
+# /share1/$USER/mevd_grn/scmgrn, staged to /scratch inside jobs).
+# Protocol + targets: docs/experiments/scmultiomegrn_generalization.md
+dataset: lung
+genome: hg19
+genome_fasta: raw/genome/hg19.fa
+official_repo: official/ScmultiomeGRN-main
+promoter_file: official/ScmultiomeGRN-main/data_resource/gencode.v19.ProteinCoding_gene_promoter.txt
+motif_zip: official/ScmultiomeGRN-main/data_resource/HOCOMOCOv11.zip
+maestro_refgenes: raw/maestro/GRCh38_refgenes.txt   # official pipeline hard-codes GRCh38
+maestro_decay: 1000                                  # extract_atac_feature(genedistance=1000)
+peak_threshold: 0.1                                  # peaks detected in >10% of cells
+fimo_thresh: 1.0e-4
+tfbs_thresh: 1.0e-6
+split: {seed: 666, n_splits: 10, train_split_rate: 0.8, rest_all_train: true}
+sep_data: sep_data/lung          # <cell_type>/{atac,scrna}/{matrix.mtx,barcodes.tsv,peaks.tsv|genes.tsv}
+graph_dir: graph/lung
+splits_dir: splits/lung
+processed_dir: processed/lung
+results_dir: results/lung
+
+# Directory names = Domcke `cell_type` with spaces -> "_" (as the official code does).
+# Targets: scMultiomeGRN ATAC+scRNA, mean +/- std over folds, "all" (full-matrix)
+# evaluation set. AUROC/AUPR from Supp. Figs S2-S9 (+ main Fig. 3A for lymphoid),
+# accuracy + "initial" TF-interaction counts from Supp. Table S1.
+cell_types:
+  Bronchiolar_and_alveolar_epithelial_cells: {cells: 18988, initial: 2712, auroc: 0.91, auroc_sd: 0.01, aupr: 0.76, aupr_sd: 0.03, acc: 0.849, src: "Fig S2 / Table S1"}
+  Ciliated_epithelial_cells:                 {cells: 1111,  initial: 8503, auroc: 0.93, auroc_sd: 0.00, aupr: 0.75, aupr_sd: 0.00, acc: 0.856, src: "Fig S3 / Table S1"}
+  Lymphatic_endothelial_cells:               {cells: 662,   initial: 1889, auroc: 0.93, auroc_sd: 0.00, aupr: 0.81, aupr_sd: 0.00, acc: 0.847, src: "Fig S4 / Table S1"}
+  Vascular_endothelial_cells:                {cells: 4352,  initial: 9609, auroc: 0.90, auroc_sd: 0.00, aupr: 0.67, aupr_sd: 0.01, acc: 0.830, src: "Fig S5 / Table S1"}
+  Megakaryocytes:                            {cells: 568,   initial: 930,  auroc: 0.92, auroc_sd: 0.00, aupr: 0.78, aupr_sd: 0.01, acc: 0.831, src: "Fig S6 / Table S1"}
+  Myeloid_cells:                             {cells: 1288,  initial: 542,  auroc: 0.95, auroc_sd: 0.00, aupr: 0.85, aupr_sd: 0.00, acc: 0.867, src: "Fig S7 / Table S1"}
+  Neuroendocrine_cells:                      {cells: 544,   initial: 1361, auroc: 0.92, auroc_sd: 0.01, aupr: 0.82, aupr_sd: 0.02, acc: 0.851, src: "Fig S8 / Table S1"}
+  Stromal_cells:                             {cells: 43289, initial: 2104, auroc: 0.93, auroc_sd: 0.01, aupr: 0.80, aupr_sd: 0.03, acc: 0.873, src: "Fig S9 / Table S1"}
+  Lymphoid_cells:                            {cells: 1860,  initial: 613,  auroc: 0.93, auroc_sd: 0.01, aupr: 0.86, aupr_sd: 0.02, acc: 0.864, src: "Fig 3A / Table S1"}
+paper_average: {auroc: 0.924, aupr: 0.790, src: "main text / Fig 2B (mean of 9 cell types)"}
+paper_baselines_average:   # Fig 2B, AUROC / AUPR
+  GENIE3: [0.540, 0.242]
+  DeepWalk: [0.614, 0.292]
+  scMTNI: [0.553, 0.290]
+  SCRIP: [0.638, 0.644]
+  DeepTFni: [0.871, 0.721]
+  GENELink: [0.900, 0.758]

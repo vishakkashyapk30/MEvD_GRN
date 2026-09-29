@@ -1,0 +1,25 @@
+# Local smoke test only: the official repo's demo cell type (PBMC B_naive, hg38),
+# same protocol as lung.yaml with hg38 resources (as in the official demo.ipynb).
+# The smoke test restricts the genome FASTA to a few chromosomes (see
+# docs/experiments/scmultiomegrn_generalization.md), so its ground truth is
+# NOT the demo's 87-node graph. (Standalone, not `inherit`: load_config
+# deep-merges dicts, which would union the lung cell types into this file.)
+dataset: pbmc_demo
+genome: hg38
+genome_fasta: raw/genome/hg38_subset.fa
+official_repo: official/ScmultiomeGRN-main
+promoter_file: official/ScmultiomeGRN-main/data_resource/gencode.v38.ProteinCoding_gene_promoter.txt
+motif_zip: official/ScmultiomeGRN-main/data_resource/HOCOMOCOv11.zip
+maestro_refgenes: raw/maestro/GRCh38_refgenes.txt
+maestro_decay: 1000
+peak_threshold: 0.1
+fimo_thresh: 1.0e-4
+tfbs_thresh: 1.0e-6
+split: {seed: 666, n_splits: 10, train_split_rate: 0.8, rest_all_train: true}
+sep_data: official/ScmultiomeGRN-main/demo
+graph_dir: graph/pbmc_demo
+splits_dir: splits/pbmc_demo
+processed_dir: processed/pbmc_demo
+results_dir: results/pbmc_demo
+cell_types:
+  B_naive: {src: "official demo.ipynb fold 1: test AUROC 0.811 / AUPR 0.814; all AUROC 0.836 / AUPR 0.471"}
