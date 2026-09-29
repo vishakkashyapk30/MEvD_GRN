@@ -189,6 +189,19 @@ def main():
     ]
     res = trainer.run_full_curriculum(splits, stages)
     check("curriculum produced results for all stages", len(res) == 3)
+    held_neg = set()
+    for sp in splits.values():
+        for p in ("val", "test"):
+            held_neg |= gb.edge_set(sp[p]["neg"])
+    check("training negative pool excludes every val/test negative",
+          not (gb.edge_set(trainer.data.negative_pool.cpu()) & held_neg))
+    fresh = MEvDTrainer(MEvDGRN(hidden_dim=hidden, n_gnn_layers=2, dropout=0.2), data, cfg, "cpu")
+    try:
+        fresh.train_stage(stages[0], splits["localization"])
+        guarded = False
+    except RuntimeError:
+        guarded = True
+    check("train_stage refuses to run before restrict_negative_pool", guarded)
     final = trainer.evaluate_split(splits["dual_evidence"]["test"])
     check("final eval AUPR finite", np.isfinite(final["aupr"]))
 

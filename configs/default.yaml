@@ -145,6 +145,11 @@ training:
   focal_alpha: 0.75
   focal_gamma: 2.0
   neg_stage3_ratio: 10
+  # Random training negatives are resampled from data.negative_pool every epoch.
+  # true (fixed, 2026-09-30): every tier's val/test negatives are removed from
+  # that pool first, so no evaluated negative is ever trained on. false
+  # reproduces the pre-fix (leaky) numbers -- use only for that comparison.
+  exclude_eval_negatives: true
 
 evaluation:
   metrics: [auroc, aupr, early_precision, epr]

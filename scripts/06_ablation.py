@@ -191,6 +191,7 @@ def main():
         # positives (dual_evidence excluded -- same held-out-inference
         # treatment as the main model gets, for a fair comparison).
         stage, merged = build_all_at_once_stage(cfg, splits_per_tier)
+        trainer.restrict_negative_pool(splits_per_tier)   # ALL tiers, incl. held-out
         trainer.train_stage(stage, merged)
     else:
         trainer.run_full_curriculum(splits_per_tier, select_stages(cfg, args.ablation))

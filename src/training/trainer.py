@@ -35,9 +35,44 @@ class MEvDTrainer:
         # set_train_positives) before any stage uses hard negatives, so the
         # hard-negative pool never draws on another tier's val/test positives.
         self.train_pos_by_tier: Dict[str, torch.Tensor] = {}
+        # Set by restrict_negative_pool; train_stage refuses to run without it
+        # so no entry point can silently train on held-out negatives.
+        self._neg_pool_restricted = False
 
     def set_train_positives(self, splits_per_tier: Dict[str, dict]) -> None:
         self.train_pos_by_tier = {t: sp["train"]["pos"] for t, sp in splits_per_tier.items()}
+
+    def restrict_negative_pool(self, splits_per_tier: Dict[str, dict]) -> int:
+        """Drop every val/test negative (of ANY tier) from the random-negative pool.
+
+        The split functions partition `negative_pool` into disjoint train/val/test
+        negatives, but `_build_train_edges` resamples random negatives from the
+        pool every epoch. Without this, the val/test negatives -- including those
+        of held-out tiers that are scored zero-shot on val+test -- are shown to
+        the model as label-0 training examples, inflating every held-out metric.
+        Pass ALL tiers' splits, not only the trained ones.
+
+        `training.exclude_eval_negatives: false` keeps the old (leaky) pool, only
+        for reproducing numbers produced before this fix. Returns #edges removed.
+        """
+        self._neg_pool_restricted = True
+        if not self.tcfg.get("exclude_eval_negatives", True):
+            print("  [negatives] WARNING: exclude_eval_negatives=false -- training draws "
+                  "from the FULL pool, including val/test negatives (legacy, leaky)", flush=True)
+            return 0
+        held = [sp[p]["neg"] for sp in splits_per_tier.values() for p in ("val", "test")
+                if p in sp and sp[p]["neg"].shape[1]]
+        pool = self.data.negative_pool
+        if not held or pool.shape[1] == 0:
+            return 0
+        held = torch.cat(held, dim=1).to(pool.device)
+        n = int(max(pool.max().item(), held.max().item())) + 1
+        keep = ~torch.isin(pool[0] * n + pool[1], held[0] * n + held[1])
+        self.data.negative_pool = pool[:, keep]
+        removed = int((~keep).sum().item())
+        print(f"  [negatives] removed {removed:,} val/test negatives from the training pool "
+              f"({pool.shape[1]:,} -> {self.data.negative_pool.shape[1]:,})", flush=True)
+        return removed
 
     # ------------------------------------------------------------------ helpers
     def _encode(self):
@@ -102,6 +137,9 @@ class MEvDTrainer:
     # ------------------------------------------------------------------ stage
     def train_stage(self, stage: CurriculumStage, splits: dict,
                     replay: Optional[List[torch.Tensor]] = None) -> dict:
+        if not self._neg_pool_restricted:
+            raise RuntimeError("call trainer.restrict_negative_pool(splits_per_tier) before "
+                               "train_stage, or val/test negatives leak into training")
         self.model.set_encoder_frozen(stage.freeze_encoder)
         params = [p for p in self.model.parameters() if p.requires_grad]
         opt = torch.optim.AdamW(params, lr=stage.learning_rate,
@@ -168,6 +206,7 @@ class MEvDTrainer:
     def run_full_curriculum(self, splits_per_tier: Dict[str, dict],
                             stages: List[CurriculumStage]) -> dict:
         self.set_train_positives(splits_per_tier)
+        self.restrict_negative_pool(splits_per_tier)
         use_replay = bool(self.cfg["curriculum"].get("use_memory_replay", False))
         results = {}
         seen_train_pos: List[torch.Tensor] = []
