@@ -43,6 +43,7 @@ def _build_trainer(cfg_path: str, model, device: str):
     splits = load_splits("data/splits", cell_type, "localization")
     trainer = MEvDTrainer(model, data, cfg, device)
     trainer.set_train_positives({"localization": splits})
+    trainer.restrict_negative_pool({"localization": splits})
     return trainer, splits, cell_type
 
 

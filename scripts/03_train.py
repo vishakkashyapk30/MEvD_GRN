@@ -96,6 +96,7 @@ def main():
         print(f"[curriculum] protocol=all_at_once; training jointly on tiers "
               f"{sorted(main_tiers)}; held out as zero-shot inference: {held_out_tiers}",
               flush=True)
+        trainer.restrict_negative_pool(splits_per_tier)   # ALL tiers, incl. held-out
         curr_results = {stage.name: trainer.train_stage(stage, merged)}
     else:
         stages = [s for s in stages_from_config(cfg) if s.evidence_tier in main_tiers]
