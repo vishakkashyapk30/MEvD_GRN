@@ -1,5 +1,16 @@
 # MEvD-GRN — Implementation Progress (Session 1)
 
+> **Archived handoff note from 2026-07-01/02.** Its numbers come from the
+> first prototype. They predate every later fix (EPR normalization,
+> hard-negative leakage, the global hierarchy-safe split, the ATAC rewrite,
+> seeded model init), so they are superseded. Don't compare them with the root
+> `results.md`. Files it mentions have moved. `MEvD_GRN_plan_v2.md` is now
+> `docs/archive/2026-07-20_mevd_grn_plan_v2_original_spec.md`, `ada.md` is
+> `docs/reference/ada.md`, and the v1 `MEvD_GRN_plan.md` was never committed.
+> Section 8's baseline-strategy notes (supervision and modality brackets, no
+> BEELINE-style benchmark for this setting) are still useful background.
+> (Formerly `docs/archive/progress_log_1.md`.)
+
 > Handoff note for the next LLM/session. This captures everything done so far so you
 > don't lose context. Date: 2026-07-01/02. Author: previous Claude session.
 

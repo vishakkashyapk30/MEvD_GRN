@@ -1,5 +1,9 @@
 # Independent Critical Review — MEvD-GRN
 
+*Written 2026-09-18 and moved from the repo root to `docs/` on 2026-09-29.
+File and line references below are as of 2026-09-18. The items still open
+are tracked in `plan.md` Section 10.*
+
 Reviewer stance: skeptical, code-first. Every claim below was checked against
 the actual source in `src/`, the committed configs/results, and — where
 possible — reproduced or falsified with a throwaway script against the real

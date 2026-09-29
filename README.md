@@ -3,9 +3,19 @@
 A compact dual-modality GNN that predicts TF→target regulatory edges from
 scRNA-seq + scATAC-seq, trained via a **three-stage evidence-aware curriculum**
 over SC-MO-GRN-DB's tiered reference networks
-(localization → perturbation → dual-evidence). See `plan.md` for the current
-project roadmap and results, `docs/archive/MEvD_GRN_plan_v2_superseded.md` for
-the original full theory/spec, and `results.md` for the latest numbers.
+(localization → perturbation → dual-evidence). That was the original design.
+The current protocol trains on localization and perturbation and holds
+dual-evidence out as a zero-shot test. The recommended configuration is in
+`results.md` Sections 3 and 7.
+
+**Documentation map:**
+- `results.md`: the latest numbers, and the source of truth when documents disagree.
+- `plan.md`: the living roadmap, meaning why each change was made and what is still open (Section 10).
+- `docs/README.md`: index of all supporting docs (design rationale and
+  citations, architecture diagrams, the independent critical review, weekly
+  updates, and the archive, which includes the original full theory spec
+  `docs/archive/2026-07-20_mevd_grn_plan_v2_original_spec.md`).
+- `paper/`: the LaTeX manuscript. Build instructions are in `paper/README.md`.
 
 ---
 
@@ -59,7 +69,9 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-We use **1 GPU** (model is ~125K params, trains in minutes); request 10 CPUs to
+We use **1 GPU** (model is ~125K params, trains in minutes; that was the
+original prototype, and the current sizes are 315,015 params for the base
+model and 3.26M for the recommended h384/l2 configuration, per `results.md`); request 10 CPUs to
 respect Ada's 1:10 GPU:CPU rule, `research` account, `medium` QoS.
 
 > Local dev note: this machine has multiple Python interpreters; the one with
@@ -128,14 +140,23 @@ test splits via `evaluate_scorer_on_splits`:
 ## 4. Repo layout
 
 ```
-configs/      default + per-cell-type YAML (k562, esc); *_localtest are smoke tests
-src/data/     preprocessing (real text-matrix loaders), graph_builder, dataset
-src/models/   encoders, gated fusion, GraphSAGE backbone, bilinear decoder, MEvDGRN
+configs/      default + per-cell-type YAML (k562, esc, macrophage, mcf7, *_fm);
+              *_localtest/*_fast* are smoke tests or short schedules;
+              sweep/ = model-size sweep
+src/data/     preprocessing (real text-matrix loaders), graph_builder, dataset,
+              motif_scan
+src/models/   encoders, fusion, GraphSAGE backbone, decoder, MEvDGRN
 src/training/ curriculum, sampler (random + hard negatives), losses, trainer
 src/evaluation/ metrics (AUPR/AUROC/EP/EPR), benchmarker
-scripts/      00_sanity_check, 01_download_data.sh, 02_preprocess, 03_train,
-              04_evaluate, 06_ablation
-slurm/        train.sh, ablation.sh
+src/baselines/ GRNBoost2, RegDiffusion, GMF-GAE, scMultiomeGRN wrappers
+scripts/      00_sanity_check … 13_scmultiomegrn_full_ddp (preprocess, train,
+              evaluate, baselines, ablations, transfer, FM embeddings,
+              joint training, figures)
+slurm/        train.sh, ablation.sh, baselines.sh
+results/      numeric-results JSONs are tracked; checkpoints/logs are not
+paper/        LaTeX manuscript (main.tex, main.pdf, figures/)
+docs/         supporting docs, see docs/README.md
+plan.md       living roadmap        results.md   current numbers
 ```
 
 ---

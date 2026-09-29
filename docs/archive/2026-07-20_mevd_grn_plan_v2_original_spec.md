@@ -1,6 +1,15 @@
 # MEvD-GRN: Multi-Evidence Distillation for Gene Regulatory Network Inference
 ## Complete Theory & Implementation Plan
 
+> **Archived original spec (v2), in the repo since the initial implementation
+> commit on 2026-07-20.** Superseded by the root `plan.md` (the living roadmap).
+> Many specifics changed once real data was used: the data formats, the
+> 2-stage curriculum with dual-evidence held out zero-shot, the ATAC
+> featurization, model size, and the added FM embedding and motif relation.
+> The root `README.md` "Design notes" and `plan.md` Sections 1-6 list the
+> changes. Keep this file for the original theory and rationale.
+> (Formerly `docs/archive/MEvD_GRN_plan_v2_superseded.md`.)
+
 ---
 **Target agent**: Claude in VS Code (or equivalent)
 **Format**: Theory first, then numbered implementation steps per module. No code in this document.

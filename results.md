@@ -1,8 +1,9 @@
 # MEvD-GRN Results
 
-Last updated: 2026-09-11. This file replaces the earlier results catalog,
+Last updated: 2026-09-18 (first written 2026-09-11). This file replaces the
+earlier results catalog,
 which is preserved for the record at
-`docs/archive/results_2026-09-07_pre_bugfix.md`. **Do not compare numbers
+`docs/archive/2026-09-07_results_pre_bugfix.md`. **Do not compare numbers
 across the two files directly** — two real bugs (an EPR metric error and a
 hard-negative train/test leakage bug, see Section 1) were fixed in between,
 and several numbers moved substantially as a result. See `plan.md` for the
@@ -23,6 +24,15 @@ claims — a difference described as "essentially noise-level" has not
 actually been measured against a real noise floor. Treat every close call
 in this file (anything within a few points of AUPR) as a plausible
 direction, not a settled result, until repeated-seed runs exist.
+
+> **Update (2026-09-18):** two qualifications to the caveat above.
+> (1) There is now one exception. The recommended headline configuration
+> (`all_at_once` + FM + h384/l2) has a real 5-seed mean±std (seeds 42-46,
+> std ≤ 0.0017), reported in Section 7. The scMultiomeGRN baseline and every
+> other table here are still n=1. (2) Before the 2026-09-18 fix, MEvD-GRN's
+> training scripts never seeded model weight initialization, so runs made
+> before then were "single run, unseeded" rather than truly "seed 42"
+> (`plan.md` Section 9).
 
 ---
 
@@ -429,12 +439,18 @@ methods.
 ## 8. Where to look for more detail
 
 - `plan.md` — the living roadmap: why each change was made, what's still
-  open, effort/risk estimates.
+  open (Section 10), effort/risk estimates.
+- `docs/README.md` — index of all supporting documentation.
 - `docs/figures/architecture_diagram_v3_1.png` — current architecture diagram.
 - `docs/citations.md` — design rationale + literature citations per
   component.
-- `docs/archive/` — pre-2026-09-11 results, presentations, and the original
-  full theory spec, kept for historical reference. Numbers there predate
-  the bugfixes in Section 0 and should not be treated as current.
-- `paper/main.tex` — draft manuscript (needs updating with the numbers in
-  this file — it still has the pre-bugfix headline numbers as of writing).
+- `docs/critical_review_independent.md` — the 2026-09-18 independent
+  critical review and its final status update.
+- `docs/archive/` — the pre-bugfix results catalog
+  (`2026-09-07_results_pre_bugfix.md`), the original full theory spec, an
+  early progress log and a pipeline walkthrough, kept for historical
+  reference. Numbers there predate the bugfixes in Section 0 and should not
+  be treated as current. Older weekly-update slide text is in
+  `docs/weekly_updates/`, with the same caveat.
+- `paper/main.tex` — manuscript. Its body was resynced to this file on
+  2026-09-18, including the 5-seed headline numbers (`plan.md` Section 9).

@@ -1,4 +1,10 @@
-# Results catalog (K562)
+# Results catalog (K562), pre-bugfix snapshot of 2026-09-07
+
+> **Archived, superseded.** Every number here predates the 2026-09-11 EPR
+> normalization fix and hard-negative leakage fix, and later fixes too (the
+> ATAC rewrite, and seeded model initialization on 2026-09-18). Current
+> numbers are in the root `results.md`. Its Section 0 explains the fixes. Do not
+> compare the two files directly. (Formerly `docs/archive/results_2026-09-07_pre_bugfix.md`.)
 
 All recorded runs of MEvD-GRN, ablations, and baselines on K562.
 Numbers are copied from `results/K562_results.json`, `results/ablations/*.json`,
@@ -213,6 +219,11 @@ On this short schedule:
 4. Fast graph/edge results need a full-schedule confirmation before changing the default model.
 5. Only K562 is fully reported here. ESC / transfer runs are not in these JSON files yet.
 
+
+*Archivist's note (2026-09-29): the original file ended with the unlabeled
+table below, kept verbatim. Its scMultiomeGRN Pert/Dual values (0.523 /
+0.504) do not match Sections 2.1 and 2.5 above (0.423 / 0.384), and its source
+is not recorded. Treat it as unverified.*
 
 | Method | Loc | Pert | Dual |
 |---|---:|---:|---:|
