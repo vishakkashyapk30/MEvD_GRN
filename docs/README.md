@@ -64,6 +64,13 @@ and theses in `~/research/`. It has a section per paper, a catalogue of which
 datasets each paper trains and evaluates on (and whether paired RNA+ATAC
 exists), the reported numbers MeVD-GRN must beat, and protocol caveats.
 
+`multiome_grn_benchmark_consensus.md` (2026-09-30) is based on a web survey of
+about 130 papers across journals, ML venues, preprints and benchmarks. It
+recommends the benchmark MeVD-GRN should use: 10x `pbmc_granulocyte_sorted_10k`
+Multiome with LINGER-style Cistrome blood ChIP labels. It also gives the
+numbers to beat, the protocol a supervised model needs, and the risks. The
+per-paper logs are in `lit_survey/`.
+
 ### `experiments/`
 One runbook per competitor benchmark. It records the dataset, the competitor's
 exact protocol, the target numbers, the files that implement it, and the Ada
