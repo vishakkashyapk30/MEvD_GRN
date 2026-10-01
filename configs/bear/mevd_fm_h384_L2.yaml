@@ -1,0 +1,10 @@
+# Regime L2 (s6.2): train ONLY on the non-specific SC-MO-GRN-DB ChIP compendium
+# (RN005 human / RN006 mouse), every GT TF removed; one model scores all GT TFs.
+inherit: mevd_fm_h384.yaml
+data:
+  evidence_tiers: [compendium]
+  tier_hierarchy: [compendium]
+curriculum:
+  main_curriculum_tiers: [compendium]
+bear:
+  regime: L2
