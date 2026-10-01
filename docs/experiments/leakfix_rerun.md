@@ -1,9 +1,8 @@
 # K562 headline rerun after the negative-sampling leak fix
 
-**Status (2026-10-01 20:55 IST):** all 10 fixed runs are done, 5 seeds each.
-The legacy all_at_once sanity run (task 10) is done. The legacy
-full_curriculum run (task 11) is still running. Ada job 467 is
-`slurm/leakfix_compare.sh`.
+**Status (2026-10-02 04:00 IST): complete.** Ada job 467
+(`slurm/leakfix_compare.sh`) ran 10 fixed runs (5 seeds × 2 protocols) and
+2 legacy-pool sanity runs (seed 42).
 
 **Sanity check passed:** with `exclude_eval_negatives: false`, the rerun
 reproduces the paper's seed-42 numbers **exactly**, to 4 decimals on all 6
@@ -49,11 +48,35 @@ Dual evidence is never trained on: it is scored zero-shot on val+test.
    - This reverses the paper's current recommendation (`all_at_once`) and
      supports making the curriculum the headline model again (option (a) in
      the session notes).
-4. **Open checks before the paper changes:**
-   - The legacy-pool full_curriculum run (task 11). It shows whether the
-     curriculum's numbers were also inflated before the fix, which they
-     likely were, and so whether the reversal comes from the fix rather than
-     from model size.
+4. **The legacy curriculum run settles the cause (seed 42, AUPR/AUROC):**
+
+   | Run | loc | pert | dual |
+   |---|---|---|---|
+   | full_curriculum, legacy pool | 0.7509/0.7682 | 0.8329/0.9633 | 0.9619/0.9913 |
+   | full_curriculum, fixed | 0.7423/0.7589 | 0.8162/0.9601 | 0.9549/0.9899 |
+   | all_at_once, legacy pool | 0.9679/0.9611 | 0.6984/0.9100 | 0.9526/0.9883 |
+   | all_at_once, fixed | 0.9540/0.9481 | 0.5788/0.8827 | 0.9063/0.9791 |
+
+   - **The leak barely moved the curriculum** (pert −0.017, dual −0.007) but
+     hit `all_at_once` hard (pert −0.120, dual −0.046).
+   - A plausible mechanism: `build_all_at_once_stage` turns hard negatives
+     off, so `all_at_once` draws *all* its negatives from the random pool,
+     which is the leaky part. The curriculum takes half its negatives from
+     tier-hierarchy hard negatives.
+   - **Even before the fix, the curriculum already beat `all_at_once`** on
+     perturbation and dual evidence at this size.
+     `results/ablations/with_fm_h384l2_K562.json` (sequential + FM + h384/l2,
+     pre-fix) gives pert 0.834 and dual 0.963, against all_at_once's 0.696 and
+     0.952.
+   - **The 2026-09-18 claim in results.md §3/§7, that `all_at_once` "wins all
+     three tiers outright, including perturbation", is contradicted by
+     results.md's own table (line 342).** `all_at_once` only wins
+     localization.
+   - So the paper's recommendation of `all_at_once` rested on a misread
+     comparison, and the leak widened the gap. The curriculum should be the
+     headline model. Its open weakness is localization forgetting
+     (0.745 vs 0.954).
+5. **Open checks before the paper changes:**
    - The second, still-unfixed leak: the TF-candidate graph is built with
      held-out positives excluded (`02_preprocess.py`; see
      `scmultiomegrn_generalization.md` §10).

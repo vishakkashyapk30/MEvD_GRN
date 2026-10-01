@@ -94,6 +94,7 @@ slides of 04 and 07 show slightly different ranges (10-21 July and 23 Aug - 5 Se
 | 06 | 2026-08-02 to 2026-08-22 | `.pdf` + `.md` (slide text, formerly `docs/archive/presentation.md`) |
 | 07 | 2026-08-22 to 2026-09-05 | `.pdf` + `.md` (slide text, formerly `docs/archive/presentation_5th_sept_2026.md`) |
 | 08 | 2026-09-06 to 2026-09-12 | `.pdf` + `.md` (long-form write-up, formerly `presentation_this_week.md`) |
+| 09 | 2026-09-27 to 2026-10-03 | `27-sept-to-3rd-oct-2026.md` (long-form write-up; named as requested rather than by the scheme above). It covers the leak fix and rerun, the benchmark survey, PBMC10k vs LINGER, BEAR-GRN, and the novelty study. |
 
 The PDFs are the Canva decks as delivered. The 06 and 07 `.md` files carry
 pre-bugfix numbers. The 08 `.md` has numbers as of 2026-09-12, except its
