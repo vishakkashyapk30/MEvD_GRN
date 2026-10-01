@@ -11,7 +11,7 @@
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=10
-#SBATCH --mem-per-cpu=3000
+#SBATCH --mem=120000M          # LINGER OOM-killed at 30 GB (job 819); BEAR-GRN measured up to 89 GB at 5k cells. QoS cap is 125 GB per user.
 #SBATCH --time=3-00:00:00
 #SBATCH --output=logs/pbmc_linger_%j.out
 set -euo pipefail

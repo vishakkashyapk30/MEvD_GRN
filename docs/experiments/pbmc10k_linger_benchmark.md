@@ -466,3 +466,75 @@ Published (LINGER Table S7, its own candidate genes):
 - GENIE3: AUROC 0.5387, AUPR ratio 1.1686
 - PIDC: AUROC 0.5292, AUPR ratio 1.1717
 
+## 11. Full-grid results (2026-10-02 04:00 IST; job 474 finished all 220 units)
+
+**What finished and what didn't:**
+- **Still `expressed`-space only.** The LINGER re-run (job 819) was
+  OOM-killed at 30 GB. It was resubmitted as **2399** with `--mem=120000M`,
+  which is close to the per-user QoS cap of 125 GB. That is why BEAR-GRN's
+  work array (2400 → 2401) now waits for it.
+- **GRNBoost2 (475)** had scored only 1 of 19 datasets at compile time.
+
+**Headline (unchanged from §10):** fm_h384, CollecTRI, TF-disjoint, 5 seeds
+gives **AUROC 0.7343 ± 0.0046** and AUPR ratio 2.135. LINGER published AUROC
+0.7143 and AUPR ratio 2.2526.
+
+**New findings from the full grid:**
+- **ATAC matters much more without Geneformer.**
+  - The base model (no FM) scores 0.6701 ± 0.0083, and only 0.5438 ± 0.0111
+    as RNA-only: ATAC adds **+0.126 AUROC**.
+  - With FM, ATAC adds only +0.015, within noise. The FM gene embeddings seem
+    to carry much of what ATAC provides.
+  - So the dual-modality claim holds for the base model, and is redundant
+    with Geneformer.
+- **Degree-matched training negatives are essential.** With uniform
+  negatives (`fm_h384_uniformneg`) the score drops to 0.5973 ± 0.0136 from
+  0.7343.
+- **CollecTRI labels beat DoRothEA A–B:** 0.7343 vs 0.6578 ± 0.0175. Without
+  ATAC, DoRothEA gives 0.6597.
+- **The random edge split scores lower than the TF-disjoint split:**
+  0.6686 ± 0.0147.
+- **The target-disjoint split still fails** (0.455 / 0.458). This is open.
+- **Trivial baselines all score 0.50–0.59,** so MeVD-GRN's signal is well
+  beyond hub structure.
+
+### Auto-generated summary (scripts/29)
+
+Mean over LINGER Table S7's 19 datasets; mean +- std over seeds.
+
+| space | method | source | regime | AUROC | AUPR ratio | datasets | seeds |
+|---|---|---|---|---|---|---|---|
+| expressed | fm_h384 | collectri | tf | 0.7343 +- 0.0046 | 2.135 | 19 | 5 |
+| expressed | fm_h384_rnaonly | collectri | tf | 0.7197 +- 0.0301 | 2.178 | 19 | 5 |
+| expressed | base | collectri | tf | 0.6701 +- 0.0083 | 1.722 | 19 | 5 |
+| expressed | fm_h384 | collectri | random | 0.6686 +- 0.0147 | 1.987 | 19 | 5 |
+| expressed | fm_h384_rnaonly | dorothea_ab | tf | 0.6597 +- 0.0294 | 1.914 | 19 | 5 |
+| expressed | fm_h384 | dorothea_ab | tf | 0.6578 +- 0.0175 | 1.933 | 19 | 5 |
+| expressed | fm_h384_rnaonly | collectri | random | 0.6207 +- 0.0210 | 1.871 | 19 | 5 |
+| expressed | fm_h384_uniformneg | collectri | tf | 0.5973 +- 0.0136 | 1.698 | 19 | 5 |
+| expressed | geneid | collectri | random | 0.5851 +- 0.0000 | 1.576 | 19 | 1 |
+| expressed | pearson | unsupervised | none | 0.5839 +- 0.0000 | 1.392 | 19 | 1 |
+| expressed | degree | collectri | random | 0.5816 +- 0.0000 | 1.405 | 19 | 1 |
+| expressed | degree | collectri | tf | 0.5791 +- 0.0000 | 1.386 | 19 | 1 |
+| expressed | geneid | collectri | tf | 0.5782 +- 0.0000 | 1.541 | 19 | 1 |
+| expressed | degree | dorothea_ab | random | 0.5750 +- 0.0000 | 1.443 | 19 | 1 |
+| expressed | degree | dorothea_ab | tf | 0.5749 +- 0.0000 | 1.440 | 19 | 1 |
+| expressed | geneid | dorothea_ab | random | 0.5746 +- 0.0000 | 1.527 | 19 | 1 |
+| expressed | geneid | dorothea_ab | tf | 0.5702 +- 0.0000 | 1.514 | 19 | 1 |
+| expressed | degree | collectri | target | 0.5677 +- 0.0000 | 1.357 | 19 | 1 |
+| expressed | degree | dorothea_ab | target | 0.5628 +- 0.0000 | 1.379 | 19 | 1 |
+| expressed | grnboost2 | unsupervised | none | 0.5508 +- 0.0000 | 1.113 | 1 | 1 |
+| expressed | base_rnaonly | collectri | tf | 0.5438 +- 0.0111 | 1.337 | 19 | 5 |
+| expressed | pearson_signed | unsupervised | none | 0.5116 +- 0.0000 | 1.299 | 19 | 1 |
+| expressed | geneid | dorothea_ab | target | 0.5026 +- 0.0000 | 1.166 | 19 | 1 |
+| expressed | geneid | collectri | target | 0.5007 +- 0.0000 | 1.184 | 19 | 1 |
+| expressed | fm_h384_rnaonly | collectri | target | 0.4575 +- 0.0501 | 1.263 | 19 | 5 |
+| expressed | fm_h384 | collectri | target | 0.4546 +- 0.0332 | 1.233 | 19 | 5 |
+
+Published (LINGER Table S7, its own candidate genes):
+- LINGER: AUROC 0.7143, AUPR ratio 2.2526
+- SCENIC+: AUROC 0.5481, AUPR ratio 1.2905
+- PCC: AUROC 0.5408, AUPR ratio 1.2287
+- GENIE3: AUROC 0.5387, AUPR ratio 1.1686
+- PIDC: AUROC 0.5292, AUPR ratio 1.1717
+
