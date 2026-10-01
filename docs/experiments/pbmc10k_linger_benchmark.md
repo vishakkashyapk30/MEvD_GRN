@@ -394,3 +394,75 @@ single-seed numbers, not the headline.**
 - **The `linger_tg` candidate space** needs the LINGER re-run. Until then, every number is on the
   `expressed` space (25,477 genes), which differs from LINGER's own TG rows.
 - **KnockTF and other supporting ground truths** (LINGER Table S8) are not built.
+
+## 10. Interim results (2026-10-01 20:45 IST; job 474 at ~86/220 units)
+
+**Status:** the headline grid (`fm_h384` and `fm_h384_rnaonly`, CollecTRI,
+TF-disjoint, 4 cell types × 5 seeds) is complete. The candidate space here
+is `expressed`, not LINGER's own target set: that set (`linger_tg`) comes
+from the LINGER re-run, job 819, which is still queued.
+
+**Treat these as provisional.** The published LINGER numbers were computed
+on LINGER's own candidate genes, so the comparison becomes like-for-like
+only after the `linger_tg` re-score. GRNBoost2 (job 475) hasn't run yet.
+
+### Headline: MeVD-GRN fm_h384, CollecTRI labels, TF-disjoint, 5 seeds, LINGER's 19 datasets
+- **AUROC 0.7343 ± 0.0046**, against LINGER's published 0.7143.
+- **AUPR ratio 2.135**, against LINGER's published 2.2526. On this metric
+  MeVD-GRN is lower.
+
+### ATAC ablation (fm_h384_rnaonly)
+- AUROC 0.7197 ± 0.0301, AUPR ratio 2.178.
+- With ATAC, AUROC is +0.015 higher. That is within the RNA-only seed spread
+  (std 0.030). AUPR ratio is slightly lower with ATAC.
+- So far, then, ATAC's contribution is **not significant**. This matches the
+  literature (see multiome_grn_benchmark_consensus.md §5).
+
+### Trivial baselines
+- All score AUROC 0.50–0.59: degree-only, gene-ID, and Pearson.
+- MeVD-GRN's 0.734 is therefore well above what hub structure alone explains.
+
+### Target-disjoint regime fails
+- `fm_h384` AUROC 0.455; `fm_h384_rnaonly` 0.458. Both are below random.
+- The model does not generalise to target genes it never saw as targets.
+- A likely mechanism, not yet verified: the model learns per-gene
+  "is a target" priors, so unseen targets get ranked low. This needs
+  investigation before any claim about target-level generalisation.
+
+### Random-split regime
+- `fm_h384` scored 0.649 on 1 seed and 15 datasets so far. It is still
+  running.
+
+### Full auto-generated summary (scripts/29)
+
+Mean over LINGER Table S7's 19 datasets; mean +- std over seeds.
+
+| space | method | source | regime | AUROC | AUPR ratio | datasets | seeds |
+|---|---|---|---|---|---|---|---|
+| expressed | fm_h384 | collectri | tf | 0.7343 +- 0.0046 | 2.135 | 19 | 5 |
+| expressed | fm_h384_rnaonly | collectri | tf | 0.7197 +- 0.0301 | 2.178 | 19 | 5 |
+| expressed | fm_h384 | collectri | random | 0.6487 +- 0.0000 | 1.984 | 15 | 1 |
+| expressed | geneid | collectri | random | 0.5851 +- 0.0000 | 1.576 | 19 | 1 |
+| expressed | pearson | unsupervised | none | 0.5839 +- 0.0000 | 1.392 | 19 | 1 |
+| expressed | degree | collectri | random | 0.5816 +- 0.0000 | 1.405 | 19 | 1 |
+| expressed | degree | collectri | tf | 0.5791 +- 0.0000 | 1.386 | 19 | 1 |
+| expressed | geneid | collectri | tf | 0.5782 +- 0.0000 | 1.541 | 19 | 1 |
+| expressed | degree | dorothea_ab | random | 0.5750 +- 0.0000 | 1.443 | 19 | 1 |
+| expressed | degree | dorothea_ab | tf | 0.5749 +- 0.0000 | 1.440 | 19 | 1 |
+| expressed | geneid | dorothea_ab | random | 0.5746 +- 0.0000 | 1.527 | 19 | 1 |
+| expressed | geneid | dorothea_ab | tf | 0.5702 +- 0.0000 | 1.514 | 19 | 1 |
+| expressed | degree | collectri | target | 0.5677 +- 0.0000 | 1.357 | 19 | 1 |
+| expressed | degree | dorothea_ab | target | 0.5628 +- 0.0000 | 1.379 | 19 | 1 |
+| expressed | pearson_signed | unsupervised | none | 0.5116 +- 0.0000 | 1.299 | 19 | 1 |
+| expressed | geneid | dorothea_ab | target | 0.5026 +- 0.0000 | 1.166 | 19 | 1 |
+| expressed | geneid | collectri | target | 0.5007 +- 0.0000 | 1.184 | 19 | 1 |
+| expressed | fm_h384_rnaonly | collectri | target | 0.4575 +- 0.0501 | 1.263 | 19 | 5 |
+| expressed | fm_h384 | collectri | target | 0.4546 +- 0.0332 | 1.233 | 19 | 5 |
+
+Published (LINGER Table S7, its own candidate genes):
+- LINGER: AUROC 0.7143, AUPR ratio 2.2526
+- SCENIC+: AUROC 0.5481, AUPR ratio 1.2905
+- PCC: AUROC 0.5408, AUPR ratio 1.2287
+- GENIE3: AUROC 0.5387, AUPR ratio 1.1686
+- PIDC: AUROC 0.5292, AUPR ratio 1.1717
+
