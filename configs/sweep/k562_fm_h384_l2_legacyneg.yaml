@@ -1,0 +1,6 @@
+# Same as k562_fm_h384_l2.yaml, but with the PRE-2026-09-30 (leaky) negative
+# pool: val/test negatives stay in the random-negative training pool. Only for
+# the before/after leak comparison (slurm/leakfix_compare.sh); never a result.
+inherit: k562_fm_h384_l2.yaml
+training:
+  exclude_eval_negatives: false
