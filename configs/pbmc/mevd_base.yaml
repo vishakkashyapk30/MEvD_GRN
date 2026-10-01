@@ -1,0 +1,39 @@
+# MeVD-GRN on PBMC10k / LINGER-Cistrome: base model (h128/l2, no FM).
+# Every value was fixed a priori (2026-10-01), before any PBMC result existed.
+# See docs/experiments/pbmc10k_linger_benchmark.md s4.
+inherit: ../default.yaml
+
+data:
+  evidence_tiers: [label]
+  tier_hierarchy: [label]
+  coexpr_knn_k: 20
+  tf_candidate_topk: 500
+  prior_exclude_positives: false   # label-free graphs (never built from any label set)
+  signature_dim: 50
+  atac_window_bp: 100000
+  normalize_total: true
+  target_sum: 10000
+  log1p: true
+
+model:
+  use_motif: false                 # off everywhere (s4.4): DoRothEA A/B is partly TFBS-supported;
+                                   # ChIP binding would be partly encoded by a motif scan
+
+curriculum:
+  protocol: all_at_once
+  main_curriculum_tiers: [label]
+  use_hard_negatives: false        # undefined with one tier
+  use_memory_replay: false
+  stages:
+    - {name: SingleTier, evidence_tier: label, n_epochs: 300, lr: 1.0e-3, neg_ratio: 5, freeze_encoder: false}
+
+training:
+  eval_every: 5
+  early_stopping_patience: 20      # checks (= 100 epochs without val-AUPR improvement)
+  exclude_eval_negatives: true     # the negative-sampling leak fix stays on
+
+negatives:
+  mode: degree_matched             # degree_matched | uniform (fm_h384_uniformneg variant)
+  pool_mult: 4                     # pool = pool_mult * neg_ratio negatives per train positive
+  uniform_frac: 0.2                # share of pool targets drawn uniformly
+  val_neg_ratio: 20                # uniform same-TF val/test negatives per positive
