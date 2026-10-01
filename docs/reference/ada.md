@@ -1,3 +1,19 @@
+== Post-upgrade changes (verified 2026-10-01; these override the older sections below) ==
+
+* '''Login:''' <code>ssh vishakkashyap.k@ada-gw1</code>. The old host ada.iiit.ac.in now only prints a notice and rejects key logins.
+* '''Home:''' /home2/$USER, 50 GB (26 GB used on 2026-10-01). It is visible on compute nodes.
+* '''Python:''' Miniforge is at ~/miniforge3, with the env <code>mevd-grn</code> (python 3.11, torch 2.9.1+cu126, torch_geometric 2.8.0). The repo is at ~/mevd_grn (branch leak-fix-and-benchmarks). The old ~/miniconda3 no longer exists.
+* '''/share1:''' 100 GB quota (16.9 GB used). It is visible on the gateway but '''not on compute nodes'''. Jobs stage data with <code>scp/rsync ada-gw1:/share1/$USER/...</code>; compute-to-gateway SSH works.
+* '''Node-local:''' /scratch (1.8 TB) and /ssd_scratch exist on compute nodes.
+* '''Internet:''' compute nodes have internet access (pypi reachable).
+* '''Slurm:'''
+** The partitions short and long are gone. Use <code>-p u22</code> (default; DefaultTime 1 h, so always set --time).
+** Use <code>-A research --qos=medium</code>. Medium QoS allows 40 CPUs, 4 GPUs, and 20 running and 20 submitted jobs per user, with a 4-day maximum walltime.
+** For RTX 2080 Ti nodes, use <code>--constraint=2080ti</code>. The tagged nodes are gnode043-063, 065-092 and similar.
+** GPU driver 570.211 (CUDA 12.8).
+** Pass <code>-n 1</code> to srun/sbatch, otherwise two tasks may launch.
+* '''Modules:''' u22/cuda/{11.7,11.8,12.1,12.4,12.9} and u22/python/3.12.4. The pip torch wheels bring their own CUDA runtime, so no CUDA module is needed.
+
 == Overview ==
 Ada cluster consists of ninety two Boston SYS-7048GR-TR nodes equipped with dual Intel Xeon E5-2640 v4 processors, providing 40 virtual cores per node, 128 GB of 2400MT/s DDR4 ECC RAM and four Nvidia GeForce GTX 1080 Ti GPUs, providing  14336 CUDA cores, and 44 GB of GDDR5X VRAM or four Nvidia GeForce RTX 2080 Ti GPUs providing 17408 cores, and 44 GB of GDDR6 VRAM.  The nodes are connected to each other via a Gigabit Ethernet network. All compute nodes have a 1.8 TB local scratch and a 960 GB local SSD scratch. The compute nodes are running Ubuntu 18.04 LTS. [https://slurm.schedmd.com/ SLURM] software is used as a job scheduler and resource manager. The aggregate theoretical peak performance of Ada is 70.66 TFLOPS (CPU) + 4588 TFLOPS (FP32 GPU).
 
