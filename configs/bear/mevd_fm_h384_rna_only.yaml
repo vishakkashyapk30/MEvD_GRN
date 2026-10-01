@@ -1,0 +1,4 @@
+# Modality ablation: headline with ATAC features and ATAC-derived openness zeroed.
+inherit: mevd_fm_h384.yaml
+bear:
+  zero_atac: true

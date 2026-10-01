@@ -1,0 +1,8 @@
+# Local smoke test only (tiny budget).
+inherit: mevd_base.yaml
+curriculum:
+  stages:
+    - {name: AllAtOnce, evidence_tier: all, n_epochs: 4, lr: 1.0e-3, neg_ratio: 2, freeze_encoder: false}
+training:
+  eval_every: 2
+  early_stopping_patience: 2

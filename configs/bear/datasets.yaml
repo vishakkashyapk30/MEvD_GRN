@@ -1,0 +1,133 @@
+# BEAR-GRN benchmark datasets (docs/experiments/bear_grn_benchmark.md s2-3).
+# Paths are relative to $BEAR_ROOT (= --root), which mirrors the Zenodo zips
+# (10.5281/zenodo.20704929) as unpacked by scripts/20_bear_download.py.
+#
+# labels: training-label sources for regime L1 (in-cell-type, TF-disjoint);
+#   tier name -> GT file. These ARE the BEAR GT files; held-out TFs are removed
+#   from every one of them per fold (src/benchmarks/bear_protocol.py).
+# gts: the scored ground truths (BEAR's four definitions where they exist,
+#   plus core / cell-type-exclusive for the human sets).
+gtf:
+  human: gtf/gencode.v38.annotation.gtf.gz      # hg38 (BEAR human data are hg38)
+  mouse: gtf/gencode.vM25.annotation.gtf.gz     # mm10
+# regime L2 training labels: SC-MO-GRN-DB non-specific ChIP compendia
+# (https://scmogrndb.psu.edu/RN_TSV/RN005.tsv, RN006.tsv), minus every GT TF.
+compendium:
+  human: networks/RN005.tsv
+  mouse: networks/RN006.tsv
+datasets:
+  K562:
+    species: human
+    rna: INPUT.DATA/K562/subsampled_RNA_K562_human_filtered.csv
+    atac: INPUT.DATA/K562/subsampled_ATAC_K562_human_filtered.csv
+    labels:
+      localization: GROUND.TRUTHS/filtered_RN117_K562.tsv     # ChIP (RN117)
+      perturbation: GROUND.TRUTHS/filtered_RN118_K562.tsv     # KO (RN118)
+    gts:
+      ChIP: GROUND.TRUTHS/filtered_RN117_K562.tsv
+      KO: GROUND.TRUTHS.KO/filtered_RN117_K562.tsv
+      Union: GROUND.TRUTHS.UNION/filtered_RN117_K562.tsv
+      Intersection: GROUND.TRUTHS.INETRSECTION/filtered_RN117_K562.tsv
+      Core: CORE_GROUND_TRUTH/filtered_RN117_K562.tsv
+      CellTypeExclusive: CELL.TYPE.SPECIFIC.GROUND.TRUTH/filtered_RN117_K562.tsv
+  Macrophage_S1:
+    species: human
+    rna: INPUT.DATA/Macrophage_S1/subsampled_RNA_Macrophase_buffer1_filtered.csv
+    atac: INPUT.DATA/Macrophage_S1/subsampled_ATAC_Macrophase_buffer1_filtered.csv
+    labels:
+      localization: GROUND.TRUTHS/filtered_RN204_Buffer1.tsv  # ChIP (RN204)
+    gts:
+      ChIP: GROUND.TRUTHS/filtered_RN204_Buffer1.tsv
+      Core: CORE_GROUND_TRUTH/filtered_RN204_Buffer1.tsv
+      CellTypeExclusive: CELL.TYPE.SPECIFIC.GROUND.TRUTH/filtered_RN204_Buffer1.tsv
+  Macrophage_S2:
+    species: human
+    rna: INPUT.DATA/Macrophage_S2/subsampled_RNA_Macrophase_buffer2_filtered.csv
+    atac: INPUT.DATA/Macrophage_S2/subsampled_ATAC_Macrophase_buffer2_filtered.csv
+    labels:
+      localization: GROUND.TRUTHS/filtered_RN204_Buffer2.tsv
+    gts:
+      ChIP: GROUND.TRUTHS/filtered_RN204_Buffer2.tsv          # paper uses Buffer2 (s4)
+      Core: CORE_GROUND_TRUTH/filtered_RN204_Buffer2.tsv
+      CellTypeExclusive: CELL.TYPE.SPECIFIC.GROUND.TRUTH/filtered_RN204_Buffer2.tsv
+  iPS:                         # phase 2
+    species: human
+    rna: INPUT.DATA/iPS/filtered_multiomics_common_RNA_iPS_cell_L2.csv
+    atac: INPUT.DATA/iPS/filtered_multiomics_common_ATAC_iPS_cell_L2.csv
+    labels:
+      localization: GROUND.TRUTHS/filtered_RN000_iPS.tsv
+    gts:
+      ChIP: GROUND.TRUTHS/filtered_RN000_iPS.tsv
+      Core: CORE_GROUND_TRUTH/filtered_RN000_iPS.tsv
+      CellTypeExclusive: CELL.TYPE.SPECIFIC.GROUND.TRUTH/filtered_RN000_iPS.tsv
+  mESC_E7.5_rep1:                # phase 2 (mouse; ATAC CSV is 2-2.5 GB)
+    species: mouse
+    rna: INPUT.DATA/mESC_E7.5_rep1/subsampled_RNA_all_cells_E7.5_rep1.csv
+    atac: INPUT.DATA/mESC_E7.5_rep1/subsampled_ATAC_all_cells_E7.5_rep1.csv
+    labels:
+      localization: GROUND.TRUTHS/filtered_RN111_E7.5_rep1.tsv     # ChIP (RN111)
+      perturbation: GROUND.TRUTHS/filtered_RN112_E7.5_rep1.tsv     # LOGOF (RN112)
+    gts:
+      ChIP: GROUND.TRUTHS/filtered_RN111_E7.5_rep1.tsv
+      KO: GROUND.TRUTHS.KO/filtered_RN111_E7.5_rep1.tsv
+      Union: GROUND.TRUTHS.UNION/filtered_RN111_E7.5_rep1.tsv
+      Intersection: GROUND.TRUTHS.INETRSECTION/filtered_RN111_E7.5_rep1.tsv
+  mESC_E7.5_rep2:                # phase 2 (mouse; ATAC CSV is 2-2.5 GB)
+    species: mouse
+    rna: INPUT.DATA/mESC_E7.5_rep2/subsampled_RNA_all_cells_E7.5_rep2.csv
+    atac: INPUT.DATA/mESC_E7.5_rep2/subsampled_ATAC_all_cells_E7.5_rep2.csv
+    labels:
+      localization: GROUND.TRUTHS/filtered_RN111_E7.5_rep2.tsv     # ChIP (RN111)
+      perturbation: GROUND.TRUTHS/filtered_RN112_E7.5_rep2.tsv     # LOGOF (RN112)
+    gts:
+      ChIP: GROUND.TRUTHS/filtered_RN111_E7.5_rep2.tsv
+      KO: GROUND.TRUTHS.KO/filtered_RN111_E7.5_rep2.tsv
+      Union: GROUND.TRUTHS.UNION/filtered_RN111_E7.5_rep2.tsv
+      Intersection: GROUND.TRUTHS.INETRSECTION/filtered_RN111_E7.5_rep2.tsv
+  mESC_E8.5_rep1:                # phase 2 (mouse; ATAC CSV is 2-2.5 GB)
+    species: mouse
+    rna: INPUT.DATA/mESC_E8.5_rep1/subsampled_RNA_all_cells_E8.5_rep1.csv
+    atac: INPUT.DATA/mESC_E8.5_rep1/subsampled_ATAC_all_cells_E8.5_rep1.csv
+    labels:
+      localization: GROUND.TRUTHS/filtered_RN111_E8.5_rep1.tsv     # ChIP (RN111)
+      perturbation: GROUND.TRUTHS/filtered_RN112_E8.5_rep1.tsv     # LOGOF (RN112)
+    gts:
+      ChIP: GROUND.TRUTHS/filtered_RN111_E8.5_rep1.tsv
+      KO: GROUND.TRUTHS.KO/filtered_RN111_E8.5_rep1.tsv
+      Union: GROUND.TRUTHS.UNION/filtered_RN111_E8.5_rep1.tsv
+      Intersection: GROUND.TRUTHS.INETRSECTION/filtered_RN111_E8.5_rep1.tsv
+  mESC_E8.5_rep2:                # phase 2 (mouse; ATAC CSV is 2-2.5 GB)
+    species: mouse
+    rna: INPUT.DATA/mESC_E8.5_rep2/subsampled_RNA_all_cells_E8.5_rep2.csv
+    atac: INPUT.DATA/mESC_E8.5_rep2/subsampled_ATAC_all_cells_E8.5_rep2.csv
+    labels:
+      localization: GROUND.TRUTHS/filtered_RN111_E8.5_rep2.tsv     # ChIP (RN111)
+      perturbation: GROUND.TRUTHS/filtered_RN112_E8.5_rep2.tsv     # LOGOF (RN112)
+    gts:
+      ChIP: GROUND.TRUTHS/filtered_RN111_E8.5_rep2.tsv
+      KO: GROUND.TRUTHS.KO/filtered_RN111_E8.5_rep2.tsv
+      Union: GROUND.TRUTHS.UNION/filtered_RN111_E8.5_rep2.tsv
+      Intersection: GROUND.TRUTHS.INETRSECTION/filtered_RN111_E8.5_rep2.tsv
+  Naive_mESC:               # phase 2 (unpaired, CCA-paired by BEAR)
+    species: mouse
+    rna: INPUT.DATA/Naive_mESC/subsampled_RNA_Unpaired_Naive_mESC.csv
+    atac: INPUT.DATA/Naive_mESC/subsampled_ATAC_Unpaired_Naive_mESC.csv
+    labels:
+      localization: GROUND.TRUTHS/filtered_RN111_Naive_mESC.tsv
+      perturbation: GROUND.TRUTHS/filtered_RN112_Naive_mESC.tsv
+    gts:
+      ChIP: GROUND.TRUTHS/filtered_RN111_Naive_mESC.tsv
+      KO: GROUND.TRUTHS.KO/filtered_RN111_Naive_mESC.tsv
+      Union: GROUND.TRUTHS.UNION/filtered_RN111_Naive_mESC.tsv
+      Intersection: GROUND.TRUTHS.INETRSECTION/filtered_RN111_Naive_mESC.tsv
+# BEAR dataset name -> INFERRED.GRNS directory name
+inferred_dir:
+  K562: K562
+  Macrophage_S1: Macrophage_S1
+  Macrophage_S2: Macrophage_S2
+  iPS: iPS
+  mESC_E7.5_rep1: E7.5_rep1
+  mESC_E7.5_rep2: E7.5_rep2
+  mESC_E8.5_rep1: E8.5_rep1
+  mESC_E8.5_rep2: E8.5_rep2
+  Naive_mESC: Naive_mESC

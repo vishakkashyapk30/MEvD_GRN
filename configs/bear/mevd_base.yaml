@@ -1,0 +1,40 @@
+# MeVD-GRN under the BEAR-GRN protocol: base model (h128/l2, no FM).
+# Pre-registered (docs/experiments/bear_grn_benchmark.md s6) before any result.
+inherit: ../default.yaml
+
+data:
+  # tiers actually present are set per dataset by scripts/22 from datasets.yaml
+  evidence_tiers: [localization, perturbation]
+  tier_hierarchy: [localization, perturbation]
+  coexpr_knn_k: 20
+  tf_candidate_topk: 500
+  prior_exclude_positives: false   # label-free graphs (s6.5)
+  # BEAR's INPUT.DATA is already QC-filtered: no further cell/gene filtering
+  min_genes_per_cell: 0
+  min_cells_per_gene: 1
+  min_peaks_per_cell: 0
+
+model:
+  use_motif: false
+
+curriculum:
+  protocol: all_at_once            # recommended config (results.md s3/s7)
+  main_curriculum_tiers: [localization, perturbation]
+  use_hard_negatives: false        # undefined once tiers are merged
+  use_memory_replay: false
+  stages:
+    - {name: AllAtOnce, evidence_tier: all, n_epochs: 60, lr: 1.0e-3, neg_ratio: 2, freeze_encoder: false}
+
+training:
+  eval_every: 5
+  early_stopping_patience: 4       # 20 epochs without val-AUPR gain
+  exclude_eval_negatives: true     # leak fix stays on
+
+bear:
+  n_folds: 5                       # TF-disjoint cross-fitting folds (s6.1)
+  val_tf_frac: 0.15                # inner TF-disjoint validation split (s6.4)
+  negatives: degree_matched        # degree_matched | uniform (s6.3)
+  neg_pool_mult: 2                 # pool = mult x neg_ratio x n_train_pos ...
+  neg_pool_max_frac: 0.5           # ... capped at this fraction of all non-positive training-TF pairs
+  val_neg_ratio: 5
+  zero_atac: false                 # true = RNA-only modality ablation
