@@ -1,0 +1,40 @@
+{
+  "ablation": "all_at_once",
+  "cell_type": "K562",
+  "tag": "fm_h384l2_legacyneg_seed42",
+  "n_params": 3257479,
+  "hidden_dim": 384,
+  "n_gnn_layers": 2,
+  "key_tier": "dual_evidence",
+  "trained_tiers": [
+    "localization",
+    "perturbation"
+  ],
+  "results": {
+    "localization": {
+      "auroc": 0.9611419184494903,
+      "aupr": 0.9678681753354222,
+      "early_precision": 0.8942346572875977,
+      "epr": 1.6596848681057446,
+      "n_pos": 175237,
+      "n_total": 325237
+    },
+    "perturbation": {
+      "auroc": 0.9099857829565354,
+      "aupr": 0.6983728651334287,
+      "early_precision": 0.6507821083068848,
+      "epr": 3.4838005442134556,
+      "n_pos": 34457,
+      "n_total": 184457
+    },
+    "dual_evidence": {
+      "auroc": 0.988253982735387,
+      "aupr": 0.9525628732412003,
+      "early_precision": 0.8788870573043823,
+      "epr": 5.273322343826294,
+      "n_pos": 7943,
+      "n_total": 47658
+    }
+  },
+  "relation_weights": {}
+}
