@@ -1,0 +1,6 @@
+# Headline (pre-registered): Geneformer FM embeddings + hidden 384 / 2 GNN layers.
+inherit: mevd_base.yaml
+model:
+  use_fm: true
+  hidden_dim: 384
+  n_gnn_layers: 2

@@ -1,0 +1,61 @@
+# PBMC10k Multiome / LINGER-Cistrome benchmark: dataset + protocol.
+# Protocol source: LINGER Benchmk.bm_trans + Supp. Tables S1/S7
+# (docs/experiments/pbmc10k_linger_benchmark.md s1-s3).
+dataset: pbmc10k_multiome
+h5: raw/pbmc_granulocyte_sorted_10k_filtered_feature_bc_matrix.h5
+cell_labels: raw/PBMC_label.txt          # LINGER's label file (9,543 barcodes)
+gtf: raw/gencode.v38.annotation.gtf.gz
+label_files:
+  collectri: labels/collectri_omnipath.tsv
+  dorothea_ab: labels/dorothea_AB_omnipath.tsv
+
+# LINGER cell QC (preprocess.get_adata + tutorial), runbook amendment A1
+qc:
+  max_pct_mt: null           # LingerGRN 1.110 has mt<5%, but it keeps 514/9,543 cells; KEGNI counts = full label file (amendment A1b)
+  rna_min_genes: 200
+  atac_min_peaks: 200
+  min_cells_per_gene: 3
+
+# evaluated cell types: dir name -> LINGER label
+cell_types:
+  classical_monocyte: classical monocytes
+  naive_cd4_t: naive CD4 T cells
+  naive_b: naive B cells
+  mdc: myeloid DC
+
+split:
+  seed: 0
+  ratios: [0.70, 0.15, 0.15]
+
+groundtruth:
+  dir: groundtruth
+  n_top: 1000
+  datasets:   # LINGER Supplementary Table 1; in_linger_table=false where Table S7 is N/A
+    - {id: 5967,  tf: MYC,   cell_type: naive_b}
+    - {id: 8481,  tf: RUNX1, cell_type: mdc}
+    - {id: 40215, tf: IRF4,  cell_type: naive_b}
+    - {id: 41287, tf: STAT1, cell_type: classical_monocyte}
+    - {id: 41288, tf: STAT1, cell_type: classical_monocyte}
+    - {id: 41289, tf: STAT1, cell_type: classical_monocyte}
+    - {id: 41290, tf: STAT1, cell_type: classical_monocyte}
+    - {id: 41301, tf: IRF1,  cell_type: classical_monocyte}
+    - {id: 41302, tf: IRF1,  cell_type: classical_monocyte}
+    - {id: 41303, tf: IRF1,  cell_type: classical_monocyte}
+    - {id: 44092, tf: ETS1,  cell_type: naive_cd4_t}
+    - {id: 44093, tf: ETS1,  cell_type: naive_cd4_t}
+    - {id: 44094, tf: ETS1,  cell_type: naive_cd4_t}
+    - {id: 44097, tf: RUNX1, cell_type: naive_cd4_t}
+    - {id: 44098, tf: FOXP3, cell_type: naive_cd4_t, in_linger_table: false}
+    - {id: 45178, tf: CTCF,  cell_type: naive_b}
+    - {id: 45444, tf: CTCF,  cell_type: classical_monocyte}
+    - {id: 47435, tf: REST,  cell_type: naive_cd4_t}
+    - {id: 81223, tf: RUNX1, cell_type: classical_monocyte}
+    - {id: 85986, tf: SPI1,  cell_type: classical_monocyte}
+
+# LINGER Supplementary Table 7 (cell-type-specific trans regulation), 19 datasets
+targets:
+  LINGER:  {auroc_mean: 0.7143, aupr_ratio_mean: 2.2526}
+  SCENIC+: {auroc_mean: 0.5481, aupr_ratio_mean: 1.2905}
+  PCC:     {auroc_mean: 0.5408, aupr_ratio_mean: 1.2287}
+  GENIE3:  {auroc_mean: 0.5387, aupr_ratio_mean: 1.1686}
+  PIDC:    {auroc_mean: 0.5292, aupr_ratio_mean: 1.1717}

@@ -1,0 +1,4 @@
+# Negative-sampling sensitivity: uniform same-TF training negatives instead of degree-matched.
+inherit: mevd_fm_h384.yaml
+negatives:
+  mode: uniform
