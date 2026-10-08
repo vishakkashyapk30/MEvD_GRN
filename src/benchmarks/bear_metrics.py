@@ -179,7 +179,10 @@ def score_roc_pr(edges: pd.DataFrame, gt: pd.DataFrame, rng: np.random.Generator
     n_neg10 = min(len(pos_idx) * 10, len(neg_idx))
 
     aurocs, auprcs, rands = [], [], []
-    for _ in range(max(1, n_rep)):
+    # When the 10x cap is not binding, the AUPRC sample is the whole negative set,
+    # so AUPRC is deterministic: compute it once (identical value), saving time.
+    pr_fixed = n_neg10 == len(neg_idx)
+    for rep in range(max(1, n_rep)):
         if len(neg_s) < len(pos_s):
             ps, ns = rng.choice(pos_s, size=len(neg_s), replace=False), neg_s
         else:
@@ -188,11 +191,15 @@ def score_roc_pr(edges: pd.DataFrame, gt: pd.DataFrame, rng: np.random.Generator
         x = np.concatenate([ps, ns])
         ok = np.isfinite(x)                       # pROC::roc(na.rm = TRUE)
         aurocs.append(float(roc_auc_score(y[ok], x[ok])))
-        nsel = rng.choice(neg_idx, size=n_neg10, replace=False)
-        auprcs.append(prroc_auc_integral(full[pos_idx], full[nsel]))
-        ru = rng.random(n_tf * n_tg)
-        nsel_r = rng.choice(neg_idx, size=n_neg10, replace=False)
-        rands.append(prroc_auc_integral(ru[pos_idx], ru[nsel_r]))
+        if pr_fixed and rep > 0:
+            auprcs.append(auprcs[0])
+        else:
+            nsel = neg_idx if pr_fixed else rng.choice(neg_idx, size=n_neg10, replace=False)
+            auprcs.append(prroc_auc_integral(full[pos_idx], full[nsel]))
+        if rep < 3:                     # random baseline: 3 draws are plenty (sd ~1e-4)
+            ru = rng.random(n_tf * n_tg)
+            nsel_r = neg_idx if pr_fixed else rng.choice(neg_idx, size=n_neg10, replace=False)
+            rands.append(prroc_auc_integral(ru[pos_idx], ru[nsel_r]))
     res.update({"AUROC": float(np.mean(aurocs)), "AUPRC": float(np.mean(auprcs)),
                 "AUPRC_random": float(np.mean(rands)), "n_rep": int(max(1, n_rep)),
                 "universe_size": int(n_tf * n_tg), "universe_positives": int(len(pos_idx)),

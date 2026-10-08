@@ -1,0 +1,7 @@
+# Local smoke test only: sequential curriculum (ChIP stage -> KO stage), tiny budget.
+inherit: smoke.yaml
+curriculum:
+  protocol: sequential
+  stages:
+    - {name: Stage1_ChIP, evidence_tier: localization, n_epochs: 2, lr: 1.0e-3, neg_ratio: 2, freeze_encoder: false}
+    - {name: Stage2_KO, evidence_tier: perturbation, n_epochs: 2, lr: 3.0e-4, neg_ratio: 2, freeze_encoder: false}

@@ -52,7 +52,8 @@ def write(out_dir: Path, names, src, dst, score, fold=None, meta=None):
 
 def expr_matrix(root: Path, ds_cfg: dict, gene_index: dict) -> np.ndarray:
     """cells x universe-genes, CP10k + log1p (same normalisation as scripts/21)."""
-    X, raw = load_features_by_cells(str(root / ds_cfg["rna"]))
+    from src.benchmarks.bear_data import read_csv_sparse, resolve_input
+    X, raw = read_csv_sparse(resolve_input(root, ds_cfg["rna"]))
     X = _normalize_log(X, {"normalize_total": True, "target_sum": 1e4, "log1p": True})
     names = [extract_symbol(g) for g in raw]
     col = {}

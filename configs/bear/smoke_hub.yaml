@@ -1,0 +1,5 @@
+# Local smoke test only: base model + uniform negatives + hub term, tiny budget.
+inherit: smoke.yaml
+bear:
+  negatives: uniform
+  hub_term: true

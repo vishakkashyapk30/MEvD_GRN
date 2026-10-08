@@ -22,9 +22,70 @@ import numpy as np
 import pandas as pd
 import torch
 
+import contextlib
+
+import scipy.sparse as sp
+
 from src.data import graph_builder as gb
+from src.data import preprocessing as _pp
 from src.data.preprocessing import preprocess_scatac, preprocess_scrna
 from src.utils.io import save_json
+
+
+def resolve_input(root: Path, rel: str) -> str:
+    """Path of an INPUT.DATA member: the extracted file if present, else
+    'zip:<root>/zips/INPUT.DATA.zip.sparse::<rel>' (member kept compressed by
+    scripts/20 --no_extract, so a 2.5 GB CSV never lands on disk)."""
+    p = Path(root) / rel
+    if p.exists():
+        return str(p)
+    sp_zip = Path(root) / "zips" / "INPUT.DATA.zip.sparse"
+    if sp_zip.exists():
+        import zipfile
+        with zipfile.ZipFile(sp_zip) as z:
+            if rel in z.namelist():
+                return f"zip:{sp_zip}::{rel}"
+    return str(p)
+
+
+def read_csv_sparse(path: str, chunksize: int = 4000):
+    """Features x cells CSV (BEAR INPUT.DATA layout: quoted header of barcodes,
+    first column = feature name) -> (cells x features CSR float32, feature names),
+    parsed in row chunks so a 2.5 GB mouse ATAC matrix never exists densely.
+    `path` may be 'zip:<zipfile>::<member>' (streamed decompression)."""
+    blocks, names = [], []
+    src = path
+    zf = None
+    if str(path).startswith("zip:"):
+        import zipfile
+        zpath, member = str(path)[4:].split("::", 1)
+        zf = zipfile.ZipFile(zpath)
+        src = zf.open(member)
+    for ch in pd.read_csv(src, index_col=0, chunksize=chunksize, engine="c"):
+        names.extend(str(x) for x in ch.index)
+        blocks.append(sp.csr_matrix(ch.to_numpy(dtype=np.float32)))
+    X = sp.vstack(blocks).T.tocsr()                     # cells x features
+    if zf is not None:
+        zf.close()
+    return X, names
+
+
+@contextlib.contextmanager
+def chunked_csv_loading():
+    """Route src.data.preprocessing's CSV loading through read_csv_sparse (only
+    for *.csv paths) without editing the shared module."""
+    orig = _pp.load_features_by_cells
+
+    def patched(path):
+        if str(path).endswith(".csv"):
+            return read_csv_sparse(str(path))
+        return orig(path)
+
+    _pp.load_features_by_cells = patched
+    try:
+        yield
+    finally:
+        _pp.load_features_by_cells = orig
 
 
 def read_gt_pairs(path: str) -> pd.DataFrame:
@@ -55,11 +116,12 @@ def prepare_dataset(ds_cfg: dict, root: Path, out_dir: Path, pcfg: dict, gtf_pat
     openness}.npy, gene_index.json, tf_indices.json, {coexpr,tf_candidate,motif}_edges.pt,
     negative_pool.pt (empty placeholder), labels/*.pt, gts/*.pt, summary.json."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    rna_path = str(root / ds_cfg["rna"])
-    atac_path = str(root / ds_cfg["atac"]) if ds_cfg.get("atac") else None
+    rna_path = resolve_input(root, ds_cfg["rna"])
+    atac_path = resolve_input(root, ds_cfg["atac"]) if ds_cfg.get("atac") else None
 
     # 1. RNA (BEAR's QC'd cells; our normalisation: CP10k + log1p)
-    rna_feats, rna_names, _hvg, rna_sig = preprocess_scrna(rna_path, pcfg)
+    with chunked_csv_loading():
+        rna_feats, rna_names, _hvg, rna_sig = preprocess_scrna(rna_path, pcfg)
     universe = list(rna_names)                        # post-QC RNA genes, in file order
     gene_index = {g: i for i, g in enumerate(universe)}
 
@@ -84,7 +146,8 @@ def prepare_dataset(ds_cfg: dict, root: Path, out_dir: Path, pcfg: dict, gtf_pat
     gcfg = dict(pcfg)
     gcfg["genome"] = genome
     gcfg["atac"] = dict(pcfg.get("atac", {}), gtf_path=gtf_path)
-    atac_feats, openness, _top = preprocess_scatac(atac_path, universe, gene_index, gcfg)
+    with chunked_csv_loading():
+        atac_feats, openness, top_peaks = preprocess_scatac(atac_path, universe, gene_index, gcfg)
 
     # 4. message-passing graphs: NO labels anywhere
     coexpr = gb.build_coexpression_graph(rna_sig, k=int(pcfg.get("coexpr_knn_k", 20)))
@@ -103,6 +166,9 @@ def prepare_dataset(ds_cfg: dict, root: Path, out_dir: Path, pcfg: dict, gtf_pat
     torch.save(tf_cand, out_dir / "tf_candidate_edges.pt")
     torch.save(torch.zeros((2, 0), dtype=torch.long), out_dir / "motif_edges.pt")
     torch.save(torch.zeros((2, 0), dtype=torch.long), out_dir / "negative_pool.pt")
+    # per-gene top-K RP-weighted peaks (chrom, start, end) for the motif pair features (s12.6 M3)
+    save_json({str(g): [list(map(str, p)) for p in pk] for g, pk in top_peaks.items()},
+              out_dir / "gene_top_peaks.json")
 
     (out_dir / "labels").mkdir(exist_ok=True)
     (out_dir / "gts").mkdir(exist_ok=True)
@@ -127,6 +193,10 @@ def prepare_dataset(ds_cfg: dict, root: Path, out_dir: Path, pcfg: dict, gtf_pat
         "coexpr_edges": int(coexpr.shape[1]), "tf_candidate_edges": int(tf_cand.shape[1]),
         "labels": label_sizes, "gts": gt_sizes,
         "label_free_graphs": True,     # build_prior_graph called with evidence=None
+        # zero-leak guard fields (read by the shared training-entry guard)
+        "prior_exclude_positives": False,
+        "motif_exclude_positives": False,
+        "prior_exclude_positives": False,   # read by src/training/leak_guard.py
         "regime": "L2" if compendium else "L1", "compendium": compendium,
     }
     save_json(summary, out_dir / "summary.json")

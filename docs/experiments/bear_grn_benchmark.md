@@ -503,6 +503,247 @@ Reading (preliminary, 1 seed):
   any signal beyond hubness exists.
 
 
+### 10.3 Hub-controlled check: is there signal beyond target in-degree? (2026-10-08, K562, CPU)
+
+**Question.** §10.2 showed MeVD-GRN below the TF-disjoint in-degree ranker on ChIP. Does it carry any
+signal beyond that prior?
+
+**Inputs (all local, no retraining).**
+- MeVD-GRN `results/K562/mevd_fm_h384/seed42/grn.tsv.gz`, the §10.2 run. It is the only MeVD-GRN
+  K562 run on disk; the 5-seed Ada runs are not reachable. **n = 1 seed.**
+- `baseline_indegree/seed42`. Its fold partition is identical to the MeVD-GRN run's (`meta.json` folds
+  equal), so each edge's in-degree is the target's in-degree among that fold's *training* TFs.
+- `baseline_pearson/seed0`, and uniform random scores, as controls.
+
+**Method.** Scripts are in `~/.cache/local_runs/scripts/`: `bear_hub_control.py`, `bear_per_tf.py`,
+`bear_tf_level.py`. Outputs are in `~/.cache/local_runs/bear_hub/`.
+1. **Residual scores, scored with BEAR's own metric** (`bear_metrics.score_roc_pr`, the scripts/24
+   call, 5 draws, rng 43).
+   - `resid_lin`: per fold, logit(score) minus its OLS fit on a cubic in log1p(in-degree).
+   - `within_stratum`: per fold, the score's percentile within its in-degree stratum (0, then 20
+     quantile bins of the non-zero in-degrees).
+   - Both are shifted to be > 0, because BEAR takes |score| and unscored pairs are 0.
+   - The same transforms are applied to |Pearson r| and to random scores. The random rows are the
+     dense-output floor, i.e. the "coverage" floor of §10.1.
+2. **Per-TF target ranking.** For each GT TF with ≥10 positives and ≥10 negatives among its in-space
+   pairs, the AUROC of its own row: raw, and as a percentile within 20 in-degree bins of that row.
+   This removes TF-level score differences, which the pooled BEAR metric keeps.
+
+**Pooled BEAR metric (ROC on the method's in-space edges, PR on the full universe):**
+
+| K562 GT | MeVD raw AUROC / AUPRC | MeVD in-degree residual (lin) | MeVD within in-degree stratum | in-degree ranker | \|Pearson r\| within stratum | random scores (dense floor) |
+|---|---|---|---|---|---|---|
+| ChIP | 0.602 / 0.468 | 0.512 / 0.440 | 0.519 / 0.435 | **0.652 / 0.484** | 0.502 / 0.432 | 0.500 / 0.431 |
+| KO | 0.540 / 0.123 | 0.477 / 0.120 | 0.487 / 0.121 | **0.569 / 0.134** | 0.490 / 0.121 | 0.499 / 0.122 |
+| Union | **0.634 / 0.347** | 0.565 / 0.322 | 0.572 / 0.320 | 0.626 / 0.343 | 0.495 / 0.300 | 0.500 / 0.303 |
+| Intersection | 0.356 / 0.089 | 0.264 / 0.088 | 0.275 / 0.088 | **0.553 / 0.100** | 0.469 / 0.092 | 0.505 / 0.094 |
+| Core | **0.665 / 0.169** | 0.642 / 0.159 | 0.644 / 0.154 | 0.577 / 0.148 | 0.473 / 0.128 | 0.498 / 0.134 |
+| CellTypeExclusive | **0.634 / 0.348** | 0.565 / 0.324 | 0.572 / 0.322 | 0.626 / 0.345 | 0.495 / 0.303 | 0.500 / 0.305 |
+
+(The raw MeVD-GRN row reproduces §10.2 exactly, e.g. ChIP 0.6017 / 0.4677. Uniform-universe random
+AUPRC is 0.331 / 0.160 / 0.244 / 0.120 / 0.105 / 0.253.)
+
+**Per-TF target ranking (mean AUROC over TFs):**
+
+| K562 GT | TFs | MeVD raw | in-degree ranker | \|Pearson r\| | MeVD within in-degree bins | share of TFs > 0.5 (within bins) |
+|---|---|---|---|---|---|---|
+| ChIP | 129 / 150 | 0.720 | **0.765** | 0.510 | 0.523 | 67% |
+| KO | 93 / 96 | 0.611 | **0.613** | 0.491 | 0.519 | 55% |
+| Union | 203 / 226 | 0.707 | **0.725** | 0.505 | 0.543 | 67% |
+| Intersection | 17 / 20 | 0.544 | **0.644** | 0.492 | 0.388 | 18% |
+| Core | 17 / 24 | 0.633 | **0.652** | 0.499 | 0.530 | 65% |
+
+**Within in-degree strata, pooled over all in-space pairs** (n-weighted mean AUROC over 20-21 strata):
+- ChIP: MeVD 0.510, Pearson 0.502. MeVD's signal is concentrated in the highest-in-degree strata
+  (0.535 and 0.548 in the top two; 0.497-0.515 elsewhere).
+- Union: MeVD 0.571 (0.53-0.60 in every stratum), Pearson 0.494.
+- Core: MeVD 0.645, Pearson 0.472.
+- KO: MeVD 0.500.
+- Intersection: MeVD 0.285.
+
+**Reading (n = 1 seed):**
+1. **For ranking each TF's targets, MeVD-GRN is a slightly noisier copy of the in-degree ranker.**
+   - Per TF it is below in-degree on every GT.
+   - Within in-degree bins it keeps a small, consistent positive residual on ChIP, KO, Union and Core
+     (0.52-0.54 AUROC; about two thirds of TFs above 0.5). That is real but small.
+   - On ChIP, the pooled AUPRC beyond in-degree is 0.435-0.440, against a dense floor of 0.431.
+2. **The larger pooled residuals on Union / Core / CellTypeExclusive (AUROC 0.57-0.64)** come mostly
+   from how the score scale differs *between* TFs: per TF the residual is only 0.53-0.54.
+   - A TF's mean score does not track its GT density (Spearman -0.20 to +0.31, none significant), so
+     this is not a simple TF-hub prior. The mechanism is unresolved.
+   - It should not be described as target-level regulatory signal.
+3. **Intersection is anti-correlated** beyond in-degree (pooled 0.26-0.28; per TF 0.39, only 3 of 17 TFs
+   above 0.5). It is the clearest failure. The training labels are 99% ChIP (§10.2), so the model ranks
+   "binding but not KO-responsive" targets above the ChIP∩KO ones.
+4. |Pearson r| carries no signal beyond in-degree on any GT (0.47-0.50).
+5. **Claim that survives:** on K562, MeVD-GRN's margin over BEAR's methods is the transferable
+   target-hub prior, plus a small within-hub residual (per-TF AUROC +0.02 to +0.04 over chance within
+   in-degree bins). It does not beat a TF-disjoint in-degree ranker at ranking any TF's targets. Repeat
+   this on the 5-seed Ada outputs, and on Macrophage, before quoting it.
+
+## 12. Pre-registration: "fairly beat LINGER" (written 2026-10-09 ~01:00 IST, before any new run)
+
+New mandate (user via coordinator, 2026-10-08/09): BEAR-GRN is THE benchmark for MeVD-GRN; the
+goal is to properly and fairly beat LINGER, BEAR's overall #1. Ada is locked, so everything runs on
+the laptop (RTX 4060 8 GB shared with the PBMC/K562 queue, 22 GB RAM, 16 cores, ~6.7 GB free disk).
+Everything below is fixed **now**, before any of the runs it governs. Changes after this point are
+logged in s12.10 with a reason and are flagged in the results.
+
+### 12.1 Coverage (item 1)
+All 9 BEAR datasets: K562, Macrophage_S1, Macrophage_S2, iPS, mESC_E7.5_rep1/rep2,
+mESC_E8.5_rep1/rep2, Naive_mESC. Every GT BEAR defines: ChIP for all; KO, Union, Intersection for
+K562 and the 5 mouse sets. Core and CellTypeExclusive (human only, Supp Fig 12, no tables) are
+scored as secondary. If a dataset cannot be processed locally (disk/RAM), it is reported as
+missing with the reason, never silently dropped.
+
+### 12.2 Development vs held-out datasets
+- **K562 is the development dataset.** It has already been looked at (s10). The model choice in
+  s12.6 is made on K562 only, and only with TF-disjoint inner-validation metrics (never BEAR scores).
+- **The other 8 datasets are held out.** No MeVD-GRN run is started on them until the configuration
+  is frozen (s12.6). K562 numbers are always reported, but flagged "dev".
+
+### 12.3 Scoring (item 2)
+The verified port (s8) of BEAR's code: AUROC (own in-space edges, 1:1), AUPRC (full GT-TF x GT-target
+universe, unscored = 0, 1:10), AUPRC_random, top-10k precision/recall/F1 (on every GT, not only ChIP).
+**[decision]** Every method, including the released ones, is scored with `n_rep = 20` draws of the
+1:1 / 1:10 subsamples (mean), so AUROC differences are not RNG artefacts. The paper's single-draw
+values are shown alongside for the released methods. Stability (Jaccard of the top 10% across
+BEAR's 5 cell subsamples, ported code) and a modality-perturbation check are run where feasible
+(s12.8); the stability inputs are `.rds` and need `pyreadr` (not installed); if that fails they are
+reported as not done.
+
+### 12.4 Comparison (item 3)
+Against the **released** outputs of all 9 BEAR methods (Zenodo `INFERRED.GRNS`), scored by the
+same code. LINGER is the named target; "best other method" = best of the other 8 per dataset x GT x metric.
+
+### 12.5 No label overlap with evaluated TFs (item 4)
+- **L1 (main):** TF-disjoint 5-fold cross-fitting (s6.1). Every scored TF is unseen in training;
+  its labels are removed from every tier. Inner validation = 15% of the training TFs.
+- **L2 (strict):** training labels = SC-MO-GRN-DB non-specific ChIP compendium only (RN005 human /
+  RN006 mouse), with every TF of every GT of the dataset removed; one model scores all GT TFs.
+  L2 is the closest analogue to LINGER (external data only, no cell-type labels).
+
+### 12.6 Model (items 7, 8) and how the headline is chosen
+Candidates, all with label-free graphs (`prior_exclude_positives: false`), the negative-leak fix
+(`exclude_eval_negatives: true`), all_at_once over the dataset's label tiers, Geneformer + h384/l2:
+- **M0** = `fm_h384` (s6, degree-matched negatives) - the configuration of s10.2.
+- **M1** = M0 with **natural (uniform) negatives**. Reason: BEAR scores the natural TF x gene
+  distribution, where target hubness is predictive; degree-matched negatives train that signal
+  away (s10.3 shows MeVD-GRN below the in-degree ranker). The in-degree baseline (s12.7) is the
+  guard against crediting hubness to the model.
+- **M2** = M1 + **hub term**: the decoder adds `w * log1p(indeg_train(target))`, where indeg_train
+  is the target's in-degree among the *current fold's training TFs* (the same quantity as the
+  in-degree baseline; leak-free by construction).
+- **M3** = M2 + **TF-motif pair features**: for each (TF, gene), the best JASPAR 2024 PWM log-odds
+  score of the TF (relative to the PWM maximum) in the gene's top-5 RP-weighted accessible peaks,
+  the number of those peaks with a hit >= 0.8 x max, and a has-motif indicator. Every BEAR method
+  uses TF motifs; ChIP/KO GTs are not motif-derived, so this is not circular.
+- M2/M3 are implemented by subclassing MEvDGRN in `src/benchmarks/bear_model.py` (no shared-file edits).
+
+**Selection rule (fixed now).** On K562, seed 42, all 5 folds, compare M0-M3 by the mean over folds of
+the **TF-disjoint inner-validation AUPR on the natural distribution** (all validation-TF x gene pairs;
+labels = union of the label tiers). Choose the most complex model whose inner-val AUPR exceeds the
+next simpler one by >= 0.005; otherwise keep the simpler. The chosen model is the **headline** and
+is frozen for all datasets, seeds and regimes. Early stopping in every variant uses the same
+natural-distribution inner-val AUPR. (This replaces s6.4's 1:5 degree-matched validation negatives,
+which made inner-val AUPR incomparable across negative schemes.)
+
+### 12.7 Mandatory baselines (item 5), on every dataset x GT
+in-degree (5 seeds, the headline's fold partitions), coverage, |Pearson r|, GRNBoost2. **A win over
+LINGER counts only if MeVD-GRN also beats in-degree and coverage** on the same metric. Hub control
+(s10.3 method): MeVD-GRN's in-degree residual (`resid_lin`) and within-in-degree-stratum scores,
+pooled BEAR metric, plus per-TF AUROC within in-degree bins.
+
+### 12.8 Output network size (item 6), ablations (item 8), modality check
+- **Primary rule (fixed): dense** - score every (TF node in the RNA gene list) x (RNA gene) pair,
+  self-pairs excluded, as LINGER does (LINGER emits a dense TF x gene matrix).
+- **Sensitivity:** the top-N in-space edges with N = LINGER's in-space edge count for that dataset x
+  GT, and with N = the median of the 8 released methods.
+- **Ablations** (headline vs one change, 3 seeds 42-44, on K562, Macrophage_S1, mESC_E7.5_rep1):
+  without ATAC (`zero_atac`: ATAC features + openness zeroed), without Geneformer (`use_fm: false`,
+  same h384/l2), sequential curriculum (ChIP stage then KO stage; K562 and mouse only) vs all_at_once.
+- **Modality check analogous to BEAR's shuffles:** ATAC_Gene_Shuffle = permute the ATAC feature
+  and openness rows across genes; Gene_Shuffle = permute the RNA feature/signature/FM rows; both at
+  inference on the trained headline models. Cell_Shuffle is a no-op for MeVD-GRN by construction
+  (each modality is summarised per gene before pairing), which is stated, not run.
+
+### 12.9 Seeds, success criterion, honesty
+- 5 seeds (42-46) for the headline (L1) and L2 on all datasets; seed sets the fold partition, inner
+  split, negatives and initialisation. Mean (sd) reported.
+- **Fair win over LINGER on a dataset x GT x metric** = MeVD-GRN 5-seed mean > LINGER, > in-degree
+  mean, > coverage (and AUPRC > AUPRC_random). Wins, ties and losses are counted over all cells
+  and all are reported, including losses.
+- **LINGER's advantage, stated:** LINGER is pre-trained on external ENCODE bulk data (and uses motif
+  priors). MeVD-GRN L1 instead uses the cell type's own SC-MO-GRN-DB labels for *other* TFs; L2 uses
+  only a non-cell-type-specific ChIP compendium. Neither sees any label of an evaluated TF. The two
+  information sources differ, and the comparison is reported as such.
+- Compute order (GPU shared, one BEAR GPU job at a time, started only when free memory >= measured
+  peak + 1 GB): (1) K562 M0-M3 selection, seed 42; (2) headline seeds 42-44 on all 9 datasets;
+  (3) seeds 45-46; (4) L2; (5) ablations. Whatever is not finished is reported as not finished.
+
+### 12.9b Implementation of s12 (2026-10-09, before any s12 GPU run)
+- `src/benchmarks/bear_model.py`: `BearMEvDGRN` (subclass; hub term + motif pair term in `decode`).
+- `src/benchmarks/bear_motif.py`: UCSC hg38 / mm10 streamed once into a 2-bit store (no 3 GB FASTA
+  on disk); JASPAR 2024 CORE vertebrates (redundant set; `A::B` matrices count for both partners);
+  vectorised torch conv1d scan, both strands, window-validity masked; peaks centre-cropped to 2 kb.
+  Unit-tested on a planted motif (forward and reverse-complement hits = 1.0, short sequence = -1).
+- `scripts/22`: natural-distribution inner validation; per-fold hub vector (fit TFs for training and
+  validation, fit + validation TFs when scoring the held-out fold); sequential-curriculum ablation
+  (one stage per label tier, config order); `--modality_check` (s12.8); records peak GPU memory and
+  the zero-leak guard status per fold. CPU smokes passed for M2 (hub), sequential, modality check.
+- `scripts/20 --no_extract` + `bear_data.read_csv_sparse('zip:...')`: INPUT.DATA members stay
+  compressed and are parsed in row chunks (a 2.5 GB mouse ATAC CSV never lands on disk).
+- `scripts/24`: `--headline` head-to-head table with the s12.9 WIN rule; sparse sensitivity at
+  N = median of released and N = LINGER's in-space edge count; modality-shuffled variants scored
+  as `<variant>@atacshuf` / `@rnashuf`.
+- `src/benchmarks/bear_hub.py`: the s10.3 hub control, generalised (pooled residual / within-
+  stratum BEAR scores + per-TF AUROC within in-degree bins).
+- Drivers: `slurm/bear_local_dataset.sh <DS> [all|prep|baselines|released|motif]` (disk-frugal,
+  aborts below 3 GB free), `slurm/bear_gpu_queue.sh` (one BEAR GPU job at a time through the
+  shared gate).
+
+### 12.10 Deviations log
+- 2026-10-09 01:20: the s10.2 MeVD-GRN K562 run (old 1:5 validation, old processed dir) was moved
+  to `~/.cache/bear/archive/K562_s10.2/` so that M0 is re-run under the s12.6 validation rule;
+  its numbers stay in s10.2 / s10.3 and are not used for selection.
+- GPU jobs go through the coordinator's shared gate (`~/.cache/local_runs/scripts/gpu_gate.sh`,
+  flock-serialised) via `slurm/bear_gpu_queue.sh` (queue `~/.cache/bear/gpu_queue.txt`).
+
+## 13. Results under the s12 protocol (laptop, 2026-10-09 onward)
+
+Cells are AUROC / AUPRC / top-10k precision, scored with the port, 20 draws (s12.3). Released
+methods are their Zenodo outputs. DIRECT-NET has no score column, so only its unsorted head(10000)
+early metric exists (as in the paper). in-degree = mean over seeds 42-46 (sd in brackets).
+Top-10k precision of `baseline_coverage` is not meaningful (all scores tied: head(10000) is file order).
+
+### 13.1 K562 (development dataset): released methods and baselines
+
+| method | ChIP | KO | Union | Intersection | Core | CellTypeExclusive |
+|---|---|---|---|---|---|---|
+| *random AUPRC* | 0.331 | 0.160 | 0.244 | 0.120 | 0.105 | 0.253 |
+| LINGER | 0.536 / 0.430 / 0.587 | 0.401 / 0.139 / 0.067 | 0.525 / 0.344 / 0.530 | 0.355 / 0.099 / 0.038 | 0.507 / 0.134 / 0.153 | 0.525 / 0.348 / 0.529 |
+| CellOracle | 0.539 / 0.390 / 0.675 | 0.482 / 0.147 / 0.050 | 0.522 / 0.293 / 0.521 | 0.444 / 0.106 / 0.046 | 0.491 / 0.123 / 0.158 | 0.522 / 0.299 / 0.521 |
+| SCENIC+ | 0.465 / 0.332 / 0.503 | 0.580 / 0.159 / 0.048 | 0.477 / 0.245 / 0.436 | 0.578 / 0.119 / 0.014 | 0.518 / 0.104 / 0.035 | 0.476 / 0.254 / 0.434 |
+| Pando-GLM | 0.576 / 0.348 / 0.682 | 0.477 / 0.156 / 0.051 | 0.570 / 0.261 / 0.620 | 0.508 / 0.114 / 0.047 | 0.519 / 0.105 / 0.110 | 0.570 / 0.269 / 0.620 |
+| Pando-XGB | 0.518 / 0.346 / 0.570 | 0.490 / 0.156 / 0.052 | 0.522 / 0.259 / 0.527 | 0.468 / 0.114 / 0.045 | 0.434 / 0.105 / 0.110 | 0.522 / 0.267 / 0.527 |
+| FigR | 0.504 / 0.376 / 0.562 | 0.457 / 0.149 / 0.050 | 0.497 / 0.288 / 0.473 | 0.437 / 0.111 / 0.073 | 0.474 / 0.113 / 0.127 | 0.497 / 0.295 / 0.473 |
+| TRIPOD | 0.511 / 0.405 / 0.575 | 0.501 / 0.149 / 0.081 | 0.510 / 0.322 / 0.547 | 0.499 / 0.115 / 0.103 | 0.513 / 0.138 / 0.202 | 0.510 / 0.327 / 0.547 |
+| GRaNIE | 0.512 / 0.368 / 0.553 | 0.509 / 0.152 / 0.076 | 0.526 / 0.281 / 0.538 | 0.466 / 0.120 / 0.126 | 0.500 / 0.112 / 0.153 | 0.526 / 0.288 / 0.538 |
+| DIRECT-NET | - / - / 0.575 | - / - / 0.103 | - / - / 0.570 | - / - / 0.142 | - / - / 0.245 | - / - / 0.569 |
+| baseline_indegree | 0.652 / 0.484 / 0.696 (sd 0.000/0.000) | 0.569 / 0.134 / 0.275 (sd 0.001/0.000) | 0.626 / 0.343 / 0.582 (sd 0.000/0.000) | 0.550 / 0.100 / 0.099 (sd 0.001/0.000) | 0.577 / 0.148 / 0.205 (sd 0.002/0.000) | 0.626 / 0.345 / 0.582 (sd 0.000/0.000) |
+| baseline_coverage | 0.500 / 0.431 / 0.909 | 0.500 / 0.122 / 0.207 | 0.500 / 0.303 / 0.254 | 0.500 / 0.094 / 0.034 | 0.500 / 0.134 / 0.049 | 0.500 / 0.305 / 0.254 |
+| baseline_pearson | 0.506 / 0.434 / 0.548 | 0.491 / 0.121 / 0.081 | 0.497 / 0.301 / 0.323 | 0.467 / 0.092 / 0.053 | 0.475 / 0.128 / 0.102 | 0.497 / 0.304 / 0.323 |
+| baseline_grnboost2 | 0.496 / 0.380 / 0.481 | 0.502 / 0.135 / 0.092 | 0.494 / 0.269 / 0.307 | 0.494 / 0.101 / 0.060 | 0.464 / 0.112 / 0.110 | 0.494 / 0.275 / 0.307 |
+
+Port re-check on all 8 scorable released methods x 4 GTs (`results/port_validation.csv`): AUPRC
+and edge counts match Supp Data 2-5 exactly (GRaNIE edge counts differ by 10 of ~182k, from "NA"
+gene-name parsing; its AUPRC still matches to 4 decimals); AUROC differences are subsampling noise,
+largest where there are very few positives (SCENIC+ Intersection: 3 positives).
+
+Reading: on K562 ChIP the coverage floor (0.431) already equals LINGER (0.430) and the TF-disjoint
+in-degree ranker (0.652 / 0.484) beats every released method on ChIP and Union AUROC/AUPRC. On KO
+and Intersection every method, released or trivial, is at or below random AUPRC.
+
 ## 11. Ada status
 - 2026-10-01 ~15:40 IST: first submission 572/573, cancelled while pending to
   add regime L2.
