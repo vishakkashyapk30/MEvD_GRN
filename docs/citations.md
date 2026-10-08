@@ -3,7 +3,7 @@
 Gene Regulatory Network Inference from Integrative Multi-Omics Data  
 By Vishak Kashyap K, UG4 CND  
 Advisor: Dr Vinod PK  
-Updated: 5 Sep 2026
+Updated: 5 Sep 2026; citation corrections 8 Oct 2026 (Sections 2, 4 and 6)
 
 This note lists every major design choice in MEvD-GRN, explains it in plain English, and points to the GRN or ML paper that inspired it.
 
@@ -29,7 +29,8 @@ Previously this used a flat binary window (every peak in range counted identical
 
 **Citations.**  
 Signac gene-activity workflow: https://stuartlab.org/signac/articles/pbmc_vignette  
-Duren et al., modeling regulation from paired expression and accessibility, PNAS 2018: https://doi.org/10.1073/pnas.1802973115  
+Duren et al. (PECA), modeling gene regulation from paired expression and chromatin accessibility data, PNAS 114(25):E4914-E4923, 2017: https://doi.org/10.1073/pnas.1704553114  
+(Corrected 8 Oct 2026. This line used to read "PNAS 2018, https://doi.org/10.1073/pnas.1802973115". That DOI does not exist in Crossref, and it mixed two papers: the title is the 2017 PECA paper above, while the 2018 author list and volume 115(30) that `paper/references.bib` carried belong to Duren et al., "Integrative analysis of single-cell genomics data by coupled nonnegative matrix factorizations", PNAS 115(30):7723-7728, 2018, https://doi.org/10.1073/pnas.1805681115. Both DOIs checked against Crossref on 8 Oct 2026.)  
 MAESTRO / BETA regulatory-potential distance-decay scoring: Wang et al., Genome Biology 2020, https://doi.org/10.1186/s13059-020-02116-x
 
 
@@ -52,7 +53,8 @@ GENIE3 (co-expression / tree-based GRN inference): Huynh-Thu et al., PLoS ONE 20
 
 **Citations.**  
 Kipf and Welling, variational graph auto-encoders / link prediction, https://arxiv.org/abs/1611.07308  
-Asymmetric bilinear scoring (knowledge-graph style): Yang et al., DistMult, ICLR 2015, https://arxiv.org/abs/1412.6575
+Asymmetric bilinear scoring with a full matrix W (knowledge-graph style): Nickel, Tresp and Kriegel, RESCAL, "A three-way model for collective learning on multi-relational data", ICML 2011 (no DOI), https://icml.cc/2011/papers/438_icmlpaper.pdf  
+(Corrected 8 Oct 2026. This used to credit DistMult: Yang et al., ICLR 2015, https://arxiv.org/abs/1412.6575. DistMult restricts W to a diagonal matrix, which makes its score symmetric, score(i, j) = score(j, i), so it cannot express a directed TF-to-target score. Our decoder's W is a full, learned matrix, which is RESCAL's form. See `docs/mevd_vs_scmultiomegrn.md` §8, D10.)
 
 
 ## 5. Separate RNA and ATAC encoders
@@ -73,7 +75,8 @@ Sankar et al., GraFRank (multi-modal GNN pattern), WWW 2021: https://doi.org/10.
 **Why.** Biologically, a TF can only usefully regulate a gene if that locus is accessible. Mixing RNA and ATAC as equals throws that away. The gate says "accessibility first, then expression compatibility."
 
 **Citations.**  
-Duren et al., PNAS 2018: https://doi.org/10.1073/pnas.1802973115  
+Duren et al. (PECA), PNAS 2017: https://doi.org/10.1073/pnas.1704553114 (corrected 8 Oct 2026 from a non-existent "PNAS 2018" DOI; see Section 2)  
+Asymmetric bilinear compatibility score: RESCAL, see Section 4  
 Co-expression as a regulatory cue: GENIE3 / GRNBoost2 papers above
 
 

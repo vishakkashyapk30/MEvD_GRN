@@ -1,6 +1,8 @@
 # MEvD-GRN Results
 
-Last updated: 2026-09-18 (first written 2026-09-11). This file replaces the
+Last updated: 2026-10-08 (dated corrections only: the leak banner below and
+correction notes in Sections 2, 3 and 7; no number was changed in place).
+Previous update 2026-09-18; first written 2026-09-11. This file replaces the
 earlier results catalog,
 which is preserved for the record at
 `docs/archive/2026-09-07_results_pre_bugfix.md`. **Do not compare numbers
@@ -9,6 +11,45 @@ hard-negative train/test leakage bug, see Section 1) were fixed in between,
 and several numbers moved substantially as a result. See `plan.md` for the
 full narrative and rationale behind every change; this file is the numbers
 reference.
+
+> **Correction (2026-10-08): every MEvD-GRN number in this file was trained
+> with a negative-sampling leak.** Until the 2026-09-30 fix (commit c26c03d,
+> branch `leak-fix-and-benchmarks`), training drew random negatives from the
+> whole 1M-pair pool, and that pool held 100% of every tier's val/test
+> negatives. So each model was trained, as label-0 examples, on the very
+> negatives it was later scored on. The baselines (scMultiomeGRN, GRNBoost2,
+> RegDiffusion, GMF-GAE) never had this leak. Full write-up:
+> `docs/experiments/leakfix_rerun.md`. Its 5-seed K562 rerun (Geneformer on,
+> h384/l2), copied verbatim from that doc:
+>
+> | Run | n | loc AUPR | loc AUROC | pert AUPR | pert AUROC | dual AUPR | dual AUROC |
+> |---|---|---|---|---|---|---|---|
+> | all_at_once, **pre-fix** (paper headline) | 5 | 0.9676±0.0002 | 0.9609±0.0002 | 0.6955±0.0017 | 0.9096±0.0004 | 0.9517±0.0007 | 0.9880±0.0002 |
+> | all_at_once, **fixed** | 5 | 0.9544±0.0007 | 0.9485±0.0007 | 0.5722±0.0114 | 0.8803±0.0039 | 0.9017±0.0040 | 0.9781±0.0009 |
+> | full_curriculum, **fixed** | 5 | 0.7450±0.0040 | 0.7602±0.0032 | **0.8165±0.0006** | **0.9602±0.0001** | **0.9562±0.0008** | **0.9902±0.0002** |
+> | scMultiomeGRN baseline (`results/baselines/scmultiomegrn_K562.json`; trains on train-split negatives only, so it was never leaky) | 1 | 0.9059 | 0.9141 | 0.6550 | 0.9185 | 0.8466 | 0.9705 |
+> | GRNBoost2 baseline | 1 | 0.5347 | 0.4987 | 0.2060 | 0.5504 | 0.1728 | 0.5245 |
+>
+> - With the fix switched off (`exclude_eval_negatives: false`), the rerun
+>   reproduces the old seed-42 numbers exactly, to 4 decimals, so every
+>   difference comes from the fix alone.
+> - After the fix, `all_at_once` (the recommendation in Sections 3 and 7)
+>   loses to scMultiomeGRN on perturbation. The curriculum (`full_curriculum`,
+>   i.e. the sequential protocol) wins perturbation and dual evidence, and
+>   loses localization (0.745).
+> - **A second leak is not yet fixed in these numbers either.** The
+>   TF-candidate graph was built with every known positive excluded,
+>   including val/test ones, so 0 val/test positives were graph edges against
+>   about 2.8-3.0% of val/test negatives
+>   (`docs/experiments/labelfree_graph_rerun.md` §1). The K562 rerun with a
+>   label-free graph is running locally as of 2026-10-08; its numbers are
+>   pending. The fixed rows above are therefore not final either.
+> - Every number below is kept exactly as it was written, for the record.
+>   Treat each MEvD-GRN number in this file as pre-fix. The external
+>   benchmarks run since then use the negative-pool fix and label-free graphs
+>   from the start: PBMC10k vs LINGER
+>   (`docs/experiments/pbmc10k_linger_benchmark.md` §10-11) and BEAR-GRN
+>   (`docs/experiments/bear_grn_benchmark.md` §10).
 
 Cell type: K562 (main), plus Macrophage and MCF7 (multi-cell-type / transfer,
 Section 5). Primary metric: AUPR. Also reported: AUROC, early precision
@@ -92,6 +133,13 @@ metric is dual-evidence AUPR/AUROC (the zero-shot generalization test).
 | `edge_mlp` | nonlinear edge embedding instead of linear terms | 0.882 | 0.971 |
 | `gated_relations` | learned per-layer relation weight (Section "gated combiner") | 0.876 | 0.969 |
 | `pert_only` | train ONLY on perturbation (skip localization pretraining) | 0.441 | 0.757 |
+
+> **Note (2026-10-08):** the `rna_only` row does not match its result file.
+> `results/ablations/rna_only_K562.json` gives dual AUPR 0.8585 / AUROC
+> 0.9633 (0.859 / 0.963), which is what `paper/main.tex` uses; the 0.856 /
+> 0.962 above is left as written (probably an earlier run;
+> `docs/mevd_vs_scmultiomegrn.md` §8, D18). Every row in this table is
+> pre-fix (see the banner at the top), single-run, at the 315K-param size.
 
 **Takeaways:**
 - **GNN message passing is by far the most important component** — removing
@@ -178,6 +226,20 @@ recommended configuration**, not sequential. The mechanism above (positive
 dilution) was real at 307K params; it evidently stops being the binding
 constraint once the model has enough capacity to fit both tiers' signal
 without one crowding out the other.
+
+> **Correction (2026-10-08): the 2026-09-18 update above is wrong.** This
+> file's own Section 7 table contradicts it. At FM + h384/l2, sequential
+> gives perturbation AUPR 0.834 / dual 0.963, and `all_at_once` gives 0.696 /
+> 0.952 (5-seed means 0.6955 / 0.9517). `all_at_once` wins only localization
+> (0.968 vs 0.751); it does not win perturbation or dual evidence, so it does
+> not "win all three tiers outright". The perturbation-dilution tradeoff did
+> not go away at the bigger size. The leak fix (banner at the top) widened the
+> gap: fixed 5-seed perturbation AUPR is 0.8165 for the curriculum and 0.5722
+> for `all_at_once`, and dual AUPR 0.9562 vs 0.9017
+> (`docs/experiments/leakfix_rerun.md`). The recommendation of `all_at_once`
+> therefore rested on a misread comparison. That doc recommends making the
+> curriculum the headline model again; the decision is pending (`plan.md`
+> Section 11). The text and numbers above are unchanged.
 
 ---
 
@@ -346,6 +408,18 @@ Script: `scripts/05_run_baselines.py`. AUPR/AUROC unaffected by the EPR fix
 | GMF-GAE | 0.526 | 0.514 | 0.218 | 0.565 | 0.160 | 0.516 |
 | scMultiomeGRN (adapted, single seed so far) | 0.906 | 0.914 | 0.655 | 0.919 | 0.847 | 0.971 |
 
+> **Correction (2026-10-08):** the three MEvD-GRN rows above are pre-fix
+> (banner at the top); the baseline rows are not. The "5 of 6 metrics" win in
+> the next paragraph compared a leaky MEvD-GRN with a non-leaky
+> scMultiomeGRN. With the fix (5 seeds, `docs/experiments/leakfix_rerun.md`),
+> `all_at_once` + FM + h384/l2 scores loc 0.9544 / 0.9485, pert 0.5722 /
+> 0.8803, dual 0.9017 / 0.9781 (AUPR / AUROC). Against scMultiomeGRN it now
+> wins localization and dual evidence (4 of 6 metrics) and loses
+> perturbation on both AUPR (0.572 vs 0.655) and AUROC (0.880 vs 0.919). The
+> fixed curriculum wins perturbation and dual evidence by wide margins and
+> loses localization. Those fixed numbers still carry the graph leak
+> (`docs/experiments/labelfree_graph_rerun.md`; rerun pending).
+
 **Head-to-head vs. the strongest baseline, resolved 2026-09-18, now with real
 variance data**: a 5-seed rerun (seeds 42-46) of `all_at_once` + FM + h384/l2
 landed with **remarkably low run-to-run variance** (std ≤ 0.0017 on every
@@ -379,6 +453,18 @@ recommended configuration for the paper's headline numbers, superseding
 the earlier "sequential is the default" call in Section 3 — that call was
 correct for the small, no-FM model it was measured on, but doesn't hold
 once FM + more capacity are in play.
+
+> **Correction (2026-10-08): the paragraph above misreads the table.**
+> Switching sequential + FM + h384/l2 to `all_at_once` (same model, same FM
+> embedding) closes the localization gap (0.751 → 0.968), but it does **not**
+> improve the other two tiers: perturbation AUPR falls from 0.834 to 0.696
+> and dual evidence from 0.963 to 0.952 (rows 2 and 3 of the table above).
+> `all_at_once` trades tiers too; it only wins localization. "Sequential is
+> the default" therefore still held at this size, and the leak fix made the
+> curriculum's lead larger (Section 3 correction;
+> `docs/experiments/leakfix_rerun.md` item 4). The table does not support
+> the `all_at_once` recommendation; which model becomes the paper's headline
+> is pending (`plan.md` Section 11).
 
 A secondary run, `with_replay` (3-stage curriculum, FM + h384/l2), was
 also tested: localization 0.890 (better than sequential's 0.751, still
@@ -454,3 +540,16 @@ methods.
   `docs/weekly_updates/`, with the same caveat.
 - `paper/main.tex` — manuscript. Its body was resynced to this file on
   2026-09-18, including the 5-seed headline numbers (`plan.md` Section 9).
+  (2026-10-08: so every number in it is pre-fix too. The changes it needs
+  are listed in `docs/paper_revision_plan.md`.)
+- Added 2026-10-08:
+  - `docs/experiments/leakfix_rerun.md`: the negative-sampling leak and its
+    5-seed K562 rerun (banner at the top).
+  - `docs/experiments/labelfree_graph_rerun.md`: the second (graph) leak and
+    its K562 rerun (in progress).
+  - `docs/experiments/pbmc10k_linger_benchmark.md`: PBMC10k Multiome vs
+    LINGER, the main external benchmark (interim results in §10-11).
+  - `docs/experiments/bear_grn_benchmark.md`: BEAR-GRN on SC-MO-GRN-DB
+    datasets, with its hub and coverage artifacts (§10).
+  - `docs/mevd_vs_scmultiomegrn.md`: comparison with scMultiomeGRN, novelty
+    audit and the 18 code-vs-doc discrepancies.
