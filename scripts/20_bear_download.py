@@ -149,6 +149,10 @@ def _fetch_ranges(url: str, ranges, dst: str, conns: int, chunk: int = 4 << 20) 
         return sum(ex.map(get, jobs))
 
 
+NO_EXTRACT = False
+TOUCHED = set()      # sparse zips written by this run (only these are cleaned up)
+
+
 def extract(zname: str, want, root: Path, conns: int = 16) -> int:
     """Extract the members selected by `want` from a remote zip, downloading only
     their bytes (+ the central directory) into a sparse local copy of the zip,
@@ -168,6 +172,8 @@ def extract(zname: str, want, root: Path, conns: int = 16) -> int:
         return 0
     size = f.size
     sparse = root / "zips" / (zname + ".sparse")
+    if not NO_EXTRACT:
+        TOUCHED.add(sparse)
     sparse.parent.mkdir(parents=True, exist_ok=True)
     if not sparse.exists():
         with open(sparse, "wb") as g:
@@ -189,6 +195,9 @@ def extract(zname: str, want, root: Path, conns: int = 16) -> int:
     t0 = time.time()
     got = _fetch_ranges(url, ranges, str(sparse), conns)
     print(f"[fetch] {zname}: {len(todo)} members, {got/1e6:.1f} MB in {time.time()-t0:.0f}s", flush=True)
+    if NO_EXTRACT:      # members stay compressed inside the sparse zip (read with bear_data.read_csv_sparse)
+        print(f"[keep] {len(todo)} members compressed in {sparse}", flush=True)
+        return len(todo)
     n = 0
     for i in todo:
         out = root / i.filename
@@ -214,6 +223,8 @@ def main():
     ap.add_argument("--methods", nargs="*", default=None, help="subset of INFERRED.GRNS methods")
     ap.add_argument("--list", default=None, help="print a zip's member list and exit")
     ap.add_argument("--conns", type=int, default=16, help="parallel range requests")
+    ap.add_argument("--no_extract", action="store_true",
+                    help="do not decompress; keep members inside <root>/zips/<zip>.sparse (implies --keep_sparse)")
     ap.add_argument("--keep_sparse", action="store_true",
                     help="keep <root>/zips/*.sparse (holes take no disk; reuse speeds reruns)")
     args = ap.parse_args()
@@ -224,6 +235,10 @@ def main():
         return
     root = Path(args.root)
     root.mkdir(parents=True, exist_ok=True)
+    global NO_EXTRACT
+    NO_EXTRACT = bool(args.no_extract)
+    if NO_EXTRACT:
+        args.keep_sparse = True
     for ds in args.datasets:
         if ds not in DATASETS:
             sys.exit(f"unknown dataset {ds}; choose from {list(DATASETS)}")
@@ -248,8 +263,9 @@ def main():
             else:
                 sys.exit(f"unknown --what {what}")
     if not args.keep_sparse:
-        for sp in (root / "zips").glob("*.sparse"):
-            sp.unlink()
+        for sp in TOUCHED:
+            if sp.exists():
+                sp.unlink()
 
 
 if __name__ == "__main__":

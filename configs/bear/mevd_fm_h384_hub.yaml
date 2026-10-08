@@ -1,0 +1,5 @@
+# Pre-registered candidate M2 (s12.6): natural (uniform) negatives + decoder hub term
+# w * log1p(in-degree among the fold's training TFs).
+inherit: mevd_fm_h384_uniformneg.yaml
+bear:
+  hub_term: true

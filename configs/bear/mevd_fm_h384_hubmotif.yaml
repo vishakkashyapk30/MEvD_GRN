@@ -1,0 +1,6 @@
+# Pre-registered candidate M3 (s12.6): M2 + TF-motif x target-peak pair features
+# (bear_motif.pair_features: best relative PWM score in the gene's top-5 peaks,
+# #hit peaks, has-motif).
+inherit: mevd_fm_h384_hub.yaml
+bear:
+  motif_pair: true

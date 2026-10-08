@@ -49,6 +49,10 @@ def our_files(root: Path, ds: str):
     out = {}
     for f in sorted((root / "results" / ds).glob("*/seed*/grn.tsv.gz")):
         out[f"{f.parent.parent.name}/{f.parent.name}"] = f
+        mz = f.parent / "modality_scores.npz"           # s12.8 modality check (scripts/22 --modality_check)
+        if mz.exists():
+            for key, tag in (("atac_shuf", "atacshuf"), ("rna_shuf", "rnashuf")):
+                out[f"{f.parent.parent.name}@{tag}/{f.parent.name}"] = (f, key)
     return out
 
 
@@ -101,11 +105,15 @@ def main():
                     help="also score our GRNs truncated to the median released in-space edge count")
     ap.add_argument("--paper_csv", default=None, help="tidy Supp Data CSV for a reproduction check")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--headline", nargs="*", default=[],
+                    help="MeVD variants (results dir names) for the head-to-head table, e.g. mevd_fm_h384_hub")
     ap.add_argument("--compile_only", action="store_true",
                     help="only (re)build summary_tables.md from results/summary_scores.csv")
     args = ap.parse_args()
     if args.compile_only:
         compile_tables(Path(args.root), args.paper_csv)
+        for h in args.headline:
+            head_to_head(Path(args.root), h)
         return
     root = Path(args.root)
     dcfg = load_config(args.config)
@@ -135,12 +143,16 @@ def main():
                 fp = sdir / f"{tag}__{g}.json"
                 if args.force or not fp.exists():
                     return True
-                # our GRNs are re-scored if cached with a different number of draws
-                return kind == "ours" and json.load(open(fp)).get("n_rep", 1) != args.n_rep
+                # re-score if cached with a different number of draws (s12.3: n_rep = 20 for all)
+                return json.load(open(fp)).get("n_rep", 1) != args.n_rep
             todo = [g for g in gt_df if stale(g)]
             if todo:
-                df = bm.read_table(str(f)) if not str(f).endswith(".gz") else \
-                    pd.read_csv(f, sep="\t", keep_default_na=False, na_values=[""])
+                if isinstance(f, tuple):                         # modality-shuffled scores
+                    df = pd.read_csv(f[0], sep="\t", keep_default_na=False, na_values=[""])
+                    df["Score"] = np.load(f[0].parent / "modality_scores.npz")[f[1]]
+                else:
+                    df = bm.read_table(str(f)) if not str(f).endswith(".gz") else \
+                        pd.read_csv(f, sep="\t", keep_default_na=False, na_values=[""])
                 if kind == "released":
                     e_roc, e_early = standardise_released(df, m)
                 else:
@@ -156,19 +168,25 @@ def main():
                     print(f"[{ds} {g}] {rec['method']}: AUROC={rec.get('AUROC', float('nan')):.4f} "
                           f"AUPRC={rec.get('AUPRC', float('nan')):.4f} rnd={rec.get('AUPRC_random', float('nan')):.4f} "
                           f"P@10k={rec.get('top10k_Precision', float('nan')):.4f}", flush=True)
-                    if kind == "ours" and args.sparse_match:
-                        rel_n = [json.load(open(p)).get("n_evaluable_edges") for p in
-                                 sdir.glob(f"*__{g}.json") if json.load(open(p)).get("kind") == "released"]
-                        rel_n = [x for x in rel_n if x]
-                        if rel_n:
-                            n = int(np.median(rel_n))
-                            tested = (e_roc["tf"].isin(gt_df[g]["Source"]) & e_roc["target"].isin(gt_df[g]["Target"]))
-                            top = e_roc[tested].sort_values("score", ascending=False, kind="stable").head(n)
-                            rs = {"dataset": ds, "gt": g, "method": PAPER_NAME.get(m, m) + "@sparse",
+                    if kind == "ours" and args.sparse_match and not isinstance(f, tuple):
+                        rel = {}
+                        for pj in sdir.glob(f"*__{g}.json"):
+                            jj = json.load(open(pj))
+                            if jj.get("kind") == "released" and jj.get("n_evaluable_edges"):
+                                rel[jj["method"]] = int(jj["n_evaluable_edges"])
+                        sizes = {}
+                        if rel:
+                            sizes["@sparse"] = int(np.median(list(rel.values())))      # median of released
+                        if "LINGER" in rel:
+                            sizes["@sparseLINGER"] = rel["LINGER"]                      # LINGER-matched (s12.8)
+                        tested = (e_roc["tf"].isin(gt_df[g]["Source"]) & e_roc["target"].isin(gt_df[g]["Target"]))
+                        ranked = e_roc[tested].sort_values("score", ascending=False, kind="stable")
+                        for suf, n in sizes.items():
+                            rs = {"dataset": ds, "gt": g, "method": PAPER_NAME.get(m, m) + suf,
                                   "kind": "ours_sparse", "file": str(f), "sparse_n": n}
-                            rs.update(bm.score_roc_pr(top, gt_df[g], np.random.default_rng(args.rng_seed),
-                                                      n_rep=args.n_rep))
-                            with open(sdir / f"{tag}__sparse__{g}.json", "w") as fh:
+                            rs.update(bm.score_roc_pr(ranked.head(n), gt_df[g],
+                                                      np.random.default_rng(args.rng_seed), n_rep=args.n_rep))
+                            with open(sdir / f"{tag}__{suf[1:]}__{g}.json", "w") as fh:
                                 json.dump(rs, fh, indent=1)
         for p in sdir.glob("*.json"):
             rows.append(json.load(open(p)))
@@ -202,13 +220,17 @@ def main():
 def _split_method(m: str):
     if "/seed" in m:
         v, sd = m.rsplit("/seed", 1)
-        return v, sd.split("@")[0], ("@sparse" if m.endswith("@sparse") else "")
+        seed, _, suf = sd.partition("@")
+        return v, seed, ("@" + suf if suf else "")
     return m, "", ""
 
 
 def compile_tables(root: Path, paper_csv: str | None = None) -> None:
     """mean +- sd over seeds per (dataset, gt, method variant); markdown tables."""
-    df = pd.read_csv(root / "results" / "summary_scores.csv")
+    # rebuild from the cached per-(method, GT) JSONs, so archived/removed runs drop out
+    recs = [json.load(open(p)) for p in sorted((root / "results").glob("*/scores/*.json"))]
+    df = pd.DataFrame(recs)
+    df.to_csv(root / "results" / "summary_scores.csv", index=False)
     parts = df["method"].map(_split_method)
     df["variant"] = [a + c for a, b, c in parts]
     df["seed"] = [b for a, b, c in parts]
@@ -244,6 +266,53 @@ def compile_tables(root: Path, paper_csv: str | None = None) -> None:
             lines.append("")
     (root / "results" / "summary_tables.md").write_text("\n".join(lines))
     print(f"[write] {root / 'results' / 'summary_tables.md'}")
+
+
+RELEASED = ["LINGER", "CellOracle", "SCENIC+", "Pando-GLM", "Pando-XGB", "FigR", "TRIPOD", "GRaNIE"]
+
+
+def head_to_head(root: Path, headline: str) -> pd.DataFrame:
+    """Pre-registered s12.9 table: per dataset x GT x metric, MeVD-GRN (mean, sd, n seeds)
+    vs LINGER, the best other released method, in-degree (mean), coverage; WIN = MeVD mean >
+    LINGER, > in-degree, > coverage (and, for AUPRC, > random)."""
+    agg = pd.read_csv(root / "results" / "summary_agg.csv")
+    rows = []
+    for (ds, gt), sub in agg.groupby(["dataset", "gt"]):
+        v = sub.set_index("variant")
+        if headline not in v.index:
+            continue
+        for met in ["AUROC", "AUPRC"]:
+            others = {m: v.loc[m, met] for m in RELEASED if m in v.index and m != "LINGER" and pd.notna(v.loc[m, met])}
+            best_o = max(others, key=others.get) if others else None
+            r = {"dataset": ds, "gt": gt, "metric": met, "mevd": v.loc[headline, met],
+                 "mevd_sd": v.loc[headline, f"{met}_sd"], "n_seeds": int(v.loc[headline, "n_seeds"]),
+                 "LINGER": v.loc["LINGER", met] if "LINGER" in v.index else np.nan,
+                 "best_other": best_o, "best_other_val": others.get(best_o, np.nan),
+                 "indegree": v.loc["baseline_indegree", met] if "baseline_indegree" in v.index else np.nan,
+                 "coverage": v.loc["baseline_coverage", met] if "baseline_coverage" in v.index else np.nan,
+                 "random": sub["AUPRC_random"].mean() if met == "AUPRC" else 0.5}
+            r["beats_LINGER"] = bool(r["mevd"] > r["LINGER"])
+            r["beats_all_released"] = bool(r["mevd"] > max(r["LINGER"], r["best_other_val"]))
+            r["WIN"] = bool(r["beats_LINGER"] and r["mevd"] > r["indegree"] and r["mevd"] > r["coverage"]
+                            and r["mevd"] > r["random"])
+            rows.append(r)
+    df = pd.DataFrame(rows)
+    df.to_csv(root / "results" / f"head_to_head__{headline}.csv", index=False)
+    if len(df):
+        lines = [f"# Head-to-head: {headline} (s12.9 rule)", "",
+                 "| dataset | GT | metric | MeVD-GRN (sd, n) | LINGER | best other | in-degree | coverage | random | WIN |",
+                 "|---|---|---|---|---|---|---|---|---|---|"]
+        for _, r in df.iterrows():
+            sd = "" if pd.isna(r["mevd_sd"]) else f" ({r['mevd_sd']:.3f}, {r['n_seeds']})"
+            lines.append(f"| {r['dataset']} | {r['gt']} | {r['metric']} | {r['mevd']:.3f}{sd} | {r['LINGER']:.3f} | "
+                         f"{r['best_other']} {r['best_other_val']:.3f} | {r['indegree']:.3f} | {r['coverage']:.3f} | "
+                         f"{r['random']:.3f} | {'**yes**' if r['WIN'] else 'no'} |")
+        n = len(df)
+        lines += ["", f"WIN in {int(df['WIN'].sum())}/{n} cells; beats LINGER in {int(df['beats_LINGER'].sum())}/{n}; "
+                  f"beats every released method in {int(df['beats_all_released'].sum())}/{n}."]
+        (root / "results" / f"head_to_head__{headline}.md").write_text("\n".join(lines))
+        print("\n".join(lines))
+    return df
 
 
 if __name__ == "__main__":
