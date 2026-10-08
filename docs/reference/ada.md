@@ -1,6 +1,8 @@
 == Post-upgrade changes (verified 2026-10-01; these override the older sections below) ==
 
-* '''Login:''' <code>ssh vishakkashyap.k@ada-gw1</code>. The old host ada.iiit.ac.in now only prints a notice and rejects key logins.
+* '''Login:''' <code>ssh vishakkashyap.k@ada-gw1</code> or <code>ada-gw2</code> (the second gateway was added in early October). The old host ada.iiit.ac.in now only prints a notice and rejects key logins.
+* '''Login-node limits (HPC admin, 1 Oct):''' each user gets 1 CPU core and 2 GB of memory on the gateways. Run nothing heavy or long-running there: conda/pip installs, large downloads, compiles, and nohup polling loops go through <code>sbatch</code> or <code>sinteractive</code> (defaults <code>-p u22 -A research -t 06:00:00</code>; e.g. <code>sinteractive -c 2 -A research</code>). Login nodes may be rebooted for upgrades with 24 h notice; this kills srun/salloc sessions but not sbatch jobs. Use <code>myquota</code> and <code>myallocation</code> to check limits.
+* '''2026-10-08:''' both gateways accept our SSH key and then reply "Permission denied." Cause unconfirmed. The setup on 1 Oct ran conda installs, 20+ GB downloads and polling scripts on ada-gw1, against the limit above.
 * '''Home:''' /home2/$USER, 50 GB (26 GB used on 2026-10-01). It is visible on compute nodes.
 * '''Python:''' Miniforge is at ~/miniforge3, with the env <code>mevd-grn</code> (python 3.11, torch 2.9.1+cu126, torch_geometric 2.8.0). The repo is at ~/mevd_grn (branch leak-fix-and-benchmarks). The old ~/miniconda3 no longer exists.
 * '''/share1:''' 100 GB quota (16.9 GB used). It is visible on the gateway but '''not on compute nodes'''. Jobs stage data with <code>scp/rsync ada-gw1:/share1/$USER/...</code>; compute-to-gateway SSH works.
