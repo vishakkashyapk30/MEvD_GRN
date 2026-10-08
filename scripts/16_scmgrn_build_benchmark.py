@@ -246,6 +246,7 @@ def step_processed(cfg, root, ct, gdir, pdir, mcfg_path):
     summ = {"cell_type": ct, "n_nodes": n, "rna_matched": hit, "tier": tier,
             "evidence_directed": int(evidence.shape[1]), "coexpr_edges": int(coexpr.shape[1]),
             "tf_candidate_edges": int(cand.shape[1]),
+            "prior_exclude_positives": False,   # evidence=None above; read by leak_guard
             "atac_nonzero_frac": float((atac[:, 0] > 0).mean()) if n else 0.0,
             "note": "evidence/negative_pool are the FULL ground truth; per-fold training "
                     "uses only the fold's train split (scripts/17)."}

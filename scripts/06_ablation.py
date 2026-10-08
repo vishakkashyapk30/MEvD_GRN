@@ -140,7 +140,15 @@ def main():
                          "on-disk train/val/test splits or negative pool (those are "
                          "fixed at preprocessing time), only weight init and "
                          "training-time sampling.")
+    ap.add_argument("--init_from", default=None,
+                    help="load model weights from this checkpoint before training, e.g. the "
+                         "best Stage-1 checkpoint of a finished full_curriculum run")
+    ap.add_argument("--start_stage", default=None,
+                    help="with --init_from: do not train the curriculum stages before this "
+                         "stage name (their train positives still enter replay memory)")
     args = ap.parse_args()
+    if args.start_stage and not args.init_from:
+        ap.error("--start_stage requires --init_from")
 
     cfg = load_config(args.config)
     cell_type = cfg["cell_type"]
@@ -176,6 +184,9 @@ def main():
 
     model = build_model(cfg, args.ablation)
     trainer = MEvDTrainer(model, data, cfg, device)
+    if args.init_from:
+        trainer.load_checkpoint(args.init_from)
+        print(f"[init] weights loaded from {args.init_from}", flush=True)
 
     main_tiers = set(cfg["curriculum"].get("main_curriculum_tiers", splits_per_tier))
     # Tiers this ablation actually trains a gradient step on -- everything else
@@ -194,7 +205,9 @@ def main():
         trainer.restrict_negative_pool(splits_per_tier)   # ALL tiers, incl. held-out
         trainer.train_stage(stage, merged)
     else:
-        trainer.run_full_curriculum(splits_per_tier, select_stages(cfg, args.ablation))
+        stages = select_stages(cfg, args.ablation)
+        skip = [s.name for s in stages].index(args.start_stage) if args.start_stage else 0
+        trainer.run_full_curriculum(splits_per_tier, stages, skip=skip)
 
     # Evaluate on dual-evidence (the paper's key comparison); TEST-only for
     # trained tiers, VAL+TEST for tiers this ablation never trained on.
@@ -209,6 +222,8 @@ def main():
                "n_params": model.count_parameters(),
                "hidden_dim": cfg["model"]["hidden_dim"], "n_gnn_layers": cfg["model"]["n_gnn_layers"],
                "key_tier": key_tier, "trained_tiers": sorted(trained_tiers),
+               "init_from": args.init_from, "start_stage": args.start_stage,
+               "leak_status": trainer.leak_status,
                "results": result, "relation_weights": relation_weights},
               f"results/ablations/{out_tag}.json")
     m = result[key_tier]

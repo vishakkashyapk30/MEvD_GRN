@@ -109,7 +109,7 @@ def main():
     save_json({"source_cell_type": source_cell_type, "target_cell_type": cell_type,
                "tier": "localization", "mode": "zero_shot_transfer", "use_fm": model.use_fm,
                "n_positives": int(pos.shape[1]), "n_negatives": int(neg.shape[1]),
-               "result": result},
+               "result": result, "leak_status": trainer.leak_status},
               f"results/transfer/{source_cell_type}_to_{cell_type}{fm_tag}.json")
 
 

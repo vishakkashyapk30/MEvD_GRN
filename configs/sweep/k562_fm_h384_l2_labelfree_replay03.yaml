@@ -1,0 +1,8 @@
+# Task-2 variant (docs/experiments/curriculum_forgetting.md): label-free K562
+# setting with stronger memory replay in Stage 2. full_curriculum already
+# replays localization train positives (use_memory_replay: true, weight 0.1);
+# this raises both the replayed fraction and its loss weight to 0.3.
+# Dual evidence stays held out (main_curriculum_tiers unchanged).
+inherit: k562_fm_h384_l2_labelfree.yaml
+curriculum:
+  replay_weight: 0.3

@@ -1,0 +1,14 @@
+# Task-2 variant (docs/experiments/curriculum_forgetting.md): label-free K562
+# curriculum plus a short, low-lr localization refresh stage after Stage 2
+# (3 epochs, lr 1e-4, replay of the localization and perturbation train
+# positives as in the earlier stages). Run it resumed from a finished
+# full_curriculum run's Stage-2 checkpoint:
+#   --init_from results/checkpoints/K562_ablation_full_curriculum_<tag>/best_model_Stage2_Perturbation.pt
+#   --start_stage Stage3_LocRefresh
+# Dual evidence stays held out (it is not in the stage list).
+inherit: k562_fm_h384_l2_labelfree.yaml
+curriculum:
+  stages:
+    - {name: Stage1_Localization, evidence_tier: localization, n_epochs: 30, lr: 1.0e-3, neg_ratio: 5, freeze_encoder: false}
+    - {name: Stage2_Perturbation, evidence_tier: perturbation, n_epochs: 15, lr: 3.0e-4, neg_ratio: 5, freeze_encoder: false}
+    - {name: Stage3_LocRefresh,   evidence_tier: localization, n_epochs: 3,  lr: 1.0e-4, neg_ratio: 5, freeze_encoder: false}

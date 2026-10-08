@@ -126,7 +126,7 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
            "model_config": str(args.model_config), "n_params": model.count_parameters(),
            "n_nodes": n, "n_train_pos_directed": int(splits["train"]["pos"].shape[1]),
            "epochs_run": len(res["history"]), "best_val_aupr": res["best_val_aupr"],
-           "train_seconds": secs, "metrics": m}
+           "train_seconds": secs, "metrics": m, "leak_status": trainer.leak_status}
     save_json(rec, out_path)
     print(f"[{args.cell_type} fold {fold} seed {seed} {args.variant}] epochs={rec['epochs_run']} "
           f"val={res['best_val_aupr']:.4f} | test AUROC={m['test']['auroc']:.4f} "

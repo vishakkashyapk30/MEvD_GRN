@@ -1,0 +1,13 @@
+# Task-2 variant (docs/experiments/curriculum_forgetting.md): label-free K562
+# setting without tier-hierarchy hard negatives. In Stage 2 these are
+# localization TRAIN positives that are not perturbation edges, labelled 0,
+# i.e. half of Stage 2's negatives directly contradict the localization tier.
+# With this flag off, all Stage-2 negatives come from the random pool.
+# NOTE (2026-10-08): with use_memory_replay: true (the default) this is a no-op.
+# _build_train_edges excludes the whole replay memory (= every localization
+# train positive) from the hard-negative candidates, so Stage 2 already draws 0
+# hard negatives (its log shows neg = 700,000 = the restricted random pool).
+# Kept for one confirmation run only.
+inherit: k562_fm_h384_l2_labelfree.yaml
+curriculum:
+  use_hard_negatives: false

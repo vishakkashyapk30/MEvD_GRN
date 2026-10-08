@@ -7,10 +7,22 @@ evidence edges (+nesting check) -> prior graph -> negative pool -> edge splits.
 Usage:
   python scripts/02_preprocess.py --config configs/k562.yaml
   python scripts/02_preprocess.py --config configs/esc.yaml
+
+Graph-only rebuild (2026-10-08): if the config sets `paths.reuse_processed_from`
+(an existing processed dir), every label-free artifact (features, signatures,
+openness, gene index, co-expression graph, evidence, negative pool, FM
+embeddings) is copied unchanged from that dir and ONLY the TF-candidate graph
+is rebuilt, with the config's `data.prior_exclude_positives`. Splits are not
+rewritten: they are regenerated in memory and checked edge-for-edge against
+the existing `<splits_dir>/<cell_type>_<tier>_splits.pt`. Used by
+configs/sweep/k562_fm_h384_l2_labelfree.yaml so the label-free run differs from
+the paper's processed data in the graph alone (re-running the raw pipeline
+would also re-draw the ARPACK start vector in `coexpression_signatures`).
 """
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 
@@ -22,7 +34,90 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.data import graph_builder as gb
 from src.data import motif_scan
 from src.data.preprocessing import _resolve_glob, preprocess_scatac, preprocess_scrna
-from src.utils.io import ensure_dir, load_config, save_json
+from src.utils.io import ensure_dir, load_config, load_json, save_json
+
+# Files copied verbatim by the graph-only rebuild (none depends on labels except
+# evidence_*.pt / negative_pool.pt, which are the labels and are unchanged).
+_REUSED_FILES = ["rna_features_aligned.npy", "atac_features_aligned.npy", "rna_signature.npy",
+                 "openness.npy", "gene_index.json", "tf_indices.json", "coexpr_edges.pt",
+                 "negative_pool.pt", "fm_gene_embeddings.npy"]
+
+
+def rebuild_graphs_only(cfg: dict, cell_type: str, src_dir: Path, out_dir: Path,
+                        splits_dir: Path) -> None:
+    dcfg = cfg["data"]
+    if src_dir.resolve() == out_dir.resolve():
+        raise ValueError("reuse_processed_from must differ from processed_dir")
+    mp = src_dir / "motif_edges.pt"
+    if mp.exists() and torch.load(mp).shape[1]:
+        raise NotImplementedError("graph-only rebuild cannot rebuild a non-empty motif graph "
+                                  "(needs per-gene peak coordinates); run the full pipeline")
+    exclude = bool(dcfg.get("prior_exclude_positives", False))
+    print(f"\n########## Graph-only rebuild {cell_type}: {src_dir} -> {out_dir} "
+          f"(prior_exclude_positives={exclude}) ##########", flush=True)
+
+    gene_index = load_json(src_dir / "gene_index.json")
+    tf_indices = load_json(src_dir / "tf_indices.json")
+    rna = np.load(src_dir / "rna_features_aligned.npy")
+    atac = np.load(src_dir / "atac_features_aligned.npy")
+    sig = np.load(src_dir / "rna_signature.npy")
+    openness = np.load(src_dir / "openness.npy")
+    tiers = list(cfg["paths"]["networks"])
+    evidence = {t: torch.load(src_dir / f"evidence_{t}.pt") for t in tiers
+                if (src_dir / f"evidence_{t}.pt").exists()}
+    top_k = int(dcfg.get("tf_candidate_topk", dcfg["top_k_prior_targets"]))
+
+    # Same call as the full pipeline; with exclude=True it must reproduce the source graph.
+    src_graph = torch.load(src_dir / "tf_candidate_edges.pt")
+    if not exclude:
+        check = gb.build_prior_graph(gene_index, tf_indices, atac, rna, top_k=top_k,
+                                     signatures=sig, openness=openness, evidence=evidence,
+                                     exclude_positives=True)
+        same = check.shape == src_graph.shape and bool(torch.equal(check, src_graph))
+        print(f"[check] rebuilding with exclude_positives=True reproduces the source "
+              f"TF-candidate graph: {same}", flush=True)
+        if not same:
+            raise RuntimeError("source arrays do not reproduce the source TF-candidate graph")
+    tf_cand = gb.build_prior_graph(gene_index, tf_indices, atac, rna, top_k=top_k,
+                                   signatures=sig, openness=openness, evidence=evidence,
+                                   exclude_positives=exclude)
+
+    for name in _REUSED_FILES:
+        if (src_dir / name).exists():
+            shutil.copy2(src_dir / name, out_dir / name)
+    for t in evidence:
+        shutil.copy2(src_dir / f"evidence_{t}.pt", out_dir / f"evidence_{t}.pt")
+    torch.save(tf_cand, out_dir / "tf_candidate_edges.pt")
+    torch.save(torch.zeros((2, 0), dtype=torch.long), out_dir / "motif_edges.pt")
+
+    # Splits: regenerate deterministically and require edge-identity with the
+    # existing files, which the run will load. Nothing in splits_dir is written.
+    neg_pool = torch.load(src_dir / "negative_pool.pt")
+    active = {t: e for t, e in evidence.items() if e.shape[1] > 0}
+    regen = gb.create_global_edge_splits(
+        active, neg_pool, train_ratio=float(dcfg["train_ratio"]), val_ratio=float(dcfg["val_ratio"]),
+        neg_train_ratio=int(dcfg["neg_train_ratio"]), neg_eval_ratio=5, seed=int(dcfg["seed"]))
+    split_check = {}
+    for t, sp in regen.items():
+        old = torch.load(splits_dir / f"{cell_type}_{t}_splits.pt")
+        for part in ("train", "val", "test"):
+            for key in ("pos", "neg"):
+                same = bool(torch.equal(sp[part][key], old[part][key]))
+                split_check[f"{t}.{part}.{key}"] = same
+                if not same:
+                    raise RuntimeError(f"regenerated split {t}.{part}.{key} differs from "
+                                       f"{splits_dir}/{cell_type}_{t}_splits.pt")
+    print(f"[check] regenerated splits are edge-identical to {splits_dir}/{cell_type}_*: "
+          f"{all(split_check.values())} ({len(split_check)} tensors)", flush=True)
+
+    summary = load_json(src_dir / "summary.json")
+    summary.update({
+        "tf_candidate_edges": int(tf_cand.shape[1]), "motif_edges": 0,
+        "prior_exclude_positives": exclude, "graph_only_rebuild_of": str(src_dir),
+        "splits_dir": str(splits_dir), "splits_identical_to_existing": all(split_check.values()),
+    })
+    save_json(summary, out_dir / "summary.json")
+    print(f"\n[done] {cell_type} graph-only rebuild -> {out_dir}", flush=True)
 
 
 def main():
@@ -35,7 +130,11 @@ def main():
     cell_type = args.cell_type or cfg["cell_type"]
     dcfg = cfg["data"]
     out_dir = ensure_dir(cfg["paths"]["processed_dir"])
-    splits_dir = ensure_dir("data/splits")
+    splits_dir = ensure_dir(cfg["paths"].get("splits_dir", "data/splits"))
+    if cfg["paths"].get("reuse_processed_from"):
+        rebuild_graphs_only(cfg, cell_type, Path(cfg["paths"]["reuse_processed_from"]),
+                            out_dir, splits_dir)
+        return
     network_paths = cfg["paths"]["networks"]
 
     # shared cfg for preprocessing functions
@@ -87,7 +186,7 @@ def main():
         gene_index, tf_indices, atac_aligned, rna_aligned,
         top_k=int(dcfg.get("tf_candidate_topk", dcfg["top_k_prior_targets"])),
         signatures=sig_aligned, openness=openness, evidence=evidence,
-        exclude_positives=bool(dcfg.get("prior_exclude_positives", True)))
+        exclude_positives=bool(dcfg.get("prior_exclude_positives", False)))
     atac_cfg = cfg.get("atac", {}) or {}
     inv_gene_index = {i: g for g, i in gene_index.items()}
     tf_names_by_index = {i: inv_gene_index[i] for i in tf_indices}
@@ -95,7 +194,7 @@ def main():
         gene_index, tf_indices, tf_names_by_index, gene_top_peaks,
         fasta_path=atac_cfg.get("genome_fasta"), jaspar_path=atac_cfg.get("jaspar_pfm_path"),
         score_frac=float(atac_cfg.get("motif_score_frac", 0.75)),
-        evidence=evidence, exclude_positives=bool(dcfg.get("prior_exclude_positives", True)),
+        evidence=evidence, exclude_positives=bool(dcfg.get("prior_exclude_positives", False)),
         candidate_edges=tf_candidate_edges)
 
     # 6. negative pool: random TF×gene non-positive edges -----------------
@@ -156,6 +255,8 @@ def main():
         "openness_proximal_frac": float((openness[:, 1] > 0.1).mean()),
         "tf_candidate_edges": int(tf_candidate_edges.shape[1]),
         "motif_edges": int(motif_edges.shape[1]),
+        # read by src/training/leak_guard.py; true = label-dependent graphs (leaky)
+        "prior_exclude_positives": bool(dcfg.get("prior_exclude_positives", False)),
         "coexpr_edges": int(coexpr_edges.shape[1]),
         "negative_pool": int(neg_pool.shape[1]),
         "evidence_sizes": {t: int(e.shape[1]) for t, e in evidence.items()},

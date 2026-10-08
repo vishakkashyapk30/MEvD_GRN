@@ -32,6 +32,10 @@ class CellTypeData:
     motif_edges: torch.Tensor = None     # (2, E) TF -> gene with an actual PWM hit in a
                                          # top-K accessible peak (src/data/motif_scan.py);
                                          # empty if no genome FASTA/JASPAR file configured.
+    provenance: dict = None              # the processed dir's summary.json (+ "_processed_dir");
+                                         # src/training/leak_guard.py reads how the graphs were
+                                         # built from it. None (e.g. synthetic data) = unknown,
+                                         # which the leak guard treats as leaky.
 
     @property
     def n_genes(self) -> int:
@@ -81,8 +85,12 @@ def load_celltype_data(processed_dir: str, evidence_tiers: List[str]) -> CellTyp
                      else torch.zeros((rna.shape[0], 0)))
     motif_path = d / "motif_edges.pt"
     motif_edges = torch.load(motif_path) if motif_path.exists() else torch.zeros((2, 0), dtype=torch.long)
+    summary_path = d / "summary.json"
+    provenance = dict(load_json(summary_path)) if summary_path.exists() else {}
+    provenance["_processed_dir"] = str(d)
     return CellTypeData(cell_type, rna, atac, tf_cand, coexpr, signature, openness,
-                        gene_index, tf_indices, evidence, neg_pool, fm_embeddings, motif_edges)
+                        gene_index, tf_indices, evidence, neg_pool, fm_embeddings, motif_edges,
+                        provenance)
 
 
 def load_splits(splits_dir: str, cell_type: str, tier: str) -> Dict[str, Dict[str, torch.Tensor]]:

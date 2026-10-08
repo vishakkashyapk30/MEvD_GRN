@@ -26,7 +26,13 @@ paths:
     # fallback path (src/data/preprocessing.py:load_features_by_cells).
     rna_glob:  "data/raw/single_cell/MCF7_multiome/DS027_PMID36318267_HUMAN_MCF7/MCF7_RNA_Matrix.tsv"
     atac_glob: "data/raw/single_cell/MCF7_multiome/DS027_PMID36318267_HUMAN_MCF7/MCF7_ATAC_Matrix.tsv"
-  processed_dir: data/processed/MCF7
+  # Label-free processed dir (2026-10-08). Built by
+  #   python scripts/02_preprocess.py --config configs/mcf7.yaml
+  # as a graph-only rebuild of data/processed/MCF7 (pre-2026-10-08, label-dependent
+  # TF-candidate graph, kept untouched only to reproduce old numbers): every other
+  # artifact is copied unchanged and the splits are checked edge-identical.
+  processed_dir: data/processed/MCF7_labelfree
+  reuse_processed_from: data/processed/MCF7
 
 atac:
   gtf_path: data/raw/gtf/gencode.v38.gtf.gz     # hg38 (same as K562; human)

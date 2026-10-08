@@ -4,6 +4,13 @@
 # All scripts read from a config; no hardcoded hyperparameters.
 # =============================================================================
 
+# Zero-leak guard (src/training/leak_guard.py): training refuses to run unless the
+# processed dir's summary.json records label-free graphs AND
+# training.exclude_eval_negatives is true. Set true ONLY in legacy before/after
+# configs that reproduce pre-fix numbers (e.g. configs/sweep/*_legacy*.yaml);
+# a loud warning is printed and every results JSON records the leak status.
+legacy_allow_leaks: false
+
 data:
   cell_types: [K562, ESC]
   evidence_tiers: [localization, perturbation, dual_evidence]
@@ -14,7 +21,13 @@ data:
   coexpr_knn_k: 20                # gene-gene co-expression kNN degree (message-passing graph)
   tf_candidate_topk: 500          # per-TF accessible+co-expressed candidate targets
   top_k_prior_targets: 500        # legacy global-accessibility prior (used only if signatures absent)
-  prior_exclude_positives: true   # keep known edges OUT of the message-passing graph (no label leakage)
+  # false = label-free message-passing graphs (2026-10-08). true EXCLUDES every known
+  # positive of every tier and split -- including val/test -- from the TF-candidate
+  # graph, so a pair's absence from the graph depends on the test labels: that IS a
+  # test->train leak (docs/experiments/labelfree_graph_rerun.md). true is only for
+  # reproducing pre-2026-10-08 processed dirs, and training on such a dir is refused
+  # by src/training/leak_guard.py unless legacy_allow_leaks: true.
+  prior_exclude_positives: false
   negative_pool_cap: 1000000      # max random TF×gene negatives to pre-sample
   train_ratio: 0.70
   val_ratio: 0.15

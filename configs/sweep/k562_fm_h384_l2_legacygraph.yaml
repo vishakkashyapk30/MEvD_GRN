@@ -1,0 +1,10 @@
+# LEGACY, LEAKY -- reproduces the "fixed" rows of docs/experiments/leakfix_rerun.md
+# (2026-09-30 negative-pool fix ON) on the label-dependent TF-candidate graph of
+# data/processed/K562 (all positives of all splits excluded; the second leak,
+# fixed 2026-10-08). Only for before/after comparisons; never a result.
+inherit: k562_fm_h384_l2.yaml
+legacy_allow_leaks: true
+data:
+  prior_exclude_positives: true
+paths:
+  processed_dir: data/processed/K562

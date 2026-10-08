@@ -174,7 +174,8 @@ def main():
            "n_train_pos": int(len(arrays["train"]["pos"])), "neg_pool": int(len(pool)),
            "val_test_negatives_removed_from_pool": int(removed),
            "epochs_run": len(res["history"]), "best_val_aupr": res["best_val_aupr"],
-           "train_seconds": secs, "internal_test": internal, "chip": chip}
+           "train_seconds": secs, "internal_test": internal, "chip": chip,
+           "leak_status": trainer.leak_status}
     save_json(rec, out_dir / "metrics.json")
     s = chip.get("summary", {})
     print(f"[{args.cell_type} {args.source}/{args.regime} {args.variant} seed {seed}] "

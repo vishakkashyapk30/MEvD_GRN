@@ -141,6 +141,6 @@ def build_processed(out_dir: Path, rna: sp.csr_matrix, genes: List[str], atac: s
             "tf_candidate_edges": int(cand.shape[1]), "tf_candidate_edges_rnaonly": int(cand_rna.shape[1]),
             "genes_with_tss": int(len(tss)), "atac_nonzero_frac": float((atac_feats[:, 0] > 0).mean()),
             "proximal_peak_frac": float((openness[:, 1] > 0.1).mean()),
-            "label_free": True}
+            "label_free": True, "prior_exclude_positives": False}
     save_json(summ, out_dir / "summary.json")
     return summ

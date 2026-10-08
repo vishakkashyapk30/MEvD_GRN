@@ -250,6 +250,23 @@ All of it runs on CollecTRI. DoRothEA A-B runs only the headline + ablation, `tf
   single job. See the build log.
 - **2026-10-01, A7 (scores storage):** eval-TF scores are saved as float32, not float16. float16 created
   ties that shifted AP in the 3rd decimal.
+- **2026-10-08, A8 (new supplementary regime `target_all`; the headline is unchanged):**
+  - The headline (`tf` regime, LINGER-protocol Cistrome evaluation) and the existing `target` regime
+    are untouched. `target.npz` and `tf.npz` are reproduced bit-for-bit by the amended code.
+  - `target_all` is a second target-disjoint regime. Its labelled-target partition, and therefore every
+    train/val/test positive, is exactly `target`'s. The ~20k genes that are a target in no part are also
+    partitioned 70/15/15 (seed `split.seed + 2000`).
+  - Train negatives may use any train-partition gene, including never-labelled ones, with the same
+    degree-matched + 20% uniform rule as `tf`. Val/test negatives use their own partition's genes.
+  - Why: in `target`, train negatives only ever use the 3,564 train targets, so 20,386 never-labelled
+    genes are never shown to the model at all. §12 shows this, not the held-out targets, is what drives
+    the below-random Cistrome AUROC.
+  - The leak rules still hold, and `check_disjoint` asserts them: no val/test-partition gene is ever a
+    train target, positive or negative.
+  - Code: `src/benchmarks/pbmc_labels.py` (`REGIMES`, `unlabelled_gene_partition`),
+    `pbmc_eval.internal_test_metrics`. Built locally by
+    `~/.cache/local_runs/scripts/pbmc_build_target_all.py`; `scripts/26 --steps splits` now also writes
+    it.
 
 ## 5. Files
 
@@ -538,3 +555,149 @@ Published (LINGER Table S7, its own candidate genes):
 - GENIE3: AUROC 0.5387, AUPR ratio 1.1686
 - PIDC: AUROC 0.5292, AUPR ratio 1.1717
 
+
+## 12. Why the target-disjoint regime fails, and what the Cistrome metric measures (2026-10-08, local RTX 4060 / CPU)
+
+Ada is locked, so this is a local study. Scratch scripts are in `~/.cache/local_runs/scripts/`
+(`pbmc_target_diag.py`, `pbmc_gene_prior.py`, `pbmc_expr_baselines.py`) and outputs in
+`~/.cache/local_runs/pbmc_diag/`. Classical monocytes, naive CD4 T and mDC processed dirs were rebuilt
+locally with `scripts/26 --steps processed` (naive B from the 2026-10-01 smoke build). The
+cell-type-invariant Geneformer matrix was copied after checking that `gene_index.json` is identical.
+
+### 12.1 Trivial per-gene rankers beat both MeVD-GRN and LINGER on this metric (`expressed` space)
+
+Each ranker gives **every TF the same ranking** of genes, by one feature of the cell type. Scored with
+`pbmc_eval.evaluate_chip` over LINGER's 19 datasets, `expressed` space (25,477 genes):
+
+| Ranker (TF-agnostic) | AUROC | AUPR ratio |
+|---|---|---|
+| ATAC RP gene activity (`atac_features_aligned[:,0]`) | **0.8141** | **3.680** |
+| rank(RNA mean) + rank(ATAC activity) | 0.8064 | 3.459 |
+| RNA detection rate | 0.7411 | 2.667 |
+| RNA mean | 0.7402 | 2.644 |
+| has a Geneformer token (0/1) | 0.6955 | 1.633 |
+| max-RP openness | 0.6914 | 1.594 |
+| *MeVD-GRN fm_h384, tf regime, 5 seeds (§11)* | *0.7343* | *2.135* |
+| *LINGER, published (own candidate genes)* | *0.7143* | *2.2526* |
+
+- ATAC gene activity alone ranks 0.75-0.86 per TF (STAT1 0.827, IRF1 0.795, CTCF 0.816, RUNX1 0.779,
+  SPI1 0.750, ETS1 0.864, REST 0.791, MYC 0.850, IRF4 0.823).
+- The reason is structural:
+  - The ground truth is a Cistrome BETA regulatory-potential score of the ChIP peaks (10 kb decay), top
+    1000 genes.
+  - Our ATAC feature is a regulatory-potential score of the ATAC peaks (10 kb decay).
+  - Most TF ChIP peaks sit in open chromatin, so a gene with many nearby open peaks scores high under both,
+    whichever TF it is.
+- **Consequence for the headline.**
+  - In the `expressed` space, the LINGER-protocol AUROC mostly measures a per-target accessibility and
+    expression prior.
+  - MeVD-GRN's 0.734 is below a TF-agnostic ATAC ranker on the same genes. So the pre-registered win
+    criterion ("exceeds the degree-only and gene-ID baselines") was too weak. Degree, gene-ID and Pearson
+    do not encode accessibility.
+  - "MeVD-GRN beats LINGER" cannot be claimed on this space.
+  - The `linger_tg` space (genes with a LINGER cis link, so mostly accessible genes) should shrink this
+    prior. Every ranker must be re-scored there once the LINGER re-run exists.
+  - Proxy spaces (`pbmc_restricted_space.py`). Positives are the top-1000 genes inside the space, as
+    in LINGER's code. Values are AUROC / AUPR ratio over the 19 datasets:
+
+    | Candidate space (per cell type) | genes (CM / CD4 / B / mDC) | ATAC activity | RNA mean |
+    |---|---|---|---|
+    | `expressed` (all) | 25,477 | 0.8141 / 3.680 | 0.7402 / 2.644 |
+    | proximal peak (max RP > 0.1) | 17,574 | 0.7333 / 2.568 | 0.6679 / 1.969 |
+    | detected in ≥5% of cells | 7,886 / 7,099 / 6,679 / 9,922 | 0.6693 / 1.956 | 0.5748 / 1.406 |
+    | detected ≥5% and proximal | 7,457 / 6,786 / 6,346 / 9,318 | 0.6534 / 1.871 | 0.5692 / 1.412 |
+    | detected in ≥20% of cells | 3,382 / 2,066 / 1,938 / 5,233 | 0.6304 / 1.738 | 0.5627 / 1.300 |
+
+    The accessibility prior shrinks when lowly detected genes are removed, but stays well above chance
+    (0.63-0.73). MeVD-GRN must be compared with it inside the *same* space (§12.4).
+  - Any future claim needs a TF-specificity control: the method's row against the TF-agnostic mean row,
+    or AUROC within accessibility strata (§12.4).
+
+### 12.2 Diagnosis of the target-disjoint failure
+
+Gene groups come from the `target` split: **train targets** (3,564), **held-out targets** (val+test,
+1,527), and **never-labelled** genes (20,386, a target of no kept CollecTRI edge). Columns give the mean
+over the cell type's datasets. "pct" is the mean score percentile of the group within each TF's row.
+
+| Model (smoke-length; see caveat) | Cistrome AUROC | AUROC within train / held-out / never | pct train / held-out / never | pct genes without / with a Geneformer token | Spearman(score, RNA mean) |
+|---|---|---|---|---|---|
+| fm_h384, `target`, classical monocytes, 2 epochs (CPU) | 0.430 | 0.598 / 0.606 / **0.383** | 0.406 / 0.402 / **0.524** | **0.691** / 0.383 | **-0.181** |
+| fm_h384_rnaonly, `target`, naive B, 5 epochs | 0.433 | 0.464 / 0.477 / 0.425 | 0.477 / 0.487 / 0.505 | 0.559 / 0.464 | -0.479 |
+| fm_h384, `tf`, naive B, 10 epochs (contrast) | 0.711 | 0.501 / 0.494 / 0.762 | 0.807 / 0.813 / 0.423 | 0.191 / 0.689 | +0.407 |
+
+Cistrome positive rates per group (classical monocytes): train targets 7.5%, held-out targets 6.6%,
+never-labelled 2.7%, no Geneformer token 0.1%.
+
+1. **Held-out targets are not scored low.**
+   - Their score percentile equals the train targets' (0.402 vs 0.406).
+   - Within the held-out targets, AUROC is as good as within the train targets (0.606 vs 0.598).
+   - So the model does not fail on unseen labelled targets.
+2. **The failure is the never-labelled genes.** In the `target` regime they are never shown to the model,
+   not even as negatives (`allowed["train"]` = train targets only). They end up ranked *above* the
+   labelled genes (pct 0.524), although they are 2.7x less often ChIP targets.
+   - Genes without a Geneformer token are the worst case. Their positive rate is 0.1%, but they are
+     ranked highest (pct 0.69): their all-zero FM vector is out of distribution and is extrapolated
+     upwards.
+   - The score correlates negatively with expression.
+   - So in the `target` regime the model learns an **inverted per-gene prior** for genes outside its
+     training support. Because the metric is dominated by a per-gene prior (§12.1), the AUROC falls below
+     0.5.
+3. **The `tf` regime gets its AUROC from the same per-gene axis, with the right sign.**
+   - Its 20% uniform negatives cover all 25,477 genes, so never-labelled, untokenised and unexpressed genes
+     are learned as negatives (pct 0.42 and 0.19).
+   - Within the CollecTRI-labelled targets this smoke model is at chance (0.50).
+4. **Verdict:** a per-target prior, and an artifact of where negatives are sampled.
+   - It is not a feature or graph difference for unseen targets: the graphs are label-free and identical
+     across regimes.
+   - It is an evaluation artifact only in the sense that the metric rewards a per-gene prior.
+
+**Mechanism check with a gene-only prior** (`pbmc_gene_prior.py`, classical monocytes). A model that sees
+**only the target gene's features** is fitted on each regime's training pairs (train positives + 5x
+negatives from the regime's train pool) and scored on the 10 classical-monocyte Cistrome datasets:
+
+| Regime the prior is fitted on | train-side target genes seen | logistic, expr+ATAC | logistic, expr+ATAC+FM | boosted trees, expr+ATAC | boosted trees, expr+ATAC+FM |
+|---|---|---|---|---|---|
+| `tf` | 17,904 | 0.784 | 0.793 | 0.774 | 0.772 |
+| `random` | 18,042 | 0.777 | 0.795 | 0.776 | 0.780 |
+| `target` | 3,564 | 0.721 | **0.460** | 0.602 | 0.643 |
+| `target_all` (A8) | 13,004 | 0.783 | 0.799 | 0.784 | 0.784 |
+
+(FM = 16 principal components of the Geneformer matrix + a has-token flag. Degree-only: 0.595 / 0.583 /
+0.583 / 0.597 for tf / target / target_all / random.)
+
+The same TF-blind prior reaches 0.77-0.80 under every regime except `target`, where it degrades or
+inverts. With A8's whole-universe partition it recovers, although the positives are identical to
+`target`'s.
+
+**The same gene-only prior on all 19 datasets** (`pbmc_gene_prior_19.py`). It is a logistic regression
+on the target gene's own features, one per cell type. It gives every TF the same ranking and uses
+the same CollecTRI training pairs as MeVD-GRN:
+
+| Regime the prior is fitted on | expr+ATAC: AUROC / AUPR ratio | expr+ATAC+FM: AUROC / AUPR ratio |
+|---|---|---|
+| `tf` | 0.7476 / 2.237 | **0.7610 / 2.495** |
+| `target` | 0.6874 / 1.812 | **0.4091 / 0.971** |
+| `target_all` (A8) | 0.7537 / 2.291 | 0.7704 / 2.601 |
+| *MeVD-GRN fm_h384, `tf`, 5 seeds (§11)* | | *0.7343 / 2.135* |
+| *MeVD-GRN fm_h384, `target`, 5 seeds (§11)* | | *0.4546 / 1.233* |
+
+- **The TF-blind prior reproduces MeVD-GRN's target-regime failure** (0.409 vs 0.455). With the A8
+  partition the failure goes away (0.770). The mechanism is a per-target prior that inverts under
+  `target`'s negative design, especially through the Geneformer features.
+- **The TF-blind prior fitted in the `tf` regime beats the MeVD-GRN headline** (0.761 / 2.495 vs
+  0.734 / 2.135), and also LINGER's published 0.714 / 2.253. This prior uses no TF information at all.
+  So on this metric and candidate space, MeVD-GRN's Cistrome AUROC can be explained without any
+  TF-specific signal. §12.4 tests whether MeVD-GRN has TF-specific signal on top.
+
+**Caveat:** the MeVD-GRN rows above come from 2-10-epoch models (the only locally available target-regime
+scores; Ada runs ran ~110+ epochs). Trained-model confirmation is queued (§12.3).
+
+### 12.3 Fix tested: `target_all` (A8), and trained-model confirmation
+
+(Queued on the local GPU after the K562 queue: fm_h384 classical monocytes `tf` and `target` seed 42 for
+the trained-model diagnosis, and `target_all` on all 4 cell types. Results are added here.)
+
+### 12.4 TF-specificity of MeVD-GRN's Cistrome signal
+
+(Pending the trained `tf`-regime models: the AUROC of each TF's own row against the TF-agnostic mean
+row over the 10 eval TFs, and AUROC within ATAC-activity strata.)
