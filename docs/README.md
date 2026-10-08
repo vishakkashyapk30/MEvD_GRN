@@ -7,9 +7,11 @@ The primary, actively maintained documents are at the repo root:
 | `README.md` | Setup, data download, how to run, repo layout, design notes |
 | `plan.md` | Living roadmap: what changed and why, and what is still open (Section 10). Code comments cite it as "plan.md Section N", so its section numbers are stable |
 | `results.md` | Current numbers (the source of truth). Each table names its `results/*.json` source |
-| `paper/main.tex` | Manuscript, resynced to `results.md` on 2026-09-18. Build instructions are in `paper/README.md` |
+| `paper/main.tex` | Manuscript, resynced to `results.md` on 2026-09-18, so every number in it predates the 2026-09-30 leak fix. The changes it needs are listed in `docs/paper_revision_plan.md`. Build instructions are in `paper/README.md` |
 
-Where documents disagree, `results.md` wins. Anything under `archive/`, and
+Where documents disagree, `results.md` wins. Read its 2026-10-08 banner first:
+every MeVD-GRN number in it predates the leak fixes, and the fixed numbers are
+in `experiments/leakfix_rerun.md` and `experiments/labelfree_graph_rerun.md`. Anything under `archive/`, and
 the older weekly-update text under `weekly_updates/`, has pre-bugfix numbers
 that should not be compared with current results.
 
@@ -20,9 +22,11 @@ docs/
 ├── README.md                          this index
 ├── citations.md                       design rationale + literature citations, one section per model component
 ├── critical_review_independent.md     2026-09-18 independent critical review + its final status update
+├── mevd_vs_scmultiomegrn.md           2026-10-01 comparison with scMultiomeGRN, novelty audit, 18 code-vs-doc discrepancies
+├── paper_revision_plan.md             2026-10-08 checklist of every change paper/main.tex needs
 ├── figures/                           architecture diagrams (PNG + HTML source)
 ├── reference/                         external reference material
-├── experiments/                       runbooks + findings for competitor-dataset benchmarks
+├── experiments/                       runbooks + findings: competitor benchmarks and the leak-fix reruns
 ├── weekly_updates/                    weekly-update decks (PDF) + markdown text for some of them
 └── archive/                           superseded documents, kept for the record
 ```
@@ -40,6 +44,22 @@ readiness. The original findings are kept unedited, with dated updates added
 afterwards. Most blocking items are resolved (see its final status block and
 `plan.md` Section 9). The items still open are tracked in `plan.md`
 Section 10. (`scripts/06_ablation.py` refers to this file by name.)
+
+### `mevd_vs_scmultiomegrn.md`
+Written 2026-10-01 for the paper's Related Work and Contributions sections.
+It compares MeVD-GRN's headline configuration with scMultiomeGRN side by side,
+gives the provenance of each MeVD-GRN component (borrowed, adapted or novel),
+ranks the novelty claims, lists the risks to them (§6), suggests honest
+wording for the paper (§7), and lists 18 places where the code and the docs
+or paper disagree (§8).
+
+### `paper_revision_plan.md`
+Written 2026-10-08. An ordered checklist of every change `paper/main.tex`
+needs, each with its section, line numbers and replacement: the headline
+decision (curriculum or `all_at_once`), replacing the pre-fix numbers,
+adding PBMC10k vs LINGER and BEAR-GRN, reframing the novelty, one item per
+discrepancy, and citation fixes and additions with Crossref-checked DOIs. It
+marks which numbers are still pending. `main.tex` itself was not edited.
 
 ### `figures/`
 | File | Status |
@@ -72,12 +92,29 @@ numbers to beat, the protocol a supervised model needs, and the risks. The
 per-paper logs are in `lit_survey/`.
 
 ### `experiments/`
-One runbook per competitor benchmark. It records the dataset, the competitor's
-exact protocol, the target numbers, the files that implement it, and the Ada
+One runbook per experiment: each competitor benchmark, and each rerun after a
+leak fix. A benchmark runbook records the dataset, the competitor's exact
+protocol, the target numbers, the files that implement it, and the Ada
 launch commands.
 - `scmultiomegrn_generalization.md`: MeVD-GRN on scMultiomeGRN's fetal-lung
   benchmark (GSM4508936). Built and smoke-tested on 2026-09-30; not yet run on
-  Ada.
+  Ada. Its §10 records both leaks found in the SC-MO-GRN-DB pipeline.
+- `leakfix_rerun.md`: the K562 headline rerun after the negative-sampling
+  leak fix (val/test negatives were in the training pool). 5 seeds of
+  `all_at_once` and the curriculum, plus a legacy-pool sanity check that
+  reproduces the old numbers exactly. Complete (2026-10-02).
+- `labelfree_graph_rerun.md`: the second leak (the TF-candidate graph
+  excluded every known positive, so being a graph edge implied label 0) and
+  the K562 rerun with a label-free graph. Running locally since 2026-10-08;
+  results pending.
+- `pbmc10k_linger_benchmark.md`: the main external benchmark, 10x PBMC10k
+  Multiome scored with LINGER's Cistrome ChIP-seq evaluation, with a
+  pre-registered TF-disjoint design. Interim results in §10-11 are
+  provisional until the LINGER re-score on LINGER's own target genes.
+- `bear_grn_benchmark.md`: MeVD-GRN under the BEAR-GRN protocol (Nat Commun
+  2026) on SC-MO-GRN-DB datasets, scored with a verified port of BEAR's own
+  code. §10 reports the hub and coverage artifacts in BEAR's metrics and a
+  first, single-seed K562 run.
 
 ### `weekly_updates/`
 Files are named `<start>_to_<end>_update_<NN>.<ext>` with ISO dates, so they

@@ -6,6 +6,11 @@ to make this work strong enough for a top venue (ICLR/ICML, or a strong
 biology journal as a fallback). Keep this file updated as we go — it is the
 single place to look for "what is the plan right now."
 
+**Latest status entry: Section 11 (2026-10-08).** It covers the two leak
+fixes and their reruns, the PBMC10k and BEAR-GRN benchmarks, and the Ada
+lockout. It supersedes Section 3b's "Resolved (2026-09-18)" call and
+Section 10 item 1.
+
 ---
 
 ## 1. Where we are right now
@@ -288,6 +293,19 @@ this protocol + size once the rest of the pipeline (motif graph, other
 cell types) is re-validated against it, so the paper reports one
 consistent configuration rather than mixing sequential and all_at_once
 numbers across sections.
+
+> **Correction (2026-10-08): the "Resolved" call above was a misread
+> comparison.** It compared `all_at_once` + FM + h384/l2 with scMultiomeGRN,
+> not with the sequential curriculum at the same size. Against sequential +
+> FM + h384/l2 (localization 0.751, perturbation 0.834, dual 0.963 AUPR),
+> `all_at_once` wins only localization and loses perturbation (0.696) and
+> dual evidence (0.952), so the dilution tradeoff did hold at this size. All
+> of these numbers were also trained with the negative-sampling leak. After
+> the fix, `all_at_once` loses to scMultiomeGRN on perturbation and the
+> curriculum leads on perturbation and dual evidence
+> (`docs/experiments/leakfix_rerun.md`; Section 11.1). The "recommended
+> configuration" paragraph just above is superseded until the headline
+> decision is made (Section 11.7).
 
 A secondary test, `with_replay` at the same size, does NOT close the gap
 (localization 0.890, still below both `all_at_once` and scMultiomeGRN) and
@@ -668,6 +686,11 @@ they land.
 > running at the last update, so the baseline side of the comparison is
 > still single-seed.
 >
+> **Correction (2026-10-08):** the "5 of 6 metrics" result above compared a
+> leaky MEvD-GRN with a non-leaky scMultiomeGRN. With the negative-sampling
+> fix, `all_at_once` wins 4 of 6 and loses perturbation on both AUPR and
+> AUROC (Section 11.1).
+>
 > A second, separately spawned review wrote its own report at
 > `.claude/worktrees/agent-ac4cbf373d32c1f24/critical_review.md`. That
 > worktree was never merged into main. It mostly repeats
@@ -687,13 +710,14 @@ open recommendation rather than something unilaterally implemented.
 
 ---
 
-## 10. Open items, deferred work, and working notes (2026-09-18 snapshot, merged 2026-09-29)
+## 10. Open items, deferred work, and working notes (2026-09-18 snapshot, merged 2026-09-29, updated 2026-10-08)
 
 This section takes in the unique content of the former local-only
 `status.md` TODO tracker (last updated 2026-09-18, removed in the
 2026-09-29 docs cleanup), so open items now live in this one tracked file.
 Where that tracker had since been overtaken by later work, this section
-says so.
+says so. The 2026-10-08 update annotates items 1-5 and adds items 6-12;
+Section 11 has the background.
 
 **Still open, in priority order:**
 
@@ -708,6 +732,15 @@ says so.
    307K-param, sequential, no-FM model; (c) re-validate Macrophage/MCF7
    transfer and joint training at the new config, since all of them were
    tuned and tested at the old size.
+   **Update (2026-10-08): (a) is superseded.** The `all_at_once`
+   recommendation rested on a misread comparison, and the leak fix widened
+   the curriculum's lead (Section 11.1). Do not switch the default to
+   `all_at_once` before the headline decision (Section 11.7). If the
+   curriculum is chosen, `configs/default.yaml` already ships
+   `protocol: sequential`, but a shipped config that reproduces the headline
+   still needs `use_fm: true`, `hidden_dim: 384`, `n_gnn_layers: 2`
+   (`docs/mevd_vs_scmultiomegrn.md` §8, D8). (b) and (c) still stand, and
+   both must now be run with both leak fixes on.
 2. **Motif graph + gated relation combiner.** The motif scan finished on
    2026-09-12 (noticed 2026-09-18). It took 35 minutes once a ~20x-oversized
    scan was fixed, and produced 28,204 PWM-backed motif edges, compared with
@@ -721,15 +754,56 @@ says so.
    2701095, queued as of 2026-09-18. When it lands, make the
    relation-weight interpretability figure. `use_motif` is still `false` in
    every shipped config.
+   **Update (2026-10-08):** job 2701095 ran on the pre-upgrade Ada and has
+   not been checked since. The motif scan is restricted to TF-candidate
+   pairs, so the motif relation is a *subset* of the TF-candidate relation,
+   not a "genuinely different" third relation (`docs/mevd_vs_scmultiomegrn.md`
+   §8, D13).
 3. **scMultiomeGRN multi-seed.** 2 more seeds were running as of
    2026-09-18. Until they land, the baseline side of the `results.md`
    Section 7 comparison is still n=1.
+   **Update (2026-10-08):** still n=1 in `docs/experiments/leakfix_rerun.md`.
 4. **Open question:** why does the Geneformer transfer effect flip sign
    depending on which cell type is held out under joint training
    (Section 6)?
+   **Update (2026-10-08):** every transfer and joint-training number is
+   pre-fix, n=1 and at h128. Rerun them with both leak fixes before asking
+   why the sign flips.
 5. **Methodological call still to be made:** add a truly untouched
    final-check split, because dual-evidence AUPR has also been used as the
    selection metric (Section 9).
+   **Update (2026-10-08):** dual *val* positives are also part of the
+   merged val set used for early stopping (`docs/mevd_vs_scmultiomegrn.md`
+   §6, R4), which strengthens the case for this split.
+6. **(New 2026-10-08) Finish the label-free graph rerun** (Section 11.2).
+   It is running on the laptop. When it lands, its numbers replace the
+   `leakfix_rerun.md` numbers everywhere (`results.md` banner, the paper).
+7. **(New 2026-10-08) Headline-model decision** (curriculum vs
+   `all_at_once`, Section 11.7), then the paper rewrite in
+   `docs/paper_revision_plan.md`.
+8. **(New 2026-10-08) PBMC10k: make the LINGER comparison like-for-like**
+   (Section 11.3). Collect the LINGER re-run (job 2399) and re-score every
+   method on LINGER's own target set (`linger_tg`); finish GRNBoost2 (job
+   475); re-run SCENIC+ and scTFBridge if feasible; find out why the
+   target-disjoint regime fails (AUROC 0.455).
+9. **(New 2026-10-08) BEAR-GRN: finish the runs** (Section 11.4): the 5-seed
+   K562/Macrophage runs and scoring on Ada, the planned indegree-residual
+   control (not built yet), and phase 2 (iPS + mouse), keeping BEAR to at
+   most 6 submitted job records.
+10. **(New 2026-10-08) Regain Ada access** (Section 11.5) and check every
+    job that was queued or running at the lockout.
+11. **(New 2026-10-08) Hub and identity controls on the K562 benchmark**
+    (`docs/mevd_vs_scmultiomegrn.md` §6, R5-R7): degree-only and gene-ID
+    baselines, a TF-disjoint split, a learned gene-ID embedding as an FM
+    control, and `rna_only` at h384 + FM with several seeds. PBMC10k and
+    BEAR-GRN already have trivial baselines; K562 does not.
+12. **(New 2026-10-08) Text fixes outside the paper.** `docs/citations.md`
+    still describes the TF-candidate graph as leak-free (§8, D4), motivates
+    the gated combiner with the Relational Graph Transformer instead of HAN
+    (§17, D12), calls the motif graph a genuinely different relation (§19,
+    D13) and describes replay and hard negatives as on in the headline (§10
+    and §12, D14). The RESCAL and Duren DOI fixes (D10, D11) were made on
+    2026-10-08.
 
 **Resolved since that tracker's snapshot** (details in Section 9 and
 `docs/critical_review_independent.md`): the `paper/main.tex` body was
@@ -771,3 +845,200 @@ pipeline (2a = the RP-weighting rewrite, and the motif-scanning half,
 Sections 2 and 7); Workstream 3 = gated relation combiner (Section 4);
 Workstream 4 = Geneformer embeddings (Section 5); Workstream 5 =
 multi-cell-type transfer and joint training (Section 6).
+
+---
+
+## 11. Status update (2026-10-08): two leaks, two external benchmarks, Ada locked
+
+Everything in this section happened on branch `leak-fix-and-benchmarks`.
+The weekly write-up for 27 Sept - 3 Oct
+(`docs/weekly_updates/27-sept-to-3rd-oct-2026.md`) covers the same ground
+in slide form. Numbers below are copied from the experiment docs named in
+each subsection.
+
+### 11.1 The negative-sampling leak: fixed, rerun, and it changes the headline
+
+**The bug.** The trainer drew random negatives from the *whole* 1M-pair
+negative pool every epoch, and that pool also supplies every tier's val/test
+negatives. On K562 the localization stage asks for about 4M negatives per
+epoch from a 1M pool, so it trained on every val/test negative, as a label-0
+example, every epoch. The baselines never had this leak.
+
+**The fix** (2026-09-30, commit c26c03d): `MEvDTrainer.restrict_negative_pool`
+removes all 300,000 val/test negatives from the pool before training
+(1,000,000 → 700,000), and `train_stage` refuses to run without it.
+`exclude_eval_negatives: false` reproduces the old behaviour.
+
+**The rerun** (Ada job 467, finished 2026-10-02; full detail in
+`docs/experiments/leakfix_rerun.md`): K562, Geneformer + h384/l2, 5 seeds
+each of `all_at_once` and `full_curriculum` (the sequential curriculum),
+plus 2 legacy-pool sanity runs. With the fix off, the rerun reproduces the
+paper's seed-42 numbers exactly, to 4 decimals.
+
+| Run (mean of 5 seeds) | loc AUPR | pert AUPR | dual AUPR | dual AUROC |
+|---|---|---|---|---|
+| `all_at_once`, pre-fix (paper headline) | 0.9676 | 0.6955 | 0.9517 | 0.9880 |
+| `all_at_once`, fixed | 0.9544 | 0.5722 | 0.9017 | 0.9781 |
+| `full_curriculum`, fixed | 0.7450 | **0.8165** | **0.9562** | **0.9902** |
+| scMultiomeGRN (n = 1, never leaky) | 0.9059 | 0.6550 | 0.8466 | 0.9705 |
+
+What it means:
+1. The leak inflated the paper's headline: for `all_at_once`, perturbation
+   AUPR drops by 0.123 and dual-evidence AUPR by 0.050.
+2. After the fix, `all_at_once` loses to scMultiomeGRN on perturbation
+   (AUPR 0.572 vs 0.655, AUROC 0.880 vs 0.919). It wins 4 of 6 metrics, not
+   5 of 6.
+3. After the fix, the curriculum beats `all_at_once` on perturbation and
+   dual evidence and beats scMultiomeGRN on both by wide margins. Its open
+   weakness is forgetting localization (0.745 vs 0.954).
+4. **The curriculum was ahead before the fix too.** At FM + h384/l2 the
+   pre-fix sequential run gives perturbation 0.834 and dual 0.963, against
+   `all_at_once`'s 0.696 and 0.952. Section 3b's "Resolved (2026-09-18)"
+   call and the matching claims in `results.md` Sections 3 and 7 misread
+   that comparison (corrected in place, dated 2026-10-08). The leak hit
+   `all_at_once` much harder (seed 42: perturbation −0.120 vs −0.017 for
+   the curriculum). A plausible mechanism: `all_at_once` turns hard
+   negatives off, so all its negatives come from the leaky random pool.
+
+### 11.2 The second leak (label-dependent TF-candidate graph): quantified, rerun running locally
+
+From `docs/experiments/labelfree_graph_rerun.md` §1:
+- `scripts/02_preprocess.py` builds the TF-candidate graph (top-500
+  proximally accessible, most co-expressed genes per TF) with every known
+  positive of every tier and split excluded (`prior_exclude_positives:
+  true`).
+- On the paper's graph (112,500 edges), **0** val or test positives of any
+  tier are graph edges, against **2.8-3.0%** of the val/test negatives. So
+  "this pair is an edge of the input graph" implies "label 0" with
+  certainty.
+- In the label-free graph, positives and negatives are edges at nearly the
+  same rate (about 2.3% vs 2.1%).
+
+The fix keeps every other input identical: a new config,
+`configs/sweep/k562_fm_h384_l2_labelfree.yaml`
+(`prior_exclude_positives: false`), and a graph-only rebuild that copies
+every other processed artifact and checks that the splits are
+edge-identical (sanity checks in that doc's §3). The rerun (`full_curriculum`
+and `all_at_once`, both leak fixes on) is running one run at a time on the
+laptop's RTX 4060, because Ada is locked (11.5). **Its numbers are
+pending.** When they land, they, not the 11.1 numbers, are the K562 numbers
+for the paper.
+
+The PBMC10k and BEAR-GRN pipelines (11.3, 11.4) built their graphs
+label-free and kept the negative-pool fix on from the start, so neither leak
+affects them.
+
+### 11.3 PBMC10k Multiome vs LINGER: the main external benchmark (interim, provisional)
+
+Chosen after a survey of about 130 papers
+(`docs/reference/multiome_grn_benchmark_consensus.md`): 10x
+`pbmc_granulocyte_sorted_10k` Multiome, scored with LINGER's own Cistrome
+ChIP-seq evaluation code (20 ChIP datasets, 10 TFs in 4 cell types; the
+headline is the mean over the 19 datasets LINGER reports). LINGER, KEGNI,
+scTFBridge and regX report on it. Full detail:
+`docs/experiments/pbmc10k_linger_benchmark.md`.
+
+Design, pre-registered on 2026-10-01 before any result: CollecTRI labels
+with all 10 evaluation TFs removed as regulators, TF-disjoint splits,
+degree-matched negatives, label-free graphs, model selection on validation
+only, 5 seeds.
+
+Interim result (job 474, all 220 units, 2026-10-02 04:00 IST; §10-11 of that
+doc), candidate space `expressed`:
+
+| Method | AUROC (19 datasets) | AUPR ratio |
+|---|---|---|
+| MeVD-GRN `fm_h384` (CollecTRI, TF-disjoint, 5 seeds) | **0.7343 ± 0.0046** | 2.135 |
+| LINGER (published, Table S7) | 0.7143 | **2.2526** |
+| MeVD-GRN `fm_h384_rnaonly` | 0.7197 ± 0.0301 | 2.178 |
+| MeVD-GRN `base` (no FM) | 0.6701 ± 0.0083 | 1.722 |
+| MeVD-GRN `base_rnaonly` | 0.5438 ± 0.0111 | 1.337 |
+| MeVD-GRN `fm_h384_uniformneg` | 0.5973 ± 0.0136 | 1.698 |
+| Trivial baselines (degree, gene-ID, Pearson) | 0.50-0.59 | |
+
+- MeVD-GRN is above LINGER on AUROC and below it on AUPR ratio.
+- The trivial baselines stay at 0.50-0.59, so the signal is not just hub
+  structure.
+- ATAC adds +0.126 AUROC without Geneformer and only +0.015 with it (within
+  the RNA-only seed spread).
+- The target-disjoint regime fails (AUROC 0.455 / 0.458): the model does not
+  generalise to target genes it never saw as targets.
+- **Provisional.** LINGER's published numbers were computed on LINGER's own
+  candidate genes; ours are on the `expressed` gene universe. The
+  like-for-like comparison needs the LINGER re-run on our cells (job 819 was
+  OOM-killed at 30 GB and resubmitted as 2399 with 120 GB) and the
+  `linger_tg` re-score. GRNBoost2 (job 475) had scored 1 of 19 datasets.
+  SCENIC+ and scTFBridge are quoted from their papers, not re-run. None of
+  these jobs can be checked while Ada is locked.
+
+### 11.4 BEAR-GRN: the secondary benchmark, and what its metrics reward
+
+BEAR-GRN (Karamveer *et al.*, *Nat Commun*, 18 Sep 2026,
+doi 10.1038/s41467-026-77838-w) is from the SC-MO-GRN-DB lab and benchmarks
+9 multiome methods on SC-MO-GRN-DB data against ChIP, knockout, union and
+intersection ground truths. Full detail: `docs/experiments/bear_grn_benchmark.md`.
+
+- **Built:** BEAR's exact inputs and ground truths, and a Python port of
+  its R scoring. Re-scoring the released GRNs reproduces the paper's AUPRC
+  exactly in all 10 checked cases; AUROC agrees within the random
+  down-sampling noise.
+- **Design:** TF-disjoint 5-fold cross-fitting (the design the BEAR authors
+  name in their peer-review file), degree-matched negatives, label-free
+  graphs, and trivial baselines scored the same way.
+- **Artifacts on K562** (§10.1): a constant score for every measured pair
+  already gets ChIP AUPRC 0.431, equal to the best published method (LINGER
+  0.430). A TF-disjoint target in-degree ranker beats every BEAR method on
+  ChIP (AUROC 0.652, AUPRC 0.484). Against the knockout and intersection
+  ground truths nothing is above random AUPRC.
+- **First MeVD-GRN K562 result** (§10.2; seed 42 only, a direction, not a
+  result): ChIP AUROC / AUPRC 0.602 / 0.468, above every BEAR method but
+  below the in-degree ranker; Union 0.634 / 0.347, only marginally above it
+  (0.626 / 0.344). So the margin over BEAR's methods is mostly the hub
+  prior that any TF-disjoint supervised model gets.
+- **Pending:** the 5-seed Ada runs and scoring (queued behind the LINGER
+  re-run as of 2026-10-02), the indegree-residual control (planned, not
+  built), and phase 2 (iPS + 4 mouse embryo sets + naive mESC, cancelled on
+  2026-10-01 and to be resubmitted).
+- Note for the headline decision: BEAR's L1 protocol was pre-registered as
+  `all_at_once` (§6.2 of that doc). Changing it after seeing results would
+  break the pre-registration.
+
+### 11.5 Ada lockout (2026-10-08)
+
+- Both gateways (`ada-gw1`, `ada-gw2`) accept our SSH key and then reply
+  "Permission denied". The cause is unconfirmed (`docs/reference/ada.md`,
+  top section).
+- The 1 Oct setup ran conda installs, 20+ GB downloads and polling scripts
+  on ada-gw1. That breaks the login-node limit the HPC admins announced on
+  1 Oct (1 CPU core and 2 GB of memory per user on the gateways).
+- Consequence: no queued or running job (LINGER 2399, GRNBoost2 475, the
+  BEAR-GRN chain) can be checked, and nothing on /share1 can be read. The
+  label-free rerun moved to the laptop.
+- To do: ask the HPC admins to restore access. Once it is back, run
+  installs, downloads and polling loops only through `sbatch` or
+  `sinteractive`, never on the gateways.
+
+### 11.6 Novelty audit and the paper
+
+- `docs/mevd_vs_scmultiomegrn.md` (2026-10-01) compares MeVD-GRN with
+  scMultiomeGRN component by component. The claimable novelty is the
+  evidence-tier protocol, the Geneformer transfer finding and multi-cell-type
+  joint training; none of it is a new architecture block. It also lists 18
+  places where the code and the docs or paper disagree.
+- Every number in `paper/main.tex` is pre-fix. The full list of changes it
+  needs, with locations, is in `docs/paper_revision_plan.md` (2026-10-08).
+  `main.tex` itself has not been edited.
+- Fixed on 2026-10-08: `docs/citations.md` now credits the asymmetric
+  bilinear score to RESCAL rather than DistMult, and the Duren *et al.* DOI
+  is corrected there and in `paper/references.bib`.
+
+### 11.7 Decisions pending (the user's)
+
+1. **Headline model.** `docs/experiments/leakfix_rerun.md` recommends the
+   curriculum (option (a)); the alternative is to keep `all_at_once`. Best
+   made once the label-free numbers (11.2) are in.
+2. **Story.** Lead with PBMC10k vs LINGER, with SC-MO-GRN-DB (K562) and
+   BEAR-GRN as supporting results, and report BEAR's hub and coverage
+   artifacts openly.
+3. **When to rewrite the paper:** after the label-free rerun and the
+   `linger_tg` re-score, following `docs/paper_revision_plan.md`.
