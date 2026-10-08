@@ -37,7 +37,10 @@ python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.ge
 # --- preprocess (skip if already done) -----------------------------------
 for ct in K562 ESC; do
   cfg="configs/$(echo $ct | tr 'A-Z' 'a-z').yaml"
-  if [ ! -f "data/processed/$ct/rna_features_aligned.npy" ]; then
+  # processed_dir comes from the config (K562 -> data/processed/K562_labelfree, a
+  # graph-only label-free rebuild of data/processed/K562; see labelfree_graph_rerun.md)
+  pdir=$(python -c "import sys; sys.path.insert(0, '.'); from src.utils.io import load_config; print(load_config('$cfg')['paths']['processed_dir'])")
+  if [ ! -f "$pdir/rna_features_aligned.npy" ] || [ ! -f "$pdir/tf_candidate_edges.pt" ]; then
     echo "### Preprocessing $ct ###"
     python scripts/02_preprocess.py --config "$cfg"
   fi

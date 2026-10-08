@@ -63,6 +63,15 @@ Dual evidence is never trained on: it is scored zero-shot on val+test.
      off, so `all_at_once` draws *all* its negatives from the random pool,
      which is the leaky part. The curriculum takes half its negatives from
      tier-hierarchy hard negatives.
+   - **Correction (2026-10-09): that mechanism does not match the code.**
+     - With memory replay on (the default, `use_memory_replay: true`),
+       `_build_train_edges` excludes the whole replay memory, i.e. every
+       localization train positive, from the hard-negative candidates.
+     - So Stage 2 of `full_curriculum` draws **0** hard negatives. Its log
+       shows `neg=700000`, exactly the restricted random pool.
+     - Both protocols therefore take 100% of their training negatives from
+       the random pool, and why the leak hit `all_at_once` harder is open.
+     - Detail: [curriculum_forgetting.md](curriculum_forgetting.md) §1.
    - **Even before the fix, the curriculum already beat `all_at_once`** on
      perturbation and dual evidence at this size.
      `results/ablations/with_fm_h384l2_K562.json` (sequential + FM + h384/l2,

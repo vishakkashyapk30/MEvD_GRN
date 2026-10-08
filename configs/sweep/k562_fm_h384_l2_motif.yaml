@@ -3,6 +3,10 @@
 # strength relations to weigh (the ablation-name override for
 # motif_graph_only forces use_motif=True regardless of config, but
 # gated_relations does not, so it needs this explicitly).
+# NOTE (2026-10-08): data/processed/K562_labelfree has an EMPTY motif graph (the
+# graph-only rebuild cannot rebuild it). A label-free motif graph needs a full
+# 02_preprocess.py run with prior_exclude_positives: false, genome_fasta and
+# jaspar_pfm_path available, into a new processed dir. Never run, no result.
 inherit: k562_fm_h384_l2.yaml
 model:
   use_motif: true

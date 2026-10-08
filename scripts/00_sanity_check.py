@@ -23,6 +23,7 @@ from src.evaluation.metrics import compute_all_metrics
 from src.models.mevd_grn import MEvDGRN
 from src.training.curriculum import CurriculumStage
 from src.training.losses import bce_weighted_loss, focal_loss
+from src.training import leak_guard
 from src.training.trainer import MEvDTrainer
 
 OK, FAIL = "\033[92mPASS\033[0m", "\033[91mFAIL\033[0m"
@@ -65,11 +66,12 @@ def make_synthetic(n_genes=300, n_tf=40, n_cells=200, sig_dim=16, hidden=32, see
     coexpr = gb.build_coexpression_graph(signatures, k=10)
     tf_cand = gb.build_prior_graph(gene_index, tf_indices, atac.numpy(), rna.numpy(),
                                    top_k=30, signatures=signatures,
-                                   openness=openness.numpy(), evidence=ev,
-                                   exclude_positives=True)
+                                   openness=openness.numpy(), evidence=None,
+                                   exclude_positives=False)       # label-free (leak_guard)
     neg_pool = gb.create_negative_pool(ev, tf_indices, n_genes, cap=20000, seed=seed)
     data = CellTypeData("SYN", rna, atac, tf_cand, coexpr, sig, openness, gene_index,
-                        torch.tensor(tf_indices), ev, neg_pool)
+                        torch.tensor(tf_indices), ev, neg_pool,
+                        provenance={"prior_exclude_positives": False, "_processed_dir": "synthetic"})
     return data, hidden, X, tf_cand, tf_indices
 
 
@@ -204,6 +206,51 @@ def main():
     check("train_stage refuses to run before restrict_negative_pool", guarded)
     final = trainer.evaluate_split(splits["dual_evidence"]["test"])
     check("final eval AUPR finite", np.isfinite(final["aupr"]))
+    check("label-free run: leak_status zero_leak", trainer.leak_status["zero_leak"] is True)
+
+    print("\n=== 8b. Zero-leak guard (src/training/leak_guard.py) ===")
+    import copy
+
+    def _refuses(prov, cfg_over=None, via_edges=False):
+        d = copy.copy(data)
+        d.provenance = prov
+        c = _mini_cfg()
+        for k, v in (cfg_over or {}).items():
+            if isinstance(v, dict):
+                c.setdefault(k, {}).update(v)
+            else:
+                c[k] = v
+        t = MEvDTrainer(MEvDGRN(hidden_dim=hidden, n_gnn_layers=2, dropout=0.2), d, c, "cpu")
+        t.set_train_positives(splits)
+        t.restrict_negative_pool(splits)
+        try:
+            if via_edges:      # joint-training style loop (scripts/12) skips train_stage
+                t._build_train_edges(stages[0], splits["localization"]["train"]["pos"])
+            else:
+                t.train_stage(stages[0], splits["localization"])
+            return False, t.leak_status
+        except leak_guard.LeakageError:
+            return True, t.leak_status
+
+    check("refuses a label-dependent graph (prior_exclude_positives: true)",
+          _refuses({"prior_exclude_positives": True})[0])
+    check("refuses a dir with no graph record (missing key = leaky)", _refuses({})[0])
+    check("refuses synthetic/unknown provenance (None)", _refuses(None)[0])
+    check("refuses exclude_eval_negatives: false on a label-free graph",
+          _refuses({"prior_exclude_positives": False}, {"training": {"exclude_eval_negatives": False}})[0])
+    check("refuses via _build_train_edges too (custom training loops)",
+          _refuses({"prior_exclude_positives": True}, via_edges=True)[0])
+    check("accepts prior_exclude_positives: false", not _refuses({"prior_exclude_positives": False})[0])
+    check("accepts PBMC record label_free: true", not _refuses({"label_free": True})[0])
+    check("accepts BEAR record label_free_graphs: true", not _refuses({"label_free_graphs": True})[0])
+    check("explicit prior_exclude_positives: true wins over label_free: true",
+          _refuses({"prior_exclude_positives": True, "label_free": True})[0])
+    refused, st = _refuses({"prior_exclude_positives": True},
+                           {"legacy_allow_leaks": True, "training": {"exclude_eval_negatives": False}})
+    check("legacy_allow_leaks: true lets a leaky legacy run through", not refused)
+    check("legacy run is recorded as leaky in leak_status",
+          st["zero_leak"] is False and st["graph_label_free"] is False
+          and st["eval_negatives_excluded"] is False and st["legacy_allow_leaks"] is True)
 
     print("\n=== 9. Real processed data (optional) ===")
     found = False
@@ -223,6 +270,13 @@ def main():
                 check(f"{ct} openness len == n_genes", opf.shape[0] == rna.shape[0])
     if not found:
         print("  (no processed data yet — run scripts/02_preprocess.py)")
+    from src.utils.io import load_json
+    for d, want in (("data/processed/K562", False), ("data/processed/K562_labelfree", True),
+                    ("data/processed/Macrophage", False), ("data/processed/Macrophage_labelfree", True),
+                    ("data/processed/MCF7", False), ("data/processed/MCF7_labelfree", True)):
+        if (Path(d) / "summary.json").exists():
+            got = leak_guard.graph_label_free(load_json(Path(d) / "summary.json"))
+            check(f"leak guard reads {d} as {'label-free' if want else 'LEAKY'}", got is want)
 
     print("\n\033[92mALL SANITY CHECKS PASSED\033[0m\n")
 

@@ -23,7 +23,13 @@ paths:
     # text-based fallback path (src/data/preprocessing.py:load_features_by_cells).
     rna_glob:  "data/raw/single_cell/Macrophage_multiome/DS026_PMID38747151_HUMAN_MACROPHAGE/buffer_macrophage_RNA_matrix.tsv"
     atac_glob: "data/raw/single_cell/Macrophage_multiome/DS026_PMID38747151_HUMAN_MACROPHAGE/buffer_macrophage_ATAC_matrix.tsv"
-  processed_dir: data/processed/Macrophage
+  # Label-free processed dir (2026-10-08). Built by
+  #   python scripts/02_preprocess.py --config configs/macrophage.yaml
+  # as a graph-only rebuild of data/processed/Macrophage (pre-2026-10-08, label-dependent
+  # TF-candidate graph, kept untouched only to reproduce old numbers): every other
+  # artifact is copied unchanged and the splits are checked edge-identical.
+  processed_dir: data/processed/Macrophage_labelfree
+  reuse_processed_from: data/processed/Macrophage
 
 atac:
   gtf_path: data/raw/gtf/gencode.v38.gtf.gz     # hg38 (same as K562; human)

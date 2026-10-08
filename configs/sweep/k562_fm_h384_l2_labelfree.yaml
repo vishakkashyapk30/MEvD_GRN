@@ -1,0 +1,23 @@
+# Same as k562_fm_h384_l2.yaml (FM + h384/l2, negative-sampling fix on), but the
+# TF-candidate message-passing graph is built LABEL-FREE (2026-10-08 fix of the
+# second leak, docs/experiments/labelfree_graph_rerun.md). With
+# prior_exclude_positives: true (the default, used for every paper number) every
+# known positive of every tier and split -- including val/test -- is removed from
+# the graph, so absence from a TF's candidate list correlates with the label.
+#
+# Build once (graph-only rebuild: copies every other artifact from
+# data/processed/K562 unchanged and checks the regenerated splits are
+# edge-identical to data/splits/K562_*; nothing in data/splits is written):
+#   python scripts/02_preprocess.py --config configs/sweep/k562_fm_h384_l2_labelfree.yaml
+# Then e.g.:
+#   python scripts/06_ablation.py --config configs/sweep/k562_fm_h384_l2_labelfree.yaml \
+#       --ablation full_curriculum --seed 42 --tag fm_h384l2_labelfree_seed42
+# Since the 2026-10-08 zero-leak defaults (configs/default.yaml, configs/k562.yaml)
+# this is equivalent to k562_fm_h384_l2.yaml; kept because the 2026-10-08 runs
+# and their tags were produced with it.
+inherit: k562_fm_h384_l2.yaml
+data:
+  prior_exclude_positives: false
+paths:
+  processed_dir: data/processed/K562_labelfree
+  reuse_processed_from: data/processed/K562

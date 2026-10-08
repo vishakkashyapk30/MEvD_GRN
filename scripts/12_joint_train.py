@@ -155,7 +155,9 @@ def main():
     # same cell types silently overwrite each other's results/checkpoint.
     tag = "_".join(names) + ("_fm" if model.use_fm else "_nofm")
     save_json({"trained_on": names, "held_out": held_cfg["cell_type"],
-               "use_fm": model.use_fm, "results": final},
+               "use_fm": model.use_fm, "results": final,
+               "leak_status": {nm: t.leak_status for (t, _), nm in zip(trainers, names)},
+               "held_out_leak_status": held_trainer.leak_status},
               f"results/joint_training/{tag}_holdout_{held_cfg['cell_type']}.json")
     torch.save({"model": model.state_dict()}, f"results/checkpoints/joint_{tag}_final.pt")
     print(f"\n[done] trained in {train_secs / 60:.1f} min -> "

@@ -1,0 +1,40 @@
+{
+  "ablation": "full_curriculum",
+  "cell_type": "K562",
+  "tag": "fm_h384l2_labelfree_seed42",
+  "n_params": 3257479,
+  "hidden_dim": 384,
+  "n_gnn_layers": 2,
+  "key_tier": "dual_evidence",
+  "trained_tiers": [
+    "localization",
+    "perturbation"
+  ],
+  "results": {
+    "localization": {
+      "auroc": 0.7525169199997717,
+      "aupr": 0.7306562326605824,
+      "early_precision": 0.723397433757782,
+      "epr": 1.3426137811254457,
+      "n_pos": 175237,
+      "n_total": 325237
+    },
+    "perturbation": {
+      "auroc": 0.960144203983709,
+      "aupr": 0.8146900276963016,
+      "early_precision": 0.7572916746139526,
+      "epr": 4.053973080194615,
+      "n_pos": 34457,
+      "n_total": 184457
+    },
+    "dual_evidence": {
+      "auroc": 0.9899436417877857,
+      "aupr": 0.9551381999690811,
+      "early_precision": 0.8772504329681396,
+      "epr": 5.263502597808838,
+      "n_pos": 7943,
+      "n_total": 47658
+    }
+  },
+  "relation_weights": {}
+}

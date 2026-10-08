@@ -14,6 +14,7 @@ import torch
 
 from src.data.dataset import CellTypeData
 from src.evaluation.metrics import compute_all_metrics
+from src.training import leak_guard
 from src.training.curriculum import CurriculumStage
 from src.training.losses import bce_weighted_loss, focal_loss
 from src.training.sampler import get_hard_negatives, sample_negatives
@@ -38,6 +39,15 @@ class MEvDTrainer:
         # Set by restrict_negative_pool; train_stage refuses to run without it
         # so no entry point can silently train on held-out negatives.
         self._neg_pool_restricted = False
+        # Zero-leak guard (src/training/leak_guard.py): enforced before any
+        # training edge is built; scripts record leak_status in their results.
+        self.leak_status = leak_guard.leak_status(config, data)
+        self._leak_checked = False
+
+    def _enforce_leak_guard(self) -> None:
+        if not self._leak_checked:
+            self.leak_status = leak_guard.enforce(self.cfg, self.data)
+            self._leak_checked = True
 
     def set_train_positives(self, splits_per_tier: Dict[str, dict]) -> None:
         self.train_pos_by_tier = {t: sp["train"]["pos"] for t, sp in splits_per_tier.items()}
@@ -87,6 +97,7 @@ class MEvDTrainer:
     def _build_train_edges(self, stage: CurriculumStage, train_pos: torch.Tensor,
                            replay: Optional[List[torch.Tensor]] = None):
         """Return (edges (2,M), labels (M,), sample_weight (M,)) for one epoch."""
+        self._enforce_leak_guard()      # every training loop builds its edges here
         n_pos = train_pos.shape[1]
         n_neg = stage.neg_ratio * max(n_pos, 1)
         # Any edge that may be replayed as a label=1 example this stage must
@@ -137,6 +148,7 @@ class MEvDTrainer:
     # ------------------------------------------------------------------ stage
     def train_stage(self, stage: CurriculumStage, splits: dict,
                     replay: Optional[List[torch.Tensor]] = None) -> dict:
+        self._enforce_leak_guard()
         if not self._neg_pool_restricted:
             raise RuntimeError("call trainer.restrict_negative_pool(splits_per_tier) before "
                                "train_stage, or val/test negatives leak into training")
@@ -204,16 +216,24 @@ class MEvDTrainer:
         return {"best_val_aupr": best_aupr, "history": hist}
 
     def run_full_curriculum(self, splits_per_tier: Dict[str, dict],
-                            stages: List[CurriculumStage]) -> dict:
+                            stages: List[CurriculumStage], skip: int = 0) -> dict:
+        """`skip` > 0: the first `skip` stages are NOT trained (the model already
+        holds their weights, e.g. loaded from a finished run's best checkpoint),
+        but their train positives still enter the replay memory, as in a
+        continuous run."""
         self.set_train_positives(splits_per_tier)
         self.restrict_negative_pool(splits_per_tier)
         use_replay = bool(self.cfg["curriculum"].get("use_memory_replay", False))
         results = {}
         seen_train_pos: List[torch.Tensor] = []
-        for stage in stages:
+        for i, stage in enumerate(stages):
             tier = stage.evidence_tier
             if tier not in splits_per_tier:
                 print(f"  [skip] no splits for tier {tier}", flush=True)
+                continue
+            if i < skip:
+                print(f"  [skip] {stage.name}: weights already trained (resumed run)", flush=True)
+                seen_train_pos = seen_train_pos + [splits_per_tier[tier]["train"]["pos"]]
                 continue
             print(f"\n=== {stage.name} (tier={tier}, lr={stage.learning_rate}, "
                   f"freeze_enc={stage.freeze_encoder}) ===", flush=True)

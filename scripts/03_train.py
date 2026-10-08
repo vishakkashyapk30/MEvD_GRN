@@ -121,7 +121,7 @@ def main():
     out = {"cell_type": cell_type, "train_seconds": train_secs,
            "n_params": model.count_parameters(),
            "curriculum": {k: v["best_val_aupr"] for k, v in curr_results.items()},
-           "test": final}
+           "test": final, "leak_status": trainer.leak_status}
     save_json(out, f"results/{cell_type}_results.json")
     torch.save({"model": model.state_dict()}, f"results/checkpoints/{cell_type}/final_model.pt")
     print(f"\n[done] trained in {train_secs/60:.1f} min -> results/{cell_type}_results.json", flush=True)

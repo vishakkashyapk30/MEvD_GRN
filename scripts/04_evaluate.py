@@ -49,6 +49,9 @@ def eval_celltype(cfg, model, device):
         if not p.exists():
             continue
         res[t] = trainer.evaluate_split(load_splits("data/splits", cell_type, t)["test"])
+    # leak status of the data/config used here (src/training/leak_guard.py); "_"-keys are
+    # skipped by scripts/07_compile_results.py
+    res["_leak_status"] = trainer.leak_status
     return res
 
 
@@ -72,7 +75,7 @@ def main():
 
     print(f"=== In-domain eval ({cfg['cell_type']}) ===", flush=True)
     own = eval_celltype(cfg, model, device)
-    for t, m in own.items():
+    for t, m in ((t, m) for t, m in own.items() if not t.startswith("_")):
         print(f"  {t:14s} AUPR={m['aupr']:.4f} AUROC={m['auroc']:.4f}", flush=True)
     save_json(own, f"results/{cfg['cell_type']}_eval.json")
 
@@ -81,7 +84,7 @@ def main():
         print(f"\n=== Transfer eval ({cfg['cell_type']} -> {tcfg['cell_type']}) ===", flush=True)
         # transfer needs a model whose dims match; reuse same hyperparams
         trans = eval_celltype(tcfg, model, device)
-        for t, m in trans.items():
+        for t, m in ((t, m) for t, m in trans.items() if not t.startswith("_")):
             print(f"  {t:14s} AUPR={m['aupr']:.4f} AUROC={m['auroc']:.4f}", flush=True)
         save_json(trans, f"results/{cfg['cell_type']}_to_{tcfg['cell_type']}_transfer.json")
 

@@ -126,7 +126,7 @@ def internal_test_metrics(S: np.ndarray, regs: np.ndarray, arrays: dict, n: int,
     for p in ("train", "val"):
         for t, g in arrays[p]["pos"]:
             known.setdefault(int(t), set()).add(int(g))
-    allowed = np.unique(te["pos"][:, 1]) if regime == "target" else np.arange(n)
+    allowed = np.unique(te["pos"][:, 1]) if regime in ("target", "target_all") else np.arange(n)
     per_tf = []
     pos_by_tf = {}
     for t, g in te["pos"]:

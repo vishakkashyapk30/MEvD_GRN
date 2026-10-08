@@ -25,7 +25,7 @@ BLUE, GREY = "#1E407C", "#9bb4d6"
 def _rows_from_test(name, test_dict):
     return [{"method": name, "tier": t, **{k: test_dict[t].get(k) for k in
             ("aupr", "auroc", "early_precision", "epr")}}
-            for t in test_dict if isinstance(test_dict[t], dict)]
+            for t in test_dict if isinstance(test_dict[t], dict) and not t.startswith("_")]
 
 
 def main():

@@ -1,6 +1,14 @@
-# Same as k562_fm_h384_l2.yaml, but with the PRE-2026-09-30 (leaky) negative
-# pool: val/test negatives stay in the random-negative training pool. Only for
-# the before/after leak comparison (slurm/leakfix_compare.sh); never a result.
+# LEGACY, LEAKY -- only for the before/after comparison (slurm/leakfix_compare.sh);
+# never a result. Reproduces the pre-2026-09-30 numbers: the label-dependent
+# TF-candidate graph of data/processed/K562 (all positives excluded) AND the leaky
+# negative pool (val/test negatives stay in the random-negative training pool).
+# The zero-leak guard (src/training/leak_guard.py) refuses this config without
+# legacy_allow_leaks: true; results JSONs record leak_status.
 inherit: k562_fm_h384_l2.yaml
+legacy_allow_leaks: true
+data:
+  prior_exclude_positives: true
+paths:
+  processed_dir: data/processed/K562
 training:
   exclude_eval_negatives: false
