@@ -744,6 +744,35 @@ Reading: on K562 ChIP the coverage floor (0.431) already equals LINGER (0.430) a
 in-degree ranker (0.652 / 0.484) beats every released method on ChIP and Union AUROC/AUPRC. On KO
 and Intersection every method, released or trivial, is at or below random AUPRC.
 
+## 11a. Ada status, 2026-10-09 (v2, GPU work moved to Ada, then blocked again)
+What was done on Ada on 2026-10-09 ~15:30-16:05 IST, while ssh worked, and nothing else:
+- **No jobs were submitted.** No job IDs exist for the v2 plan.
+- `/share1/$USER` is at its **file-count quota** (3189 files used, soft 3000 / hard 3200, no grace), so
+  `mkdir` there fails with "Disk quota exceeded". Space is fine (55 of 100 GB). The new work therefore
+  uses **`~/bear_v2` (home, visible on compute nodes)**, not /share1. The old `/share1/$USER/mevd_grn/bear`
+  (894 files) and `pbmc` (1264 files) were not touched; tarring or deleting files there is the way to
+  free inodes if /share1 is needed again.
+- Created `~/bear_v2/{processed,results,claims,done,failed,logs}` and started
+  `rsync -a ~/.cache/bear/data/processed -> ada-gw1:bear_v2/` (1.1 GB, 18 dirs). The laptop rebooted
+  before it was confirmed to finish (43 MB were on Ada at the last check), so **the transfer is
+  incomplete and must be re-run** (`rsync -a --partial ~/.cache/bear/data/processed vishakkashyap.k@ada-gw1:bear_v2/`);
+  it also has to be repeated after the motif features of the other datasets are built.
+- Synced the lane files to `~/mevd_grn` (scripts 20-24, `configs/bear/`, `src/benchmarks/bear_*.py`,
+  this runbook, `slurm/bear_ada_*.sh`); `scripts/22` is byte-identical to the laptop copy (md5 9a2d3f6f...).
+- Written but never run on Ada: `slurm/bear_ada_common.sh` (verified 5x-retried copies, no gateway hop),
+  `bear_ada_dev.sh` (array 0-3 = M0-M3 on K562 seed 42), `bear_ada_steal.sh` (work-stealing worker over
+  `~/bear_v2/units.txt`, atomic `mkdir` claims), `bear_ada_reset.sh`, `bear_ada_score.sh`.
+- Home usage was 41 of 50 GB on 2026-10-09 (envs 5.8 GB, miniforge 12 GB, another project 7.1 GB).
+- Ada is blocked again from ~16:00 ("Your password has expired", no TTY). Do not retry in a loop.
+  Plan B is the laptop queue below; the pre-registration (s12) is unchanged either way.
+
+## 11b. Local GPU queue (the active compute path while Ada is blocked)
+Relaunch (always under an inhibitor; the laptop suspends itself otherwise), from the repo root:
+`setsid nohup systemd-inhibit --what=sleep:idle:handle-lid-switch --who="MeVD-GRN BEAR" --why="BEAR GPU queue" --mode=block bash slurm/bear_gpu_queue.sh ~/.cache/bear/gpu_queue.txt > ~/.cache/bear/gpu_queue.out 2>&1 < /dev/null &`
+The queue file lists one job per line (`<need_MiB> <command>`); finished lines are in `gpu_queue.txt.done`
+(a line is added even when the job failed, so check `rc=` in `gpu_queue.out` and remove a failed line from
+`.done` to retry). `scripts/22 --skip_existing` makes completed runs a no-op.
+
 ## 11. Ada status
 - 2026-10-01 ~15:40 IST: first submission 572/573, cancelled while pending to
   add regime L2.

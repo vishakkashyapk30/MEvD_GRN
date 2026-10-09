@@ -1,0 +1,49 @@
+{
+  "ablation": "all_at_once",
+  "cell_type": "K562",
+  "tag": "fm_h384l2_labelfree_seed45",
+  "n_params": 3257479,
+  "hidden_dim": 384,
+  "n_gnn_layers": 2,
+  "key_tier": "dual_evidence",
+  "trained_tiers": [
+    "localization",
+    "perturbation"
+  ],
+  "init_from": null,
+  "start_stage": null,
+  "leak_status": {
+    "graph_label_free": true,
+    "eval_negatives_excluded": true,
+    "legacy_allow_leaks": false,
+    "processed_dir": "data/processed/K562_labelfree",
+    "zero_leak": true
+  },
+  "results": {
+    "localization": {
+      "auroc": 0.9461471580773466,
+      "aupr": 0.952085348884933,
+      "early_precision": 0.8760250210762024,
+      "epr": 1.6258880817393633,
+      "n_pos": 175237,
+      "n_total": 325237
+    },
+    "perturbation": {
+      "auroc": 0.8875210719640905,
+      "aupr": 0.5922414805634847,
+      "early_precision": 0.5854253172874451,
+      "epr": 3.1339291798731823,
+      "n_pos": 34457,
+      "n_total": 184457
+    },
+    "dual_evidence": {
+      "auroc": 0.9796059339386356,
+      "aupr": 0.9061175832239521,
+      "early_precision": 0.8290318250656128,
+      "epr": 4.974190950393677,
+      "n_pos": 7943,
+      "n_total": 47658
+    }
+  },
+  "relation_weights": {}
+}

@@ -136,6 +136,8 @@ def main():
         z = np.load(pf)
         assert np.array_equal(z["tf_nodes"], tf_nodes), "motif features built for other TF nodes"
         pair_feats = z["F"].astype(np.float32)
+        if bcfg.get("zero_motif"):          # no-ATAC ablation: the pair features are peak-derived
+            pair_feats = np.zeros_like(pair_feats)
     outdeg = dict(zip(*np.unique(lab_union[0], return_counts=True)))
     outdeg = {int(k): int(v) for k, v in outdeg.items()}
 
