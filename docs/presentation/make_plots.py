@@ -31,8 +31,8 @@ for i, (lab, c, vals) in enumerate(series):
     ax.bar(xs, [v[0] for v in vals], w - 0.03, yerr=[v[1] for v in vals], color=c, label=lab, capsize=2, error_kw={"lw": 1.2, "ecolor": INK})
     for x, v in zip(xs, vals): ax.text(x, v[0] + 0.02, f"{v[0]:.2f}", ha="center", fontsize=9, color=INK)
 ax.set_xticks(range(3)); ax.set_xticklabels(TL, fontsize=12); ax.set_ylabel("AUPR"); ax.set_ylim(0, 1.12)
-ax.set_title("K562, zero test-to-train leakage", loc="left"); ax.legend(frameon=False, fontsize=9.5, loc="upper center", ncol=2, bbox_to_anchor=(0.5, -0.12))
-fig.tight_layout(); fig.savefig(f"{OUT}/fig1_k562_zero_leak.png", dpi=200); plt.close(fig)
+ax.set_title("K562: our model vs scMultiomeGRN", loc="left"); ax.legend(frameon=False, fontsize=9.5, loc="upper center", ncol=2, bbox_to_anchor=(0.5, -0.12))
+fig.tight_layout(); fig.savefig(f"{OUT}/fig1_k562_results.png", dpi=200); plt.close(fig)
 
 # ---- fig 2: effect of the leaks (seed 42, same seed both sides)
 leg = {"Single stage": abl("all_at_once_fm_h384l2_legacyneg_seed42_K562.json")[0], "Curriculum": abl("full_curriculum_fm_h384l2_legacyneg_seed42_K562.json")[0]}
@@ -47,7 +47,7 @@ for ax, t, ttl in zip(axs, ["perturbation", "dual_evidence"], ["Perturbation", "
         ax.text(k, 0.06, f"{b - a:+.2f}", ha="center", fontsize=12, fontweight="bold", color=INK, bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="#9CA3AF"))
     ax.set_xticks([0, 1]); ax.set_xticklabels(["Single stage", "Curriculum"], fontsize=12); ax.set_title(ttl, fontsize=13, loc="left"); ax.set_ylim(0, 1.08)
 axs[0].set_ylabel("AUPR (K562, seed 42)"); fig.legend(*axs[0].get_legend_handles_labels(), frameon=False, loc="lower center", ncol=2, fontsize=11)
-fig.tight_layout(rect=(0, 0.07, 1, 1)); fig.savefig(f"{OUT}/fig2_leak_effect.png", dpi=200); plt.close(fig)
+fig.tight_layout(rect=(0, 0.07, 1, 1)); os.makedirs(f"{R}/docs/presentation/backup", exist_ok=True); fig.savefig(f"{R}/docs/presentation/backup/fig2_leak_effect.png", dpi=200); plt.close(fig)
 
 # ---- fig 3: BEAR-GRN ChIP AUPRC, nine datasets
 tx = open(f"{BEAR}/summary_tables.md").read()
