@@ -228,10 +228,27 @@ AUPR / AUROC, MeVD-GRN = mean of 4 seeds (std at most 0.012):
 
 - **Predicting every measured pair** (no model, no labels) gets within 0.001 of LINGER on K562 (0.431 vs 0.430).
 - **A ranker that scores genes by how many TFs regulate them** beats every published method on all 9 datasets. It uses ChIP labels from other TFs, so it is a supervised reference, not an unsupervised competitor.
-- **First MeVD-GRN result (K562, model M0, one seed, 5 TF-held-out folds):**
+- **MeVD-GRN under BEAR's protocol (K562, one seed, 5 TF-held-out folds).** Four candidates were declared in advance; the winner is picked by validation score only. **Selected: M3 (hub + motif features).**
 
-| K562 | MeVD-GRN M0 | LINGER | Target-count baseline |
-|---|---|---|---|
+| Candidate | Mean validation AUPR | Margin rule (>= +0.005) |
+|---|---|---|
+| M0 baseline | 0.5255 | n/a |
+| M1 uniform negatives | 0.5447 | +0.019: pass |
+| M2 + hub term | 0.5387 | -0.006: fail |
+| **M3 + motif features** | **0.5532** | **+0.015 over M2: pass** |
+
+| K562, BEAR scoring | MeVD-GRN M3 | MeVD-GRN M0 | LINGER | Target-count baseline |
+|---|---|---|---|---|
+| ChIP AUROC / AUPRC | 0.610 / 0.476 | 0.602 / 0.468 | 0.536 / 0.430 | **0.652 / 0.484** |
+| Union AUROC / AUPRC | **0.657 / 0.361** | 0.635 / 0.347 | 0.525 / 0.344 | 0.626 / 0.343 |
+| Knockout AUROC / AUPRC | 0.559 / 0.126 | n/a | n/a | n/a |
+| Intersection AUROC / AUPRC | 0.283 / 0.088 | n/a | n/a | n/a |
+
+- M3 beats LINGER on ChIP and Union, and beats the target-count baseline on Union but not on ChIP.
+- On knockout, AUPRC (0.126) is below random (0.160), as for every published method; on the intersection, AUROC (0.283) is well below chance.
+- **M3 uses ChIP-derived hub information from the training TFs, so it is the supervised reference track, outside BEAR's stated scope** (next slide). One seed only; the 5-seed runs on all 9 datasets have not been run.
+
+---|---|---|---|
 | ChIP AUROC / AUPRC | 0.602 / 0.468 | 0.536 / 0.430 | 0.652 / 0.484 |
 | Union AUROC / AUPRC | 0.635 / 0.347 | 0.525 / 0.344 | 0.626 / 0.343 |
 
@@ -281,12 +298,13 @@ From the authors' reply to reviewers (peer-review file):
 
 ## 4.3 Status and timeline
 
-| Job | Status | ETA |
+| Job | Status | Result |
 |---|---|---|
-| BEAR-GRN candidates M0, M1 (laptop) | done, ~70 min each | done |
-| M2 (hub term), M3 (hub + motif features) on **Ada**, one GPU each | running, 2 of 5 folds at 22:20 | ~23:00 |
-| Model selection (K562 validation only) | after M2 and M3 | ~23:10 |
+| BEAR-GRN candidates M0-M3 (K562) | **done** (M0, M1 laptop ~70 min; M2, M3 on Ada ~35 min each) | **M3 selected** (table in 3.5) |
+| M3 scored with BEAR's code on K562 (ChIP, Union, KO, Intersection) | done | see 3.5 |
+| BEAR-GRN 5-seed grid, 9 datasets, L2 regime, 3 ablations (~150 runs) | **not started** | ~1.5-2 days on Ada's 4 GPUs |
 | K562 seed 46 and PBMC held-out-target seeds (laptop) | running | overnight |
+| Self-supervised direction: detailed plan from a planning agent | in progress | `docs/selfsup_plan/plan.md` |
 
 | Plan to mid-January | Dates |
 |---|---|

@@ -814,3 +814,32 @@ The queue file lists one job per line (`<need_MiB> <command>`); finished lines a
   rebooted (~18:23); rerun detached, finished 21:40 (s10.2). **[decision]**
   Local results are NOT pushed to /share1: Ada recomputes everything so all
   numbers come from one processed dir and one environment.
+
+## 14. Dev selection finished (2026-10-10 03:00 IST)
+
+All four candidates trained on K562, seed 42, 5 TF-held-out folds, zero-leak guard passing on every fold.
+M0 and M1 ran on the laptop RTX 4060 (about 70 min each); M2 and M3 ran on Ada 2080 Ti nodes (jobs 14388_2/3,
+about 35 min each; peak GPU about 4.8 GB). `python -m src.benchmarks.bear_select` applied the pre-registered rule
+(section 12.6):
+
+| Candidate | Mean inner-validation AUPR | vs predecessor |
+|---|---|---|
+| M0 fm_h384 | 0.5255 | n/a |
+| M1 uniformneg | 0.5447 | +0.0192 pass |
+| M2 hub | 0.5387 | -0.0060 fail |
+| M3 hubmotif | 0.5532 | +0.0145 pass |
+
+**HEADLINE = M3.** BEAR-scoring (20 draws, our verified port), K562, seed 42:
+
+| GT | M3 AUROC / AUPRC | M2 AUROC / AUPRC | random AUPRC |
+|---|---|---|---|
+| ChIP | 0.6099 / 0.4761 | 0.6053 / 0.4740 | 0.3311 |
+| Union | 0.6573 / 0.3609 | 0.6481 / 0.3570 | 0.2441 |
+| KO | 0.5590 / 0.1257 | 0.5611 / 0.1265 | 0.1600 |
+| Intersection | 0.2829 / 0.0879 | 0.2765 / 0.0878 | 0.1205 |
+
+Reference (same GT): LINGER ChIP 0.536 / 0.430, Union 0.525 / 0.344; target-count baseline ChIP 0.652 / 0.484, Union 0.626 / 0.343.
+M3 has hub terms derived from training-TF ChIP labels, so it belongs to the supervised reference track.
+Incidents on the way: first Ada submissions died on a full node `/scratch` (gnode082) and on a stage-in bug
+(rsync did not create the parent dir; fixed in f745c2f); the local queue sat blocked for 4 h on a 6800 MiB gate
+threshold the desktop's GPU use made unreachable (now 5800).
