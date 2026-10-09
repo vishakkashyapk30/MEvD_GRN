@@ -223,7 +223,7 @@ def main():
         t0 = time.time()
         res = {"best_val_aupr": -1.0, "history": []}
         for st, sp_, pl in zip(stages, stage_pos, pools):
-            data.negative_pool = T(pl).to(trainer.device)
+            data.negative_pool = T(pl)      # CPU, like the train positives: _build_train_edges cats them (a cuda pool crashed M0 on 2026-10-09)
             splits = {"train": {"pos": T(sp_), "neg": T(pl)}, "val": val_split, "test": empty}
             trainer.restrict_negative_pool({"all": splits})
             r = trainer.train_stage(st, splits)

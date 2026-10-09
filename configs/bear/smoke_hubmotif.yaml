@@ -1,0 +1,4 @@
+# Local smoke test only: M3 (hub + motif pair features), tiny budget.
+inherit: smoke_hub.yaml
+bear:
+  motif_pair: true

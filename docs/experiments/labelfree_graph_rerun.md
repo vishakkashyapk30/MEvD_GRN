@@ -1,8 +1,9 @@
 # K562 rerun with a label-free TF-candidate graph (second leak fixed)
 
-**Status (2026-10-08 20:45 IST): graph built and checked; runs in progress
-on the local RTX 4060 (Ada account locked).** Results are filled in below as
-runs finish.
+**Status (2026-10-09 02:10 IST): seeds 42-44 done for both protocols (local
+RTX 4060; Ada account locked). Seeds 45-46 are queued (second local queue) and
+are added to section 5.2 when they finish.** Section 6 makes label-free graphs
+the default and adds a hard guard against leaky training.
 
 Context: [leakfix_rerun.md](leakfix_rerun.md) fixed the first leak
 (val/test negatives in the random-negative pool). This document fixes the
@@ -110,9 +111,59 @@ Same seed, same splits, same negatives. The only difference is the TF-candidate 
 
 Run times on the RTX 4060: full_curriculum 49.6 min, all_at_once 62.7 min.
 
-### 5.2 Multi-seed (mean ± std)
+### 5.2 Seeds 42-44 (mean ± sample std, n = 3)
 
-(pending: seeds 43-44 in queue_task1; seeds 45-46 in the second queue)
+"Leak-1 fixed only" = the Ada runs of [leakfix_rerun.md](leakfix_rerun.md) (negative-pool fix, old
+label-dependent graph), restricted to the same three seeds. "Both leaks fixed" = this rerun.
+
+| Run | n | loc AUPR | loc AUROC | pert AUPR | pert AUROC | dual AUPR | dual AUROC |
+|---|---|---|---|---|---|---|---|
+| full_curriculum, leak-1 fixed only (Ada) | 3 | 0.7432±0.0032 | 0.7595±0.0040 | 0.8164±0.0003 | 0.9602±0.0001 | 0.9559±0.0009 | 0.9902±0.0002 |
+| **full_curriculum, both leaks fixed** | 3 | 0.7302±0.0006 | 0.7519±0.0005 | **0.8145±0.0001** | **0.9601±0.0001** | **0.9541±0.0009** | **0.9898±0.0002** |
+| all_at_once, leak-1 fixed only (Ada) | 3 | 0.9543±0.0004 | 0.9484±0.0003 | 0.5758±0.0061 | 0.8815±0.0018 | 0.9028±0.0037 | 0.9783±0.0009 |
+| **all_at_once, both leaks fixed** | 3 | **0.9530±0.0006** | **0.9472±0.0008** | 0.5780±0.0117 | 0.8821±0.0035 | 0.9010±0.0017 | 0.9783±0.0002 |
+| scMultiomeGRN re-run (`results/baselines/scmultiomegrn_K562.json`; never leaky) | 1 | 0.9059 | 0.9141 | 0.6550 | 0.9185 | 0.8466 | 0.9705 |
+| *for reference: leak-1 fixed only, all 5 seeds (Ada)*: full_curriculum | 5 | 0.7450±0.0040 | 0.7602±0.0032 | 0.8165±0.0006 | 0.9602±0.0001 | 0.9562±0.0008 | 0.9902±0.0002 |
+| *for reference: leak-1 fixed only, all 5 seeds (Ada)*: all_at_once | 5 | 0.9544±0.0007 | 0.9485±0.0007 | 0.5722±0.0114 | 0.8803±0.0039 | 0.9017±0.0040 | 0.9781±0.0009 |
+
+Paired by seed, the label-free run minus the leak-1-only run (AUPR):
+
+| Protocol | loc | pert | dual |
+|---|---|---|---|
+| full_curriculum (seeds 42 / 43 / 44) | -0.0116 / -0.0110 / -0.0164 | -0.0015 / -0.0024 / -0.0017 | +0.0002 / -0.0031 / -0.0024 |
+| all_at_once (seeds 42 / 43 / 44) | -0.0015 / -0.0010 / -0.0014 | +0.0081 / -0.0040 / +0.0024 | -0.0056 / +0.0006 / -0.0006 |
+
+Files: `results/ablations/{full_curriculum,all_at_once}_fm_h384l2_labelfree_seed{42,43,44}_K562.json`.
+`leak_status` was backfilled into these six files on 2026-10-09 (section 6). The runs finished before
+the guard existed; their config and processed dir are the verified label-free ones.
+
+### 5.3 What it means
+
+1. **The second leak was small.** Building the TF-candidate graph label-free moves perturbation and dual
+   evidence by at most 0.003 AUPR in either protocol, inside or near the seed spread. The one consistent
+   change is the curriculum's localization AUPR, -0.013 (all 3 seeds, 0.730 vs 0.743).
+   - **Caveat:** the leak-1-only runs were on Ada (2080 Ti), the label-free runs on the laptop
+     (RTX 4060), so these paired differences also contain cross-hardware non-determinism.
+   - To attribute the -0.013 to the graph alone, run the leak-1-only setting on the same GPU:
+     `configs/sweep/k562_fm_h384_l2_legacygraph.yaml` (`legacy_allow_leaks`, about 50 min per seed).
+     **Not run here:** the GPU now belongs to the BEAR-GRN and PBMC queues.
+2. **The curriculum still beats `all_at_once` on the zero-shot and perturbation tiers:**
+   - perturbation AUPR 0.8145 vs 0.5780, AUROC 0.9601 vs 0.8821;
+   - dual-evidence AUPR 0.9541 vs 0.9010, AUROC 0.9898 vs 0.9783.
+
+   It still loses localization (0.730 vs 0.953).
+3. **Against scMultiomeGRN** (pert AUPR 0.655, dual AUPR 0.847), with both leaks fixed:
+   - **The curriculum** wins perturbation (AUPR 0.8145 vs 0.6550, AUROC 0.9601 vs 0.9185) and dual
+     evidence (0.9541 vs 0.8466; AUROC 0.9898 vs 0.9705), i.e. 4 of 6 metrics. It loses localization
+     (0.7302 vs 0.9059; AUROC 0.7519 vs 0.9141).
+   - **`all_at_once`** wins localization and dual evidence but loses perturbation (AUPR 0.5780 vs 0.6550,
+     AUROC 0.8821 vs 0.9185), also 4 of 6.
+   - So the conclusion of leakfix_rerun.md is unchanged: the curriculum is the model that beats
+     scMultiomeGRN on the tiers that test generalisation.
+   - Caveats from `docs/mevd_vs_scmultiomegrn.md` §6 still apply: the scMultiomeGRN baseline is an
+     adapted, single-seed run (R9); dual evidence also drove design choices (R4).
+4. **Localization forgetting remains the curriculum's weakness**
+   ([curriculum_forgetting.md](curriculum_forgetting.md); the variant runs there are deferred).
 
 ## 6. Zero-leak by default (2026-10-09)
 
