@@ -81,3 +81,38 @@ ax.axvline(0.7143, color=ORANGE, lw=2.5, ls="--"); ax.text(0.7185, -0.42, "LINGE
 ax.set_xlim(0.45, 0.88); ax.set_xlabel("Cistrome AUROC (19 ChIP datasets; LINGER's evaluation)"); ax.set_title("10x PBMC multiome: what carries the signal", loc="left")
 fig.tight_layout(); fig.savefig(f"{OUT}/fig4_pbmc10k.png", dpi=200); plt.close(fig)
 print("plots written; MeVD-GRN BEAR points:", mevd)
+
+# ---- fig 5: PBMC10k per cell type, MeVD-GRN vs LINGER (LINGER values: LINGER Supp. Table 7, means per cell type; runbook s2)
+import csv, collections
+rows = list(csv.DictReader(open(f"{R}/docs/presentation/data/pbmc_per_dataset.tsv"), delimiter="\t"))
+def per_ct(method, src="collectri"):
+    d = collections.defaultdict(list)
+    for r in rows:
+        if r["method"] == method and r["source"] == src and r["regime"] == "tf" and r["space"] == "expressed" and r["in19"] == "True":
+            d[r["cell_type"]].append(float(r["auc"]))
+    return {k: st.mean(v) for k, v in d.items()}, {k: len(v) for k, v in d.items()}
+mv, cnt = per_ct("fm_h384"); mv_r, _ = per_ct("fm_h384_rnaonly")
+ling = {"classical_monocyte": 0.7111, "naive_cd4_t": 0.7071, "naive_b": 0.7220, "mdc": 0.7583}
+names = {"classical_monocyte": "Classical\nmonocytes", "naive_cd4_t": "Naive CD4 T", "naive_b": "Naive B", "mdc": "Myeloid DC"}
+order = ["classical_monocyte", "naive_cd4_t", "naive_b", "mdc"]
+fig, ax = plt.subplots(figsize=(10, 4.8)); w = 0.26
+for i, (lab, c, vals) in enumerate([("MeVD-GRN", BLUE, mv), ("MeVD-GRN, no ATAC", "#7FB5D8", mv_r), ("LINGER (published)", ORANGE, ling)]):
+    xs = [j + (i - 1) * w for j in range(4)]
+    ax.bar(xs, [vals[k] for k in order], w - 0.03, color=c, label=lab)
+    for x, k in zip(xs, order): ax.text(x, vals[k] + 0.008, f"{vals[k]:.2f}", ha="center", fontsize=9.5)
+ax.set_xticks(range(4)); ax.set_xticklabels([f"{names[k]}\n({cnt[k]} ChIP dataset{'s' if cnt[k] != 1 else ''})" for k in order], fontsize=11)
+ax.set_ylim(0.5, 0.82); ax.set_ylabel("Cistrome AUROC"); ax.set_title("PBMC10k by cell type: the average is driven by monocytes", loc="left")
+ax.legend(frameon=False, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.2), fontsize=10)
+fig.tight_layout(); fig.savefig(f"{OUT}/fig5_pbmc_per_celltype.png", dpi=200); plt.close(fig)
+
+# ---- fig 6: TF-specificity control (runbook s12.4; local seed-42 `tf` models, 19 datasets; values transcribed from that table)
+items = [("TF-agnostic ranker:\nATAC accessibility alone", 0.8141, PURPLE), ("MeVD-GRN: mean of all\nevaluation-TF rows", 0.7142, "#7FB5D8"),
+         ("MeVD-GRN: this dataset's\nown TF row (reported)", 0.6904, BLUE), ("MeVD-GRN: a different\nTF's row, same labels", 0.6849, "#7FB5D8"),
+         ("MeVD-GRN: own row,\nwithin accessibility strata", 0.5993, GREY)]
+fig, ax = plt.subplots(figsize=(10, 4.6))
+ax.barh([i[0] for i in items][::-1], [i[1] for i in items][::-1], color=[i[2] for i in items][::-1], height=0.62)
+for n, i in enumerate(items[::-1]): ax.text(i[1] + 0.005, n, f"{i[1]:.3f}", va="center", fontsize=10.5)
+ax.axvline(0.5, color="#9CA3AF", lw=1.2, ls=":"); ax.set_xlim(0.45, 0.88); ax.set_xlabel("Cistrome AUROC, 19 datasets, all expressed genes")
+ax.set_title("Is the signal TF-specific? A different TF's row scores the same", loc="left")
+fig.tight_layout(); fig.savefig(f"{OUT}/fig6_pbmc_tf_specificity.png", dpi=200); plt.close(fig)
+print("fig5/6 written", {k: round(v, 3) for k, v in mv.items()})

@@ -73,20 +73,66 @@ AUPR / AUROC, mean over 4 seeds (std ≤ 0.012):
 
 ---
 
-## 6. PBMC10k vs LINGER (LINGER's own evaluation)
+## 6a. PBMC10k multiome vs LINGER: the task and the bar
 
-![PBMC10k](figs/fig4_pbmc10k.png)
+**What we ran:** MeVD-GRN on the 10x Genomics *PBMC granulocyte-sorted 10k Multiome* (RNA and ATAC from the same nuclei), scored with LINGER's own evaluation code. 220 training runs on Ada.
 
-| | AUROC | AUPR ratio |
+| | |
+|---|---|
+| **Data** | 11,898 barcodes; LINGER's 9,543 labelled cells in 4 cell types: classical monocytes 1,848, naive CD4 T 1,373, naive B 282, myeloid DC 232 |
+| **Why this dataset** | the most-used paired dataset in the literature (17-22 papers: SCENIC+, LINGER, scGLUE, KEGNI, scTFBridge) |
+| **Ground truth** | 20 Cistrome ChIP-seq datasets = 10 TFs (MYC, RUNX1, IRF4, STAT1, IRF1, ETS1, FOXP3, CTCF, REST, SPI1) x 4 cell types |
+| **Metric** | positives = a TF's top-1,000 genes by ChIP regulatory potential; score its gene ranking with AUROC and AUPR ratio; mean over the 19 evaluable datasets |
+| **The bar** | LINGER (Nat Biotechnol 2024): **AUROC 0.7143, AUPR ratio 2.2526**. SCENIC+ 0.548 / 1.29, GENIE3 0.539 / 1.17 |
+
+LINGER is unsupervised (no TF-target labels); MeVD-GRN is supervised, so the protocol must keep the test TFs away from training.
+
+---
+
+## 6b. PBMC10k: the fair protocol (fixed before any result existed)
+
+- **Training labels:** CollecTRI (literature-curated); DoRothEA A-B as a second source. **All 10 evaluation TFs are removed as regulators**, so a test TF is never seen in training.
+- **Negatives:** degree-matched (a negative keeps its TF and picks a target in proportion to how often targets are regulated), so a model cannot win just by learning popular targets.
+- **Inputs:** gene graphs built without labels; motif relation off; early stopping on validation AUPR only; 5 seeds; one model per cell type; the zero-leak guard on every run.
+- **Variants:** full model (Geneformer + 384-d); no ATAC; no Geneformer; neither; uniform negatives; DoRothEA labels; random-edge and held-out-target splits.
+- **Baselines scored by the same code:** target-count ranker, gene-ID logistic regression, Pearson correlation. LINGER's published numbers are used because our own LINGER re-run failed (it needs ~120 GB of memory and a missing package).
+- **Pre-registered win rule:** mean AUROC above LINGER's 0.714 *and* above the simple baselines. *(This turned out to be too weak: see 6d.)*
+
+---
+
+## 6c. PBMC10k: results
+
+![PBMC10k ablation](figs/fig4_pbmc10k.png)
+
+| 5 seeds, TFs held out | AUROC | AUPR ratio |
 |---|---|---|
-| MeVD-GRN (5 seeds, TFs held out) | **0.734 ± 0.005** | 2.135 |
+| **MeVD-GRN** | **0.734 ± 0.005** | 2.135 |
 | LINGER (published) | 0.714 | **2.253** |
-| ATAC accessibility alone, same ranking for every TF | **0.814** | **3.680** |
+| MeVD-GRN, no ATAC | 0.720 ± 0.030 | 2.178 |
+| MeVD-GRN, no Geneformer | 0.670 ± 0.008 | 1.722 |
+| MeVD-GRN, neither | 0.544 ± 0.011 | 1.337 |
+| MeVD-GRN, uniform negatives | 0.597 ± 0.014 | 1.698 |
+| MeVD-GRN, DoRothEA labels | 0.658 ± 0.018 | 1.933 |
+| Target count / gene ID / Pearson | 0.579 / 0.578 / 0.584 | 1.4-1.6 |
 
-- ATAC adds **+0.126** AUROC without Geneformer, only **+0.015** with it.
-- Degree-matched negatives matter: 0.734 against 0.597 with uniform negatives.
-- **The catch:** a TF-agnostic ranker beats both methods, so this metric mostly rewards "open chromatin", not TF-specific regulation.
-- Open: a local rerun gives 0.690, not 0.734 (cause not found). Scored on all expressed genes, not LINGER's own candidates, so provisional.
+- ATAC adds **+0.126** AUROC when Geneformer is absent, but only **+0.015** (within noise) when it is present.
+- Degree-matched negatives are essential (0.734 vs 0.597); CollecTRI beats DoRothEA.
+
+![By cell type](figs/fig5_pbmc_per_celltype.png)
+
+- **The average win comes from monocytes** (10 of the 19 datasets): 0.760 vs LINGER's 0.711. On naive CD4 T and naive B, MeVD-GRN is below LINGER (0.696 vs 0.707; 0.701 vs 0.722).
+
+---
+
+## 6d. PBMC10k: is the signal TF-specific? (no)
+
+![TF specificity](figs/fig6_pbmc_tf_specificity.png)
+
+- A ranker that gives **every TF the same gene ranking**, using ATAC accessibility alone, scores **0.814**, above MeVD-GRN and LINGER. The Cistrome metric rewards open chromatin.
+- **A dataset's own TF row scores no better than a different TF's row** against that dataset's labels (0.690 vs 0.685, seed-42 local models). The model's score is almost entirely a TF-agnostic per-gene ranking; within accessibility strata it falls to 0.599.
+- So **"0.734 vs 0.714" is not evidence of TF-specific regulation**, for either method. LINGER's own rows have not been checked: that needs the LINGER re-run.
+- **Held-out target genes:** the original split scored 0.409 (below random) because its negative design taught a per-target prior; the fixed `target_all` split scores 0.745.
+- **Open:** a local rerun of the headline gives 0.690, not 0.734 (cause not found); results are on all expressed genes, not LINGER's own candidate genes.
 
 ---
 
@@ -127,11 +173,11 @@ BEAR-GRN's authors **exclude supervised methods** (reply to reviewers, peer-revi
 **Supported**
 1. Two leaks found and closed, enforced in code.
 2. With zero leakage, the evidence curriculum beats scMultiomeGRN (our re-run) on perturbation and the zero-shot tier on K562.
-3. Benchmark audit: trivial per-gene rankers match or beat published methods on both PBMC10k and BEAR-GRN.
+3. Benchmark audit: trivial per-gene rankers match or beat published methods on both PBMC10k (ATAC accessibility alone: 0.814) and BEAR-GRN (target count).
 
 **Not yet supported**
 - MeVD-GRN beating LINGER on BEAR-GRN in the in-scope (L2) regime.
-- A PBMC10k win that reflects TF-specific signal.
+- A PBMC10k win that reflects TF-specific signal (a different TF's row scores the same; see 6d).
 - Anything on scMultiomeGRN's own benchmark (not run, by decision).
 
 ---
@@ -140,15 +186,15 @@ BEAR-GRN's authors **exclude supervised methods** (reply to reviewers, peer-revi
 
 | Job | Status | ETA |
 |---|---|---|
-| BEAR-GRN model M0 (K562) | done, 70 min | done |
-| M1 uniform negatives | running | ~21:55 |
-| M2 hub term | queued | ~23:05 |
-| M3 hub + motif features | queued | ~00:15 |
-| Model selection (K562 validation only) | after M3 | ~00:20 |
-| K562 seed 46, PBMC supplementary runs | held until BEAR finishes | after 00:20 |
+| BEAR-GRN model M0 (K562; laptop) | done, 70 min | done |
+| M1 uniform negatives (laptop) | done, 67 min | done |
+| M2 hub term (**Ada**, 1 GPU) | running | ~23:30 |
+| M3 hub + motif features (**Ada**, 1 GPU) | running | ~23:30 |
+| Model selection (K562 validation only) | after M2 and M3 | ~23:40 |
+| K562 seed 46, PBMC held-out-target seeds (laptop) | running now | overnight |
 | **BEAR headline grid** (5 seeds x 9 datasets, L2 regime, 3 ablations; ~150 runs) | not started | **4-6 days laptop; ~1.5-2 days on Ada's 4 GPUs** |
 
-ETAs assume ~70 min per candidate and no other GPU load. Ada needs campus network or VPN.
+Ada ETAs assume ~70-90 min per candidate on a 2080 Ti (not yet measured). Ada needs campus network or VPN. M0 and M1 so far: M1 (uniform negatives) leads M0 on validation, 0.545 vs 0.526 mean inner-validation AUPR.
 
 ---
 
