@@ -692,12 +692,83 @@ the same CollecTRI training pairs as MeVD-GRN:
 **Caveat:** the MeVD-GRN rows above come from 2-10-epoch models (the only locally available target-regime
 scores; Ada runs ran ~110+ epochs). Trained-model confirmation is queued (§12.3).
 
-### 12.3 Fix tested: `target_all` (A8), and trained-model confirmation
+### 12.3 Trained-model diagnosis and the `target_all` fix (A8; 2026-10-09, local RTX 4060, seed 42)
 
-(Queued on the local GPU after the K562 queue: fm_h384 classical monocytes `tf` and `target` seed 42 for
-the trained-model diagnosis, and `target_all` on all 4 cell types. Results are added here.)
+Models: `fm_h384`, CollecTRI, one seed (42), early stopping as pre-registered, all four cell types for
+`tf` and `target_all`, classical monocytes only for `target`. All runs passed the zero-leak guard
+(`leak_status.zero_leak = true` in every `metrics.json`). Mean over LINGER's 19 datasets (10 for the
+monocyte-only `target` row), `expressed` space:
 
-### 12.4 TF-specificity of MeVD-GRN's Cistrome signal
+| Regime | datasets | Cistrome AUROC | AUPR ratio | classical monocytes only: AUROC / AUPR ratio |
+|---|---|---|---|---|
+| `tf` (headline regime; local rebuild, 1 seed) | 19 | 0.6904 | 2.049 | 0.6944 / 2.401 |
+| `target` (existing regime) | 10 (CM only) | 0.4092 | 1.019 | 0.4092 / 1.019 |
+| **`target_all` (A8)** | 19 | **0.7449** | **2.278** | **0.7703 / 2.713** |
 
-(Pending the trained `tf`-regime models: the AUROC of each TF's own row against the TF-agnostic mean
-row over the 10 eval TFs, and AUROC within ATAC-activity strata.)
+- **The failure reproduces in a trained model and is fixed by A8.** Same positives, same graphs, same
+  features; only the set of target genes allowed as negatives differs. AUROC goes 0.409 -> 0.770 on classical
+  monocytes. A8 is also above the local `tf` run (0.690 -> 0.745), but that is one seed and a different split.
+- **Group diagnosis of the trained models** (classical monocytes, groups from the `target` split;
+  `pbmc_target_diag.py`; "pct" = mean within-row score percentile):
+
+  | Model | AUROC | AUROC within train / held-out / never-labelled targets | pct train / held-out / never | pct genes without / with a Geneformer token | Spearman(score, RNA mean) |
+  |---|---|---|---|---|---|
+  | `target` | 0.409 | 0.578 / 0.568 / **0.355** | 0.372 / 0.396 / **0.530** | **0.733** / 0.358 | **-0.316** |
+  | `target_all` | 0.770 | 0.626 / 0.646 / 0.795 | 0.787 / 0.771 / 0.429 | 0.191 / 0.689 | +0.422 |
+  | `tf` | 0.694 | 0.603 / 0.608 / 0.685 | 0.712 / 0.704 / 0.448 | 0.349 / 0.593 | +0.257 |
+
+  This is the same pattern as the 2-5-epoch smoke models of §12.2. Held-out targets score like train targets
+  (0.396 vs 0.372 percentile) and rank within themselves as well as train targets do (0.568 vs 0.578). The
+  never-labelled genes, which `target` never shows the model, are ranked highest (0.530), and genes with no
+  Geneformer token most of all (0.733), although only 0.1% of them are ChIP targets. Under `target_all` and
+  `tf` the sign is correct.
+- **Verdict (unchanged from §12.2, now confirmed on trained models):** a per-target prior, produced by the
+  `target` regime's negative design. It is not a feature or graph difference for unseen targets and not a
+  property of unseen targets themselves. Because the Cistrome metric rewards a per-gene prior (§12.1), the
+  inverted prior drives AUROC below 0.5.
+- **Amendment status.** `target_all` is a supplementary regime. The headline protocol (`tf`, pre-registered
+  s4) is unchanged, and `target` stays in the grid as the documented failure. Seeds 43-44 of `target_all` are
+  queued after the K562 runs; they are added here when they finish.
+
+**Reproduction caveat (open).** The local `tf` run scores below the Ada 5-seed headline of §11
+(AUROC 0.690 vs 0.7343 +- 0.0046; classical monocytes 0.694 vs 0.763 for Ada's first seed-42 unit in §8).
+Both are `fm_h384`, CollecTRI, `tf`, seed 42. The difference is far larger than the Ada seed std. I have not
+found the cause. Candidates, none tested: the processed dirs were rebuilt locally (the SVD in
+`coexpression_signatures` has no fixed start vector, so signatures and the co-expression and candidate graphs
+differ slightly from Ada's); a different torch/CUDA build; one seed. Until it is resolved, the absolute
+local numbers in §12 should not be mixed with §11's, and §11's headline is not confirmed by a local rerun.
+All within-§12 comparisons use the same local build.
+
+### 12.4 TF-specificity of MeVD-GRN's Cistrome signal (local seed-42 models; `pbmc_tf_specificity.py`)
+
+For each Cistrome dataset: `own` = AUROC of the dataset TF's own row (the reported metric); `swap` = mean
+AUROC of the *other* evaluation TFs' rows against this dataset's labels; `mean row` = the TF-agnostic mean of
+all evaluation-TF rows; `resid` = own row minus mean row (z-scored); `in-ATAC strata` = own row's AUROC within
+20 ATAC-activity quantile strata. 19 datasets, `expressed` space, except `target`, which is monocytes only.
+
+| Model | own | swap | mean row | resid | within ATAC strata | TF-agnostic ATAC ranker |
+|---|---|---|---|---|---|---|
+| `tf`, 4 cell types | 0.6904 | 0.6849 | 0.7142 | 0.4450 | 0.5993 | 0.8141 |
+| `target_all`, 4 cell types | 0.7449 | 0.7443 | 0.7444 | 0.5453 | 0.6989 | 0.8141 |
+| `target`, monocytes | 0.4092 | 0.4009 | 0.3878 | 0.4997 | 0.4639 | 0.7912 |
+
+Restricted candidate spaces (own row vs the TF-agnostic ATAC ranker in the same space):
+
+| Model | proximal-peak space: own / ATAC | detected-in-5%-of-cells space: own / ATAC |
+|---|---|---|
+| `tf` | 0.5928 / 0.7333 | 0.5932 / 0.6693 |
+| `target_all` | 0.6461 / 0.7333 | 0.6428 / 0.6693 |
+
+- **A dataset's own TF row is no better than another TF's row for that dataset** (own 0.6904 vs swap 0.6849
+  for `tf`; 0.7449 vs 0.7443 for `target_all`). The model's Cistrome AUROC is therefore almost entirely a
+  TF-agnostic per-gene ranking: what is shared across the evaluation TFs, i.e. accessibility/expression/hub
+  structure. The TF-specific part is about zero. For `tf`, the residual of the own row against the mean row is
+  *below* chance (0.445).
+- **The model is below the trivial TF-agnostic ATAC-activity ranker everywhere** (0.690 / 0.745 vs 0.814),
+  and also in the restricted spaces (0.59-0.65 vs 0.67-0.73).
+- Consequence for the headline: "MeVD-GRN beats LINGER on the Cistrome AUROC" is not supported by a
+  TF-specific signal, and the pre-registered win criterion (beat degree-only and gene-ID baselines) was too
+  weak (see §12.1). The same analysis must be applied to LINGER's own score matrix, which needs the LINGER
+  re-run. If LINGER's rows are also TF-agnostic, the metric does not measure regulation for either method.
+- Scope: seed 42, local build, `tf` and `target_all` models for 4 cell types. Not a replacement for the Ada
+  5-seed results.
