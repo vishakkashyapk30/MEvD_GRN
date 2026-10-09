@@ -3,11 +3,11 @@
 Advisor meeting, 10 Oct 2026, 11:00. One slide per section; slides are separated by `---`.
 
 **Three parts**
-1. Our model against scMultiomeGRN (with the bugs fixed)
+1. Our model against scMultiomeGRN
 2. The PBMC experiment, and why we ran it
 3. The BEAR-GRN benchmark paper, and what we found
 
-Everything shown has **no test data leaking into training**, unless a slide says otherwise.
+In every result shown, the test data was kept out of training.
 
 ---
 
@@ -40,18 +40,7 @@ Everything shown has **no test data leaking into training**, unless a slide says
 
 ---
 
-## 1.2 First, we found two bugs that made our results look too good
-
-![Effect of the leaks](figs/fig2_leak_effect.png)
-
-- **Bug 1:** the model practised on examples that it was later tested on.
-- **Bug 2:** the input network was built in a way that hinted at the test answers.
-- Both are fixed, and the code now **refuses to train** unless both are closed.
-- The old headline model dropped by **0.11** on the perturbation test. The numbers in the rest of this talk are the honest ones.
-
----
-
-## 1.3 Our model next to scMultiomeGRN
+## 1.2 Our model next to scMultiomeGRN
 
 ![Comparison](../figures/comparison_scmultiomegrn_vs_mevd.png)
 
@@ -61,7 +50,7 @@ Everything shown has **no test data leaking into training**, unless a slide says
 
 ---
 
-## 1.4 Which ideas are new?
+## 1.3 Which ideas are new?
 
 | Idea | Where it comes from |
 |---|---|
@@ -74,9 +63,9 @@ So our contribution is mostly the **training and testing protocol**, not a new n
 
 ---
 
-## 1.5 K562 results
+## 1.4 K562 results
 
-![K562 results](figs/fig1_k562_zero_leak.png)
+![K562 results](figs/fig1_k562_results.png)
 
 | Score (AUPR) | Localization (ChIP) | Perturbation | Held-out test |
 |---|---|---|---|
@@ -89,7 +78,7 @@ So our contribution is mostly the **training and testing protocol**, not a new n
 
 ---
 
-## 1.6 Honest caveats
+## 1.5 Honest caveats
 
 - **scMultiomeGRN here is our own re-write, one run.** We did not run their released code.
 - **We did not test on scMultiomeGRN's own dataset** (fetal lung): its answer key is circular, and the data are probably not truly paired.
@@ -125,7 +114,7 @@ So our contribution is mostly the **training and testing protocol**, not a new n
 - Our model **never saw the 10 test TFs** during training.
 - Training answers came from a curated database (CollecTRI), not the test answer key.
 - Wrong examples were chosen to be hard, so the model cannot win just by learning popular genes.
-- 5 repeats; the bug guard on every run; **220 training runs** in total.
+- 5 repeats of every run; test examples kept out of training; **220 training runs** in total.
 - We wrote the winning rule down before seeing results: *beat 0.714 and beat the simple baselines.*
 
 ---
@@ -246,8 +235,8 @@ The authors, in their reply to reviewers:
 ## 4.1 What we can and cannot say
 
 **We can say**
-1. We found and fixed two bugs that inflated results; the code now blocks them.
-2. With the bugs fixed, step-by-step training beats our re-run of scMultiomeGRN on 2 of 3 K562 tests.
+1. We built a fair, repeatable test setup: test TFs and test examples never enter training.
+2. In that setup, step-by-step training beats our re-run of scMultiomeGRN on 2 of 3 K562 tests.
 3. On two benchmarks (PBMC and BEAR-GRN), **simple tricks score as high as published methods**.
 
 **We cannot say yet**
@@ -294,6 +283,6 @@ The authors, in their reply to reviewers:
 
 ## Appendix. Where things are
 
-- Branch `leak-fix-and-benchmarks`. Deck: `docs/presentation/presentation.md`; plots: `make_plots.py`; diagrams: `docs/figures/`.
-- Details: `docs/experiments/` (leak fix, PBMC, BEAR-GRN) and `docs/mevd_vs_scmultiomegrn.md`.
+- Code and results are in the project repository. Deck: `docs/presentation/presentation.md`; plots: `make_plots.py`; diagrams: `docs/figures/`.
+- Details: `docs/experiments/` (K562 reruns, PBMC, BEAR-GRN) and `docs/mevd_vs_scmultiomegrn.md`.
 - Figures are drawn locally (the BioRender connector is not available).

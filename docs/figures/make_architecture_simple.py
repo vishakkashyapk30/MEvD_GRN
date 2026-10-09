@@ -100,7 +100,7 @@ def badge(x, t, color):
 badge(1230, "test pairs never trained on", GREEN)
 badge(1230, "", GREEN) if False else None
 a(f'<rect x="1230" y="801" width="290" height="32" rx="16" fill="{GREEN}" opacity="0.16" stroke="{GREEN}" stroke-width="2"/>')
-a(f'<text x="1375" y="823" text-anchor="middle" font-size="16" font-weight="600" fill="{INK}">zero test → train leakage</text>')
+a(f'<text x="1375" y="823" text-anchor="middle" font-size="16" font-weight="600" fill="{INK}">tested on unseen TFs</text>')
 a('</svg>')
 open("docs/figures/architecture_simple_2026-10-09.svg", "w").write("\n".join(o))
 print("svg written")

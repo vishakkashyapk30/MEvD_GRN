@@ -109,5 +109,5 @@
 <rect x="1230" y="755" width="290" height="32" rx="16" fill="#009E73" opacity="0.16" stroke="#009E73" stroke-width="2"/>
 <text x="1375" y="777" text-anchor="middle" font-size="16" font-weight="600" fill="#1F2937">test pairs never trained on</text>
 <rect x="1230" y="801" width="290" height="32" rx="16" fill="#009E73" opacity="0.16" stroke="#009E73" stroke-width="2"/>
-<text x="1375" y="823" text-anchor="middle" font-size="16" font-weight="600" fill="#1F2937">zero test → train leakage</text>
+<text x="1375" y="823" text-anchor="middle" font-size="16" font-weight="600" fill="#1F2937">tested on unseen TFs</text>
 </svg>
