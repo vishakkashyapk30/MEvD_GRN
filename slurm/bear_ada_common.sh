@@ -39,9 +39,10 @@ publish_dir() {
 # stage_in <relpath under $B> : $B/<rel> -> $BEAR_ROOT/<rel> (retry; processed dirs are small)
 stage_in() {
   local rel="$1" i
+  mkdir -p "$BEAR_ROOT/$rel"      # rsync creates only the last path component (bug found 2026-10-09: jobs died here)
   for i in 1 2 3 4 5; do
-    rsync -a "$B/$rel/" "$BEAR_ROOT/$rel/" 2>/dev/null && return 0
-    sleep $((i*10))
+    rsync -a "$B/$rel/" "$BEAR_ROOT/$rel/" && return 0
+    echo "[stage_in] attempt $i failed for $rel"; sleep $((i*10))
   done
   echo "[stage_in] FAILED $rel"; return 1
 }
