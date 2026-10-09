@@ -31,7 +31,9 @@ In every result shown, the test data was kept out of training.
 
 ## 1.1 What our model does
 
-![MeVD-GRN architecture](../figures/architecture_simple_2026-10-09.png)
+![MeVD-GRN architecture](../figures/architecture_diagram_v3_1_deck.png)
+
+*Base configuration (128-wide layers). The reported K562 model uses 384-wide layers (3.26M parameters). The BEAR-GRN model adds a "hub prior" and a "motif match" term to the final score.*
 
 - Reads RNA and open-DNA data from the **same cells**.
 - Builds two gene networks **without using any answers**, and reads them with two small neural networks.
