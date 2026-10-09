@@ -1,6 +1,6 @@
 # Advisor meeting, 10 Oct 2026, 11:00: progress since 27 Sept
 
-Status as of **2026-10-09 20:35 IST**. Prepared as raw material for the slides (due 01:00).
+Status as of **2026-10-09 21:00 IST**. Prepared as raw material for the slides (due 01:00).
 Everything below is a **zero-leakage** result: label-free input graphs, no val/test
 negatives in the training pool, and (on BEAR-GRN and PBMC10k) the evaluated TFs never
 seen in training. Old numbers from before 30 Sept are not used.
@@ -11,18 +11,18 @@ Architecture figure: `docs/figures/architecture_simple_2026-10-09.png` (SVG next
 
 ## 1. Timeline: what finishes when
 
-**What is running** (laptop RTX 4060, shared by two queues; Ada is reachable only from the
+**What is running** (laptop RTX 4060; the second queue is held until BEAR finishes; Ada is reachable only from the
 campus network or the IIIT VPN, and the laptop is currently on a phone hotspot):
 
 | Job | What | ETA (laptop only) | Done before 01:00? |
 |---|---|---|---|
-| BEAR-GRN **M0** (K562 dev, seed 42; 5 folds) | baseline MeVD-GRN under BEAR's protocol | **~21:15** (3 of 5 folds done at 20:33, ~20 min/fold) | **yes** |
-| BEAR-GRN **M1** (uniform negatives) | candidate 2 | ~22:55 | **probably** |
-| BEAR-GRN **M2** (leak-free hub term) | candidate 3 | ~00:35 | borderline |
-| BEAR-GRN **M3** (hub + motif features) | candidate 4 | ~02:15 | **no** |
-| Model selection (M0-M3, K562 validation only) | picks the headline model | ~02:30, right after M3 | **no** |
-| K562 zero-leak seed 46 (2 runs, ~1 h each) | 5th seed | ~02:30-04:30, after BEAR | no |
-| PBMC `target_all` seeds 43-44 (supplementary) | confirms the held-out-target fix | ~05:00+ | no |
+| BEAR-GRN **M0** (K562 dev, seed 42; 5 folds) | baseline MeVD-GRN under BEAR's protocol | **done 20:44** (70 min) | **yes** |
+| BEAR-GRN **M1** (uniform negatives) | candidate 2 | ~21:55 | **yes** |
+| BEAR-GRN **M2** (leak-free hub term) | candidate 3 | ~23:05 | **probably** |
+| BEAR-GRN **M3** (hub + motif features) | candidate 4 | ~00:15 | **borderline** |
+| Model selection (M0-M3, K562 validation only) | picks the headline model | ~00:20, right after M3 | **borderline** |
+| K562 zero-leak seed 46 (2 runs, ~1 h each) | 5th seed | after BEAR, from ~00:20 | no |
+| PBMC `target_all` seeds 43-44 (supplementary) | confirms the held-out-target fix | after the K562 runs | no |
 
 - After each BEAR-GRN training run there is a separate scoring step (short, not yet timed).
 - **If you connect the laptop to campus Wi-Fi or the VPN before ~21:30,** M1-M3 can run
@@ -121,7 +121,7 @@ checked). ChIP **AUPRC**; "trivial" baselines are ours.
   at or below random on K562.
 - **MeVD-GRN under BEAR's protocol:** the pre-registered pipeline (TF-held-out 5-fold, dense
   scoring, four pre-declared candidates M0-M3, model chosen on K562 validation only) is
-  built and running. **No result yet.** The first one (M0, K562) lands at ~21:15.
+  built and running. First result (M0, K562, 1 seed): ChIP AUROC 0.602 / AUPRC 0.468; Union 0.635 / 0.347 (LINGER 0.536 / 0.430 and 0.525 / 0.344; target-count baseline 0.652 / 0.484 and 0.626 / 0.343).
   An earlier single run (older protocol, 1 seed) gave K562 ChIP 0.602 AUROC / 0.468 AUPRC:
   above LINGER (0.536 / 0.430), below the target-count baseline (0.652 / 0.484).
 
