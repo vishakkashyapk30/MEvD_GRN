@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="Poppins, Inter, Arial, sans-serif">
+<defs><marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6B7280"/></marker><filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.10"/></filter></defs>
+<rect width="1600" height="900" fill="#FFFFFF"/>
+<text x="60" y="70" font-size="40" font-weight="700" fill="#1F2937">MeVD-GRN</text>
+<text x="60" y="104" font-size="19" fill="#8A94A0">Which transcription factor (TF) regulates which gene?</text>
+<text x="190" y="175" text-anchor="middle" font-size="17" font-weight="600" letter-spacing="1.5" fill="#8A94A0">PAIRED DATA</text>
+<text x="500" y="175" text-anchor="middle" font-size="17" font-weight="600" letter-spacing="1.5" fill="#8A94A0">GENE FEATURES</text>
+<text x="820" y="175" text-anchor="middle" font-size="17" font-weight="600" letter-spacing="1.5" fill="#8A94A0">GENE GRAPHS</text>
+<text x="1160" y="175" text-anchor="middle" font-size="17" font-weight="600" letter-spacing="1.5" fill="#8A94A0">ENCODERS</text>
+<text x="1450" y="175" text-anchor="middle" font-size="17" font-weight="600" letter-spacing="1.5" fill="#8A94A0">SCORE</text>
+<rect x="70" y="205" width="240" height="120" rx="18" fill="#FFFFFF" stroke="#0072B2" stroke-width="3" filter="url(#sh)"/>
+<text x="190.0" y="261.0" text-anchor="middle" font-size="22" font-weight="600" fill="#1F2937">scRNA-seq</text>
+<text x="190.0" y="287.0" text-anchor="middle" font-size="15" fill="#8A94A0">expression</text>
+<rect x="70" y="385" width="240" height="120" rx="18" fill="#FFFFFF" stroke="#E69F00" stroke-width="3" filter="url(#sh)"/>
+<text x="190.0" y="441.0" text-anchor="middle" font-size="22" font-weight="600" fill="#1F2937">scATAC-seq</text>
+<text x="190.0" y="467.0" text-anchor="middle" font-size="15" fill="#8A94A0">open chromatin</text>
+<path d="M322,215 Q344,365 322,515" fill="none" stroke="#8A94A0" stroke-width="3" stroke-linecap="round"/>
+<text x="196" y="545" text-anchor="middle" font-size="15" fill="#8A94A0">same cells</text>
+<rect x="390" y="205" width="220" height="70" rx="18" fill="#FFFFFF" stroke="#0072B2" stroke-width="3" filter="url(#sh)"/>
+<text x="500.0" y="247.0" text-anchor="middle" font-size="22" font-weight="600" fill="#1F2937">Expression</text>
+<rect x="390" y="300" width="220" height="70" rx="18" fill="#FFFFFF" stroke="#E69F00" stroke-width="3" filter="url(#sh)"/>
+<text x="500.0" y="342.0" text-anchor="middle" font-size="22" font-weight="600" fill="#1F2937">Accessibility</text>
+<rect x="390" y="395" width="220" height="70" rx="18" fill="#FFFFFF" stroke="#CC79A7" stroke-width="3" filter="url(#sh)"/>
+<text x="500.0" y="426.0" text-anchor="middle" font-size="22" font-weight="600" fill="#1F2937">Geneformer</text>
+<text x="500.0" y="452.0" text-anchor="middle" font-size="15" fill="#8A94A0">pretrained prior</text>
+<line x1="312" y1="265" x2="388" y2="240" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<line x1="312" y1="445" x2="388" y2="335" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<text x="540" y="505" text-anchor="middle" font-size="15" fill="#8A94A0">per gene</text>
+<rect x="710" y="195" width="220" height="180" rx="18" fill="#FFFFFF" stroke="#0072B2" stroke-width="3" filter="url(#sh)"/>
+<line x1="760" y1="241" x2="808" y2="223" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="808" y1="223" x2="866" y2="245" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="760" y1="241" x2="780" y2="297" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="808" y1="223" x2="836" y2="287" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="866" y1="245" x2="836" y2="287" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="780" y1="297" x2="836" y2="287" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="836" y1="287" x2="882" y2="311" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="836" y1="287" x2="816" y2="325" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="780" y1="297" x2="816" y2="325" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<circle cx="760" cy="241" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="808" cy="223" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="866" cy="245" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="780" cy="297" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="836" cy="287" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="882" cy="311" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="816" cy="325" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<text x="820" y="362" text-anchor="middle" font-size="18" font-weight="600" fill="#1F2937">Co-expressed</text>
+<rect x="710" y="425" width="220" height="180" rx="18" fill="#FFFFFF" stroke="#E69F00" stroke-width="3" filter="url(#sh)"/>
+<line x1="836" y1="517" x2="760" y2="471" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<line x1="836" y1="517" x2="808" y2="453" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<line x1="836" y1="517" x2="866" y2="475" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<line x1="836" y1="517" x2="780" y2="527" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<line x1="836" y1="517" x2="882" y2="541" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<line x1="836" y1="517" x2="816" y2="555" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<circle cx="760" cy="471" r="7" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<circle cx="808" cy="453" r="7" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<circle cx="866" cy="475" r="7" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<circle cx="780" cy="527" r="7" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<circle cx="836" cy="517" r="11" fill="#E69F00" stroke="#E69F00" stroke-width="3"/>
+<circle cx="882" cy="541" r="7" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<circle cx="816" cy="555" r="7" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<text x="820" y="592" text-anchor="middle" font-size="18" font-weight="600" fill="#1F2937">TF → likely targets</text>
+<text x="820" y="640" text-anchor="middle" font-size="15" fill="#8A94A0">built without any labels</text>
+<line x1="612" y1="245" x2="706" y2="275" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<line x1="612" y1="345" x2="706" y2="470" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<rect x="1020" y="215" width="205" height="110" rx="18" fill="#FFFFFF" stroke="#0072B2" stroke-width="3" filter="url(#sh)"/>
+<text x="1122.5" y="266.0" text-anchor="middle" font-size="22" font-weight="600" fill="#1F2937">RNA tower</text>
+<text x="1122.5" y="292.0" text-anchor="middle" font-size="15" fill="#8A94A0">graph network</text>
+<rect x="1020" y="395" width="205" height="110" rx="18" fill="#FFFFFF" stroke="#E69F00" stroke-width="3" filter="url(#sh)"/>
+<text x="1122.5" y="446.0" text-anchor="middle" font-size="22" font-weight="600" fill="#1F2937">ATAC tower</text>
+<text x="1122.5" y="472.0" text-anchor="middle" font-size="15" fill="#8A94A0">graph network</text>
+<line x1="932" y1="290" x2="1018" y2="270" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<line x1="932" y1="505" x2="1018" y2="450" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<rect x="1250" y="215" width="46" height="290" rx="23" fill="#CC79A7" opacity="0.18" stroke="#CC79A7" stroke-width="3"/>
+<text transform="translate(1281,360) rotate(-90)" text-anchor="middle" font-size="18" font-weight="600" fill="#1F2937">gene embeddings</text>
+<line x1="1227" y1="270" x2="1248" y2="270" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<line x1="1227" y1="450" x2="1248" y2="450" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<path d="M450,467 L450,672 L1273,672 L1273,508" fill="none" stroke="#CC79A7" stroke-width="3" stroke-dasharray="7 6" marker-end="url(#arr)"/>
+<text x="860" y="664" text-anchor="middle" font-size="14" fill="#CC79A7">also feeds the encoders</text>
+<rect x="1340" y="215" width="220" height="394" rx="18" fill="#FFFFFF" stroke="#1F2937" stroke-width="3" filter="url(#sh)"/>
+<circle cx="1393" cy="300" r="26" fill="#1F2937"/><text x="1393" y="307" text-anchor="middle" font-size="20" font-weight="700" fill="#FFFFFF">TF</text>
+<circle cx="1507" cy="300" r="26" fill="#FFFFFF" stroke="#1F2937" stroke-width="3"/><text x="1507" y="307" text-anchor="middle" font-size="16" font-weight="600" fill="#1F2937">gene</text>
+<line x1="1421" y1="300" x2="1479" y2="300" stroke="#1F2937" stroke-width="3" stroke-dasharray="6 5"/>
+<rect x="1437" y="268" width="26" height="26" rx="6" fill="#E69F00"/>
+<text x="1450" y="352" text-anchor="middle" font-size="16" fill="#8A94A0">gated by openness</text>
+<text x="1450" y="470" text-anchor="middle" font-size="64" font-weight="700" fill="#009E73">0.93</text>
+<text x="1450" y="506" text-anchor="middle" font-size="17" fill="#1F2937">chance TF → gene</text>
+<text x="1450" y="560" text-anchor="middle" font-size="15" fill="#8A94A0">example · 1 = regulates</text>
+<line x1="1298" y1="360" x2="1338" y2="360" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<rect x="60" y="690" width="1500" height="170" rx="22" fill="#F3F4F6"/>
+<text x="90" y="728" font-size="17" font-weight="600" letter-spacing="1.5" fill="#8A94A0">HOW IT LEARNS</text>
+<rect x="90" y="745" width="330" height="90" rx="16" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="130" cy="790" r="22" fill="#0072B2"/><text x="130" y="798" text-anchor="middle" font-size="22" font-weight="700" fill="#FFFFFF">1</text>
+<text x="168" y="785" font-size="20" font-weight="600" fill="#1F2937">ChIP-seq</text>
+<text x="168" y="810" font-size="15" fill="#8A94A0">TF binds the gene</text>
+<rect x="470" y="745" width="330" height="90" rx="16" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<circle cx="510" cy="790" r="22" fill="#E69F00"/><text x="510" y="798" text-anchor="middle" font-size="22" font-weight="700" fill="#FFFFFF">2</text>
+<text x="548" y="785" font-size="20" font-weight="600" fill="#1F2937">Knockout</text>
+<text x="548" y="810" font-size="15" fill="#8A94A0">TF changes the gene</text>
+<rect x="850" y="745" width="330" height="90" rx="16" fill="#FFFFFF" stroke="#009E73" stroke-width="3"/>
+<circle cx="890" cy="790" r="22" fill="#009E73"/><text x="890" y="798" text-anchor="middle" font-size="22" font-weight="700" fill="#FFFFFF">3</text>
+<text x="928" y="785" font-size="20" font-weight="600" fill="#1F2937">ChIP ∩ knockout</text>
+<text x="928" y="810" font-size="15" fill="#8A94A0">test only: never trained</text>
+<line x1="422" y1="790" x2="466" y2="790" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<line x1="802" y1="790" x2="846" y2="790" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<rect x="1230" y="755" width="290" height="32" rx="16" fill="#009E73" opacity="0.16" stroke="#009E73" stroke-width="2"/>
+<text x="1375" y="777" text-anchor="middle" font-size="16" font-weight="600" fill="#1F2937">test pairs never trained on</text>
+<rect x="1230" y="801" width="290" height="32" rx="16" fill="#009E73" opacity="0.16" stroke="#009E73" stroke-width="2"/>
+<text x="1375" y="823" text-anchor="middle" font-size="16" font-weight="600" fill="#1F2937">zero test → train leakage</text>
+</svg>
