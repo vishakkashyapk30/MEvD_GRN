@@ -74,11 +74,11 @@ a(f'<line x1="1421" y1="300" x2="1479" y2="300" stroke="{INK}" stroke-width="3" 
 a(f'<rect x="1437" y="268" width="26" height="26" rx="6" fill="{ORANGE}"/>')
 a(f'<text x="1450" y="352" text-anchor="middle" font-size="16" fill="{GREY}">gated by openness</text>')
 a(f'<text x="1450" y="446" text-anchor="middle" font-size="60" font-weight="700" fill="{GREEN}">0.93</text>')
-a(f'<text x="1450" y="478" text-anchor="middle" font-size="17" fill="{INK}">chance TF → gene</text>')
+a(f'<text x="1450" y="478" text-anchor="middle" font-size="17" fill="{INK}">example score</text>')
 for _y, _t in [(508, "+ hub prior"), (548, "+ motif match")]:
     a(f'<rect x="1368" y="{_y}" width="164" height="32" rx="16" fill="#FFFFFF" stroke="{PURPLE}" stroke-width="2.5" stroke-dasharray="6 4"/>')
     a(f'<text x="1450" y="{_y+22}" text-anchor="middle" font-size="16" font-weight="600" fill="{INK}">{_t}</text>')
-a(f'<text x="1450" y="598" text-anchor="middle" font-size="12" fill="{GREY}">add-ons (selected model)</text>')
+a(f'<text x="1450" y="598" text-anchor="middle" font-size="12" fill="{GREY}">add-ons: BEAR-GRN version only</text>')
 arrow(1298, 360, 1338, 360)
 
 # bottom: how it learns
