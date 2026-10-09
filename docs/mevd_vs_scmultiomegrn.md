@@ -7,6 +7,23 @@ Written 2026-10-01 for the paper's Related Work and Contributions sections.
 - scMultiomeGRN (Xu *et al.*, *NAR* 53(5):gkaf138, 2025) from three sources: the paper (`docs/reference/scMultiomeGRN.pdf`), the official Zenodo code (`~/.cache/mevd_scmgrn/official/ScmultiomeGRN-main/`), and our adapter (`src/baselines/scmultiomegrn_wrapper.py`).
 - Where the code and a document disagree, **the code wins**. Every such disagreement is listed in Section 8.
 
+> **Update 2026-10-09 (zero-leakage versions). Read this first.**
+> This study was written on 1 Oct, before the second leak was found and before the zero-leak reruns. What changed:
+> - **Both train/test leaks are closed** (negative pool; label-dependent input graphs). The paper's old "headline" (single-stage `all_at_once`) is no longer the best model; the **evidence curriculum** is.
+> - **Zero-leak K562 numbers (4 seeds, AUPR / AUROC)** supersede every performance number below:
+>
+>   | Model | Localization | Perturbation | Dual evidence (zero-shot) |
+>   |---|---|---|---|
+>   | MeVD-GRN, evidence curriculum | 0.730 / 0.751 | **0.814 / 0.960** | **0.954 / 0.990** |
+>   | MeVD-GRN, single stage | **0.953 / 0.947** | 0.582 / 0.883 | 0.902 / 0.979 |
+>   | scMultiomeGRN (our re-run, 1 seed) | 0.906 / 0.914 | 0.655 / 0.919 | 0.847 / 0.971 |
+>
+> - **The "wins 5 of 6 metrics" claim (Sections 1 and 6) is withdrawn.** The single-stage model wins 3 of 6 against the re-run baseline; the curriculum wins 4 of 6 and loses localization.
+> - **Section 4, claim 1 (evidence-tier protocol)** now has a headline model that does use the curriculum, so the claim no longer has to be protocol-only. **Claim 2 (Geneformer helps in-domain, hurts transfer)** rests on single-seed numbers from before the fixes and must be re-run before it is cited.
+> - The comparison still uses our **re-implementation** of scMultiomeGRN (one seed), not its released code, and not its own fetal-lung benchmark. Neither has been run.
+> - Slides: `docs/presentation/presentation.md`, Part 1. Side-by-side diagram: `docs/figures/comparison_scmultiomegrn_vs_mevd.png`.
+> - Architecture, provenance (Section 3) and the list of scMultiomeGRN strengths (Section 5) are unchanged and still valid.
+
 **Naming.** Code and paper spell the model "MEvD-GRN"; newer docs write "MeVD-GRN". This note uses MeVD-GRN.
 
 **What "MeVD-GRN" means here.** It means the paper's headline configuration, recovered from the result files rather than the shipped default config. That configuration is `scripts/06_ablation.py --ablation all_at_once` on `configs/sweep/k562_fm_h384_l2.yaml`. The result files are `results/ablations/all_at_once_fm_h384l2_seed4{2..6}_K562.json` (3,257,479 params, empty `relation_weights`). Concretely:
