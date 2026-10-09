@@ -36,5 +36,13 @@
       "n_total": 47658
     }
   },
-  "relation_weights": {}
+  "relation_weights": {},
+  "leak_status": {
+    "graph_label_free": true,
+    "eval_negatives_excluded": true,
+    "legacy_allow_leaks": false,
+    "processed_dir": "data/processed/K562_labelfree",
+    "zero_leak": true,
+    "backfilled": "2026-10-09: run finished before the leak guard was deployed; status derived from its config (configs/sweep/k562_fm_h384_l2_labelfree.yaml) and the verified data/processed/K562_labelfree/summary.json"
+  }
 }
