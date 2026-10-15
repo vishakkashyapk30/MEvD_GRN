@@ -2,16 +2,15 @@
 # Step 2: per cell type, regenerate scMultiomeGRN's ground truth (FIMO), both
 # methods' node features, the official 10-fold splits (verified byte-identical
 # against the official split code), and MeVD-GRN's processed inputs.
-# 3 array tasks x 10 CPUs; each task builds every 3rd lung cell type (CPU work;
-# the GPU is requested only to respect Ada's 1 GPU : 10 CPU policy).
+# 3 CPU-only array tasks x 9 CPUs (no GPU: the 4 GPUs stay free for the work queue, and medium QoS
+# caps CPUs at 40 = 3x9 + 4x3); each task builds every 3rd cell type, small graphs first.
 #SBATCH --job-name=smg-build
 #SBATCH --account=research
 #SBATCH --qos=medium
 #SBATCH --partition=u22
 #SBATCH --constraint=2080ti
 #SBATCH -n 1
-#SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=9
 #SBATCH --mem-per-cpu=3000
 #SBATCH --time=2-00:00:00
 #SBATCH --array=0-2
@@ -23,6 +22,7 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1     # Geneformer cached by scmgrn
 NSH=${SLURM_ARRAY_TASK_COUNT:-3}
 pull official/ScmultiomeGRN-main
 pull raw/maestro
+pull raw/fm_tf_table.npz
 fetch_raw hg19.fa.gz "$SCMGRN_ROOT_LOCAL/raw/genome/hg19.fa.gz"
 gunzip -f "$SCMGRN_ROOT_LOCAL/raw/genome/hg19.fa.gz"
 for i in "${!CTS[@]}"; do

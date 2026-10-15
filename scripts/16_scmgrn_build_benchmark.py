@@ -272,7 +272,20 @@ def step_smg(gdir, pdir, k=64):
     log(f"smg pair feats {pair.shape} {pair.dtype} ({pair.nbytes / 1e6:.0f} MB) from {expr.shape[1]} cells")
 
 
-def step_fm(pdir):
+def step_fm(pdir, root=None):
+    table = Path(root) / "raw" / "fm_tf_table.npz" if root else None
+    if table is not None and table.exists():          # precomputed on the laptop (scripts/14c): no model download
+        z = np.load(table, allow_pickle=False)
+        look = {str(n): i for i, n in enumerate(z["names"])}
+        gi = json.load(open(pdir / "gene_index.json"))
+        out = np.zeros((len(gi), z["emb"].shape[1]), np.float32)
+        hit = 0
+        for g, i in gi.items():
+            if g in look:
+                out[i] = z["emb"][look[g]]; hit += 1
+        np.save(pdir / "fm_gene_embeddings.npy", out)
+        log(f"FM embeddings from precomputed table: matched {hit}/{len(gi)} -> {pdir/'fm_gene_embeddings.npy'}")
+        return
     spec = importlib.util.spec_from_file_location("fm11", REPO / "scripts" / "11_extract_fm_embeddings.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -322,7 +335,7 @@ def main():
         elif s == "smg":
             step_smg(gdir, pdir)
         elif s == "fm":
-            step_fm(pdir)
+            step_fm(pdir, root)
         else:
             raise SystemExit(f"unknown step {s}")
     log(f"done {ct} in {(time.time() - t0) / 60:.1f} min")
