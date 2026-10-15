@@ -361,3 +361,8 @@ The ranking weighs how defensible the novelty is against how much the headline e
 - Pratapa A, Jalihal AP, Law JN, *et al.* Benchmarking algorithms for GRN inference from single-cell transcriptomic data (BEELINE). *Nat Methods* 17 (2020). doi:10.1038/s41592-019-0690-6
 
 DOIs above were checked against the Crossref API and arXiv IDs against the arXiv API on 2026-10-01. Exceptions: the Zenodo DOI (DataCite, not Crossref), RESCAL (no DOI), and the EpiAwareNet, HGATLink and GMFGRN author lists, which were taken from the local knowledge base.
+
+| Model | Localization (AUPR / AUROC) | Perturbation (AUPR / AUROC) | Zero-shot Test (AUPR / AUROC) |
+|---|---:|---:|---:|
+| **MeVD-GRN (Ours)** | 0.903 / **0.947** | 0.581 / 0.883 | **0.902** / **0.979** |
+| **scMultiomeGRN (Their model)** | **0.936** / 0.914 | **0.655** / **0.919** | 0.847 / 0.971 |

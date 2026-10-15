@@ -1,8 +1,9 @@
 # K562 rerun with a label-free TF-candidate graph (second leak fixed)
 
-**Status (2026-10-09 02:10 IST): seeds 42-44 done for both protocols (local
-RTX 4060; Ada account locked). Seeds 45-46 are queued (second local queue) and
-are added to section 5.2 when they finish.** Section 6 makes label-free graphs
+**Status (2026-10-09 20:05 IST): seeds 42-45 done for both protocols (local
+RTX 4060; Ada account locked). Seed 46 is in the local queue (section 5.2b is the
+current table) and is added when it finishes: it needs 6.8 GB of GPU, so it waits for
+BEAR's GPU jobs to leave room.** Section 6 makes label-free graphs
 the default and adds a hard guard against leaky training.
 
 Context: [leakfix_rerun.md](leakfix_rerun.md) fixed the first leak
@@ -136,6 +137,18 @@ Paired by seed, the label-free run minus the leak-1-only run (AUPR):
 Files: `results/ablations/{full_curriculum,all_at_once}_fm_h384l2_labelfree_seed{42,43,44}_K562.json`.
 `leak_status` was backfilled into these six files on 2026-10-09 (section 6). The runs finished before
 the guard existed; their config and processed dir are the verified label-free ones.
+
+### 5.2b Seeds 42-45 (interim, 2026-10-09 19:35 IST, n = 4; seed 46 pending)
+
+Seed 45 ran after the guard was deployed, so its JSONs carry the original `leak_status` (`zero_leak = true`).
+
+| Run | n | loc AUPR | loc AUROC | pert AUPR | pert AUROC | dual AUPR | dual AUROC |
+|---|---|---|---|---|---|---|---|
+| full_curriculum, both leaks fixed | 4 | 0.7302±0.0005 | 0.7515±0.0010 | 0.8140±0.0010 | 0.9599±0.0003 | 0.9541±0.0007 | 0.9898±0.0001 |
+| all_at_once, both leaks fixed | 4 | 0.9528±0.0007 | 0.9469±0.0008 | 0.5815±0.0119 | 0.8834±0.0039 | 0.9023±0.0029 | 0.9786±0.0007 |
+
+The conclusions of 5.3 are unchanged by seed 45. The final 5-seed table replaces this when seed 46 finishes
+(queue `~/.cache/local_runs/queue2.txt`, items 14-15).
 
 ### 5.3 What it means
 

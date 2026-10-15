@@ -727,8 +727,10 @@ monocyte-only `target` row), `expressed` space:
   property of unseen targets themselves. Because the Cistrome metric rewards a per-gene prior (§12.1), the
   inverted prior drives AUROC below 0.5.
 - **Amendment status.** `target_all` is a supplementary regime. The headline protocol (`tf`, pre-registered
-  s4) is unchanged, and `target` stays in the grid as the documented failure. Seeds 43-44 of `target_all` are
-  queued after the K562 runs; they are added here when they finish.
+  s4) is unchanged, and `target` stays in the grid as the documented failure. Seeds 43-44 of `target_all` were
+  queued but the first attempts hit CUDA OOM while BEAR jobs shared the GPU (2026-10-09 19:48-19:52,
+  classical monocytes / naive CD4 T / naive B, seed 43). A retry pass with a 5.5 GB gate is appended to the
+  local queue; if it completes, add the seeds here. Everything in §12.3-12.4 is seed 42 only.
 
 **Reproduction caveat (open).** The local `tf` run scores below the Ada 5-seed headline of §11
 (AUROC 0.690 vs 0.7343 +- 0.0046; classical monocytes 0.694 vs 0.763 for Ada's first seed-42 unit in §8).
