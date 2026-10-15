@@ -35,8 +35,7 @@ q_claim() { q_exec mkdir "$SHARE/claims/$DS/$1" 2>/dev/null; }
 q_done() { q_exec test -e "$SHARE/done/$DS/$1"; }
 q_mark_done() { q_exec bash -c "echo '$(hostname) $(date +%F_%T)' > '$SHARE/done/$DS/$1'"; }
 q_fail() { q_exec bash -c "mkdir -p '$SHARE/failed/$DS' && mv '$SHARE/claims/$DS/$1' '$SHARE/failed/$DS/$1.$(date +%s)'"; }
-ct_ready() { q_exec test -e "$SHARE/processed/$DS/$1/smg_pair_feats.npy" \
-                 -a -e "$SHARE/processed/$DS/$1/fm_gene_embeddings.npy" -a -e "$SHARE/splits/$DS/$1"; }
+ct_ready() { q_exec test -e "$SHARE/processed/$DS/$1/READY"; }      # written last by scmgrn_build.sh
 
 run_unit() {   # run_unit <kind> <ct> <variant> <seed>   (data for <ct> already staged under $SCMGRN_ROOT_LOCAL)
   local KIND=$1 CT=$2 V=$3 S=$4 MC OBS SMG FLAG=""

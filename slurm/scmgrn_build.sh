@@ -29,7 +29,7 @@ gunzip -f "$SCMGRN_ROOT_LOCAL/raw/genome/hg19.fa.gz"
 for i in "${!CTS[@]}"; do
   (( i % NSH == SLURM_ARRAY_TASK_ID )) || continue
   CT=${CTS[$i]}
-  if [ -e "$SHARE/processed/$DS/$CT/smg_pair_feats.npy" ] && [ -e "$SHARE/graph/$DS/$CT/x_scRNA_grnboost2_feature.txt" ]; then
+  if [ -e "$SHARE/processed/$DS/$CT/READY" ]; then
     echo "[build] $CT already built, skipping"; continue; fi
   pull "sep_data/$DS/$CT"
   pull "graph/$DS/$CT"          # resumes a partial FIMO scan
@@ -38,6 +38,7 @@ for i in "${!CTS[@]}"; do
       --n_jobs "${SLURM_CPUS_PER_TASK:-10}" --steps gt,official,splits,verify,processed,smg,fm
   rm -rf "$SCMGRN_ROOT_LOCAL/graph/$DS/$CT/work/peak.fasta" "$SCMGRN_ROOT_LOCAL/graph/$DS/$CT/work/fimo-res"
   push "graph/$DS/$CT"; push "splits/$DS/$CT"; push "processed/$DS/$CT"
+  touch "$SCMGRN_ROOT_LOCAL/processed/$DS/$CT/READY"; push "processed/$DS/$CT/READY"   # written LAST: the GPU workers wait for it
   rm -rf "$SCMGRN_ROOT_LOCAL/sep_data/$DS/$CT"
 done
 echo "[build] task $SLURM_ARRAY_TASK_ID done"
