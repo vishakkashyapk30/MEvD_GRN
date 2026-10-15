@@ -72,6 +72,16 @@ def load_their_scrna(scrna_dir: Path, tf_nodes) -> pd.DataFrame:
     if vf.exists():
         want = set(pd.read_csv(vf, header=None)[0].astype(str)) | set(tf_nodes)
         keep = np.array([i for i, g in enumerate(genes) if g in want])
+    else:
+        # The Domcke Seurat object stores no variable-feature list, so the official var_features path is not
+        # available. The paper's own preprocessing removes genes detected in <10% of cells (Materials and
+        # methods), so we keep genes detected in >10% of the cell type's cells, plus every TF node. This
+        # also keeps GRNBoost2 tractable (34k genes would take days per cell type).
+        Xc = sp.csc_matrix(X)
+        det = np.diff((Xc > 0).astype(np.int8).tocsc().indptr) / max(Xc.shape[0], 1)
+        tfs = set(map(str, tf_nodes))
+        keep = np.array([i for i, g in enumerate(genes) if det[i] > 0.1 or g in tfs])
+        print(f"[scrna] no var_features.tsv: kept {len(keep)} of {len(genes)} genes (detected in >10% of cells, plus TFs)", flush=True)
     Xk = sp.csc_matrix(X)[:, keep].T.toarray()                  # genes x cells
     df = pd.DataFrame(Xk, index=[genes[i] for i in keep], columns=cells)
     return df[~df.index.duplicated(keep="first")]
