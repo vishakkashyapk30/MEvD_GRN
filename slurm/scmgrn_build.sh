@@ -7,7 +7,9 @@
 #SBATCH --job-name=smg-build
 #SBATCH --account=research
 #SBATCH --qos=medium
-#SBATCH --partition=long
+#SBATCH --partition=u22
+#SBATCH --constraint=2080ti
+#SBATCH -n 1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=10
 #SBATCH --mem-per-cpu=3000
@@ -17,24 +19,24 @@
 set -euo pipefail
 source "${SLURM_SUBMIT_DIR:-$PWD}/slurm/scmgrn_common.sh"
 activate
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1     # Geneformer cached by scmgrn_setup.sh
 NSH=${SLURM_ARRAY_TASK_COUNT:-3}
 pull official/ScmultiomeGRN-main
 pull raw/maestro
-pull raw/genome/hg19.fa
-[ -e "$SHARE/raw/genome/hg19.fa.fai" ] && pull raw/genome/hg19.fa.fai || true
+fetch_raw hg19.fa.gz "$SCMGRN_ROOT_LOCAL/raw/genome/hg19.fa.gz"
+gunzip -f "$SCMGRN_ROOT_LOCAL/raw/genome/hg19.fa.gz"
 for i in "${!LUNG_CTS[@]}"; do
   (( i % NSH == SLURM_ARRAY_TASK_ID )) || continue
   CT=${LUNG_CTS[$i]}
-  if [ -e "$SHARE/processed/lung/$CT/summary.json" ] && [ -e "$SHARE/graph/lung/$CT/x_scRNA_grnboost2_feature.txt" ]; then
+  if [ -e "$SHARE/processed/lung/$CT/smg_pair_feats.npy" ] && [ -e "$SHARE/graph/lung/$CT/x_scRNA_grnboost2_feature.txt" ]; then
     echo "[build] $CT already built, skipping"; continue; fi
   pull "sep_data/lung/$CT"
   pull "graph/lung/$CT"          # resumes a partial FIMO scan
   python -u scripts/16_scmgrn_build_benchmark.py --config configs/scmgrn/lung.yaml \
       --root "$SCMGRN_ROOT_LOCAL" --cell_type "$CT" --fimo_bin "$FIMO_BIN" \
-      --n_jobs "${SLURM_CPUS_PER_TASK:-10}" --steps gt,official,splits,verify,processed
-  rm -rf "$SCMGRN_ROOT_LOCAL/graph/lung/$CT/work/peak.fasta"
+      --n_jobs "${SLURM_CPUS_PER_TASK:-10}" --steps gt,official,splits,verify,processed,smg,fm
+  rm -rf "$SCMGRN_ROOT_LOCAL/graph/lung/$CT/work/peak.fasta" "$SCMGRN_ROOT_LOCAL/graph/lung/$CT/work/fimo-res"
   push "graph/lung/$CT"; push "splits/lung/$CT"; push "processed/lung/$CT"
   rm -rf "$SCMGRN_ROOT_LOCAL/sep_data/lung/$CT"
 done
-push raw/genome/hg19.fa.fai
 echo "[build] task $SLURM_ARRAY_TASK_ID done"
