@@ -18,6 +18,7 @@
 set -euo pipefail
 source "${SLURM_SUBMIT_DIR:-$PWD}/slurm/scmgrn_common.sh"
 activate
+export WAIT_RAW=1
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1     # Geneformer cached by scmgrn_setup.sh
 NSH=${SLURM_ARRAY_TASK_COUNT:-3}
 pull official/ScmultiomeGRN-main
