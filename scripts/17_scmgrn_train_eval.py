@@ -9,8 +9,11 @@ one model seed x a set of folds, with the official protocol:
   * single evidence tier, one training stage, model selection on the fold's
     val split only (val AUPR, MeVD-GRN's native rule), <= 2000 epochs,
     patience 100 epochs (configs/scmgrn/mevd_base.yaml)
-  * scores symmetrised, S = (sigmoid(i->j) + sigmoid(j->i)) / 2, because the
-    ground truth is an undirected TF-TF graph
+  * model.task: undirected (default, configs/scmgrn/mevd_base.yaml): native UNDIRECTED
+    TF-TF link prediction like scMultiomeGRN -- each unordered pair (u<v) is one
+    example and the decoder is permutation-invariant, so S is symmetric by
+    construction. model.task: directed is the old TF->target model with scores
+    symmetrised, S = (sigmoid(i->j) + sigmoid(j->i)) / 2 (ablation A3)
   * metrics = the official metric_fn on the "test" (held-out fold, 1:1) and
     "all" (full N x N matrix) sets -- see src/benchmarks/scmgrn_protocol.py
 
@@ -18,6 +21,10 @@ one model seed x a set of folds, with the official protocol:
 passes over the fold's TRAINING adjacency. The fold's train positives are fed
 as MeVD-GRN's 3rd relation (the slot the motif graph uses on SC-MO-GRN-DB;
 that motif graph is disabled here because the ground truth is a motif scan).
+
+--smg_feats: input parity with scMultiomeGRN (undirected task only): the cell type's
+label-free smg_node_feats.npy (SVD of MAESTRO RP + GRNBoost2) and smg_pair_feats.npy
+(16x16 joint histograms), written by scripts/16 --steps smg.
 
 Usage:
   python scripts/17_scmgrn_train_eval.py --config configs/scmgrn/lung.yaml \
@@ -54,7 +61,7 @@ def T(a: np.ndarray) -> torch.Tensor:
     return torch.from_numpy(a.T.copy())
 
 
-def build_model(mcfg: dict, use_motif: bool) -> MEvDGRN:
+def build_model(mcfg: dict, use_motif: bool, side_in_dim: int = 0, pair_dim: int = 0) -> MEvDGRN:
     return MEvDGRN(rna_in_dim=mcfg["rna_in_dim"], atac_in_dim=mcfg["atac_in_dim"],
                    hidden_dim=mcfg["hidden_dim"], n_gnn_layers=mcfg["n_gnn_layers"],
                    dropout=mcfg["dropout"], integration=mcfg.get("integration", "role_aware"),
@@ -62,7 +69,14 @@ def build_model(mcfg: dict, use_motif: bool) -> MEvDGRN:
                    use_edge_mlp=bool(mcfg.get("use_edge_mlp", False)),
                    combine_mode=mcfg.get("combine_mode", "sum"),
                    use_fm=bool(mcfg.get("use_fm", False)), fm_in_dim=int(mcfg.get("fm_in_dim", 768)),
-                   use_motif=use_motif)
+                   use_motif=use_motif, task=mcfg.get("task", "directed"),
+                   side_in_dim=side_in_dim, pair_dim=pair_dim)
+
+
+def unordered(a: np.ndarray) -> np.ndarray:
+    """Both-direction pair array -> one row per unordered pair (u < v)."""
+    a = np.asarray(a).reshape(-1, 2)
+    return a[a[:, 0] < a[:, 1]]
 
 
 @torch.no_grad()
@@ -99,9 +113,20 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
         raise SystemExit(f"use_fm=true but {pdir}/fm_gene_embeddings.npy is missing "
                          "(run scripts/16 --steps fm on the login node)")
     f = proto.load_fold(sdir, fold, n)
+    undirected = cfg["model"].get("task", "directed") == "undirected"
+    if undirected:                                                # one example per unordered pair
+        for p in ("train", "val", "test"):
+            f[p] = {k: unordered(v) for k, v in f[p].items()}
     data.negative_pool = T(f["train"]["neg"])                     # fold-train negatives only
     data.motif_edges = T(f["train"]["pos"]) if args.obs_graph else torch.zeros((2, 0), dtype=torch.long)
     splits = {p: {"pos": T(f[p]["pos"]), "neg": T(f[p]["neg"])} for p in ("train", "val", "test")}
+    side = pair = None
+    if args.smg_feats:
+        if not undirected:
+            raise SystemExit("--smg_feats needs model.task: undirected")
+        side = torch.from_numpy(np.load(pdir / "smg_node_feats.npy")).float()
+        pair = torch.from_numpy(np.load(pdir / "smg_pair_feats.npy"))
+        assert side.shape[0] == n and pair.shape[:2] == (n, n), "smg features do not match the node set"
     for p in ("val", "test"):                                    # sanity: nothing held out is trained on
         held = set(map(tuple, f[p]["pos"].tolist())) | set(map(tuple, f[p]["neg"].tolist()))
         trained = set(map(tuple, f["train"]["pos"].tolist())) | set(map(tuple, f["train"]["neg"].tolist()))
@@ -109,8 +134,13 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
 
     ckpt = Path(tempfile.mkdtemp(prefix=f"ckpt_{args.cell_type}_f{fold}_", dir=args.tmp_dir))
     cfg["checkpoint_dir"] = str(ckpt)
-    model = build_model(cfg["model"], use_motif=args.obs_graph)
+    model = build_model(cfg["model"], use_motif=args.obs_graph,
+                        side_in_dim=0 if side is None else side.shape[1],
+                        pair_dim=0 if pair is None else pair.shape[-1])
     trainer = MEvDTrainer(model, data, cfg, args.device)
+    if side is not None:
+        model.set_side_features(side.to(args.device))
+        model.set_pair_feats(pair.to(args.device))
     stage = stages_from_config(cfg)[0]
     if args.max_epochs:
         stage.n_epochs = args.max_epochs
@@ -123,6 +153,7 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
     shutil.rmtree(ckpt, ignore_errors=True)
     rec = {"method": "MeVD-GRN", "variant": args.variant, "cell_type": args.cell_type,
            "dataset": dcfg["dataset"], "fold": fold, "seed": seed, "obs_graph": bool(args.obs_graph),
+           "task": cfg["model"].get("task", "directed"), "smg_feats": bool(args.smg_feats),
            "model_config": str(args.model_config), "n_params": model.count_parameters(),
            "n_nodes": n, "n_train_pos_directed": int(splits["train"]["pos"].shape[1]),
            "epochs_run": len(res["history"]), "best_val_aupr": res["best_val_aupr"],
@@ -144,6 +175,7 @@ def main():
     ap.add_argument("--folds", default="1-10", help="e.g. 1-10 or 1,3,5")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--obs_graph", action="store_true")
+    ap.add_argument("--smg_feats", action="store_true", help="scMultiomeGRN input parity features")
     ap.add_argument("--variant", default=None, help="name used in output paths")
     ap.add_argument("--device", default="cuda:0")
     ap.add_argument("--max_epochs", type=int, default=None, help="smoke tests only")
@@ -154,7 +186,8 @@ def main():
         print("[warn] CUDA unavailable -> CPU", flush=True)
         args.device = "cpu"
     if args.variant is None:
-        args.variant = Path(args.model_config).stem.replace("mevd_", "") + ("_obs" if args.obs_graph else "_noobs")
+        args.variant = Path(args.model_config).stem.replace("mevd_", "") + ("_obs" if args.obs_graph else "_noobs") \
+            + ("_smg" if args.smg_feats else "")
     dcfg = load_config(args.config)
     if "-" in args.folds:
         a, b = args.folds.split("-")

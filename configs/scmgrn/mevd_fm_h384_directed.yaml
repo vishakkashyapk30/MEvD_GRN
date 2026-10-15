@@ -1,0 +1,5 @@
+# Ablation A3: the OLD directed TF->target MeVD-GRN on the TF-TF benchmark, scores symmetrised
+# (S = (sigma(i->j) + sigma(j->i))/2). Shows what the task change buys. Same size as the headline.
+inherit: mevd_fm_h384.yaml
+model:
+  task: directed

@@ -154,3 +154,52 @@ def grnboost2_features(expr_genes_by_cells: pd.DataFrame, tf_nodes: Sequence[str
     for tf, tg, imp in zip(assoc["TF"], assoc["target"], assoc["importance"]):
         net.at[tf, tg] = imp
     return net
+
+
+# ---------------------------------------------------------------------------
+# MeVD-GRN input-parity features (label-free): scMultiomeGRN's edge feature and
+# SVD-reduced node features. Used only by the task='undirected' model.
+# ---------------------------------------------------------------------------
+def _tf_bin_index(x: np.ndarray, bins: int = 16) -> np.ndarray:
+    """Per-variable equal-width bin index exactly as np.histogram2d(x, y, bins=16)
+    assigns it (range = the variable's own min/max; max falls in the last bin)."""
+    lo, hi = float(x.min()), float(x.max())
+    if hi == lo:
+        lo, hi = lo - 0.5, hi + 0.5
+    edges = np.linspace(lo, hi, bins + 1)
+    return np.clip(np.searchsorted(edges, x, side="right") - 1, 0, bins - 1)
+
+
+def joint_histogram_pair_feats(expr_tf_by_cells: np.ndarray, bins: int = 16) -> np.ndarray:
+    """scMultiomeGRN eq. 1-2 edge feature, for ALL TF pairs, SYMMETRISED.
+
+    For TFs u, v: H = histogram2d(log10(x_u+1e-2), log10(x_v+1e-2), bins=16).T,
+    e_uv = (log10(H/n_cells + 1e-4) + 4) / 4. The official feature is ordered
+    (e_uv = e_vu^T); a symmetric link predictor needs an order-free input, so we
+    return (e_uv + e_uv^T)/2 and keep its 136 unique upper-triangle values.
+    Returns float16 (N, N, 136). Label-free: depends on expression only.
+    """
+    X = np.log10(np.asarray(expr_tf_by_cells, dtype=np.float64) + 1e-2)     # (N, C)
+    n, c = X.shape
+    B = np.stack([_tf_bin_index(X[i], bins) for i in range(n)]).astype(np.int64)   # (N, C)
+    iu = np.triu_indices(bins)
+    out = np.zeros((n, n, len(iu[0])), dtype=np.float16)
+    off = (np.arange(n, dtype=np.int64) * bins * bins)[:, None]
+    for i in range(n):
+        code = B * bins + B[i][None, :] + off          # row j: (bin_v * 16 + bin_u) with u = i
+        H = np.bincount(code.ravel(), minlength=n * bins * bins).reshape(n, bins, bins)  # H[j, b_v, b_u]
+        E = (np.log10(H / c + 1e-4) + 4.0) / 4.0
+        E = (E + E.transpose(0, 2, 1)) / 2.0
+        out[i] = E[:, iu[0], iu[1]].astype(np.float16)
+    return out
+
+
+def svd_reduce(M: np.ndarray, k: int = 64) -> np.ndarray:
+    """Label-free reduction of a node-by-feature matrix (rows = nodes): SVD of the
+    column-centred matrix, top-k left singular vectors scaled by their singular
+    values, then per-dimension standardisation. k is capped at min(shape) - 1."""
+    M = np.asarray(M, dtype=np.float64)
+    k = max(1, min(k, min(M.shape) - 1))
+    U, S, _ = np.linalg.svd(M - M.mean(0, keepdims=True), full_matrices=False)
+    Z = U[:, :k] * S[:k]
+    return (Z / (Z.std(0, keepdims=True) + 1e-8)).astype(np.float32)
