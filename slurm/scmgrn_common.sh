@@ -66,7 +66,10 @@ activate() {
   cd "$REPO"
   echo "[env] host=$(hostname) job=${SLURM_JOB_ID:-} task=${SLURM_ARRAY_TASK_ID:-} gpu=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1) scratch=$SCR share=$SHARE"
 }
-# Lung cell types (configs/scmgrn/lung.yaml), largest first for load balance
+# DS=lung (default, the paper's main benchmark) | hema (Supp. Fig. S1); cell types largest first
+export DS="${DS:-lung}"
 LUNG_CTS=(Stromal_cells Bronchiolar_and_alveolar_epithelial_cells Vascular_endothelial_cells
           Lymphoid_cells Myeloid_cells Ciliated_epithelial_cells Lymphatic_endothelial_cells
           Megakaryocytes Neuroendocrine_cells)
+HEMA_CTS=(CMP HSC GMP)
+if [ "$DS" = hema ]; then CTS=("${HEMA_CTS[@]}"); else CTS=("${LUNG_CTS[@]}"); fi

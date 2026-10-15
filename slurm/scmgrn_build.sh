@@ -25,18 +25,18 @@ pull official/ScmultiomeGRN-main
 pull raw/maestro
 fetch_raw hg19.fa.gz "$SCMGRN_ROOT_LOCAL/raw/genome/hg19.fa.gz"
 gunzip -f "$SCMGRN_ROOT_LOCAL/raw/genome/hg19.fa.gz"
-for i in "${!LUNG_CTS[@]}"; do
+for i in "${!CTS[@]}"; do
   (( i % NSH == SLURM_ARRAY_TASK_ID )) || continue
-  CT=${LUNG_CTS[$i]}
-  if [ -e "$SHARE/processed/lung/$CT/smg_pair_feats.npy" ] && [ -e "$SHARE/graph/lung/$CT/x_scRNA_grnboost2_feature.txt" ]; then
+  CT=${CTS[$i]}
+  if [ -e "$SHARE/processed/$DS/$CT/smg_pair_feats.npy" ] && [ -e "$SHARE/graph/$DS/$CT/x_scRNA_grnboost2_feature.txt" ]; then
     echo "[build] $CT already built, skipping"; continue; fi
-  pull "sep_data/lung/$CT"
-  pull "graph/lung/$CT"          # resumes a partial FIMO scan
-  python -u scripts/16_scmgrn_build_benchmark.py --config configs/scmgrn/lung.yaml \
+  pull "sep_data/$DS/$CT"
+  pull "graph/$DS/$CT"          # resumes a partial FIMO scan
+  python -u scripts/16_scmgrn_build_benchmark.py --config configs/scmgrn/$DS.yaml \
       --root "$SCMGRN_ROOT_LOCAL" --cell_type "$CT" --fimo_bin "$FIMO_BIN" \
       --n_jobs "${SLURM_CPUS_PER_TASK:-10}" --steps gt,official,splits,verify,processed,smg,fm
-  rm -rf "$SCMGRN_ROOT_LOCAL/graph/lung/$CT/work/peak.fasta" "$SCMGRN_ROOT_LOCAL/graph/lung/$CT/work/fimo-res"
-  push "graph/lung/$CT"; push "splits/lung/$CT"; push "processed/lung/$CT"
-  rm -rf "$SCMGRN_ROOT_LOCAL/sep_data/lung/$CT"
+  rm -rf "$SCMGRN_ROOT_LOCAL/graph/$DS/$CT/work/peak.fasta" "$SCMGRN_ROOT_LOCAL/graph/$DS/$CT/work/fimo-res"
+  push "graph/$DS/$CT"; push "splits/$DS/$CT"; push "processed/$DS/$CT"
+  rm -rf "$SCMGRN_ROOT_LOCAL/sep_data/$DS/$CT"
 done
 echo "[build] task $SLURM_ARRAY_TASK_ID done"
