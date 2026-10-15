@@ -3,7 +3,9 @@
 #SBATCH --job-name=smg-prep
 #SBATCH --account=research
 #SBATCH --qos=medium
-#SBATCH --partition=long
+#SBATCH --partition=u22
+#SBATCH --constraint=2080ti
+#SBATCH -n 1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=10
 #SBATCH --mem-per-cpu=3000
@@ -12,7 +14,7 @@
 set -euo pipefail
 source "${SLURM_SUBMIT_DIR:-$PWD}/slurm/scmgrn_common.sh"
 activate
-pull raw/lung/GSM4508936_lung_filtered.seurat.RDS.gz
+fetch_raw GSM4508936_lung_filtered.seurat.RDS.gz "$SCMGRN_ROOT_LOCAL/raw/lung/GSM4508936_lung_filtered.seurat.RDS.gz"
 "$RSCRIPT_BIN" scripts/15_scmgrn_split_seurat.R \
    "$SCMGRN_ROOT_LOCAL/raw/lung/GSM4508936_lung_filtered.seurat.RDS.gz" \
    "$SCMGRN_ROOT_LOCAL/sep_data/lung" auto 1

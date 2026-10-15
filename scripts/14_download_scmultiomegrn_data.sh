@@ -1,12 +1,10 @@
 #!/bin/bash
 # =============================================================================
-# scMultiomeGRN benchmark: downloads + tool setup. Run on the Ada LOGIN node
-# (compute nodes have no internet); data goes straight into /share1.
-#
-#   bash scripts/14_download_scmultiomegrn_data.sh env     # once: tools env + pip deps
-#   bash scripts/14_download_scmultiomegrn_data.sh data    # ~6.5 GB into $SCMGRN_ROOT
-#   bash scripts/14_download_scmultiomegrn_data.sh fm      # cache Geneformer for offline jobs
-#
+# scMultiomeGRN benchmark: downloads + tool setup.
+# SUPERSEDED (2026-10): on post-upgrade Ada run slurm/scmgrn_setup.sh instead (a batch job:
+# compute nodes have internet, the login node must not run downloads/installs). This script
+# remains for local/manual use:
+#   bash scripts/14_download_scmultiomegrn_data.sh env|data|fm
 # SCMGRN_ROOT defaults to /share1/$USER/mevd_grn/scmgrn.
 # Sources (see docs/experiments/scmultiomegrn_generalization.md):
 #   official code  Zenodo 10.5281/zenodo.14848389 (ScmultiomeGRN-main.zip, 8.4 MB;
