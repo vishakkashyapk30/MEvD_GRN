@@ -60,16 +60,16 @@ put_raw() {
 }
 activate() {
   source "$CONDA_SH"; conda activate mevd-grn
-  export FIMO_BIN="${FIMO_BIN:-$(conda run -n "$TOOLS_ENV" which fimo 2>/dev/null || true)}"
-  export RSCRIPT_BIN="${RSCRIPT_BIN:-$(conda run -n "$TOOLS_ENV" which Rscript 2>/dev/null || true)}"
+  export FIMO_BIN="${FIMO_BIN:-$HOME/miniforge3/envs/$TOOLS_ENV/bin/fimo}"
+  export RSCRIPT_BIN="${RSCRIPT_BIN:-$HOME/miniforge3/envs/$TOOLS_ENV/bin/Rscript}"
+  [ -x "$FIMO_BIN" ] && [ -x "$RSCRIPT_BIN" ] || { echo "[env] missing fimo/Rscript in env $TOOLS_ENV"; exit 1; }
   export PYTHONUNBUFFERED=1
   cd "$REPO"
   echo "[env] host=$(hostname) job=${SLURM_JOB_ID:-} task=${SLURM_ARRAY_TASK_ID:-} gpu=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1) scratch=$SCR share=$SHARE"
 }
-# DS=lung (default, the paper's main benchmark) | hema (Supp. Fig. S1); cell types largest first
+# DS=lung (default, the paper's main benchmark) | hema (Supp. Fig. S1); cell types SMALL graphs first
 export DS="${DS:-lung}"
-LUNG_CTS=(Stromal_cells Bronchiolar_and_alveolar_epithelial_cells Vascular_endothelial_cells
-          Lymphoid_cells Myeloid_cells Ciliated_epithelial_cells Lymphatic_endothelial_cells
-          Megakaryocytes Neuroendocrine_cells)
+LUNG_CTS=(Myeloid_cells Lymphoid_cells Megakaryocytes Neuroendocrine_cells Lymphatic_endothelial_cells
+          Bronchiolar_and_alveolar_epithelial_cells Stromal_cells Ciliated_epithelial_cells Vascular_endothelial_cells)
 HEMA_CTS=(CMP HSC GMP)
 if [ "$DS" = hema ]; then CTS=("${HEMA_CTS[@]}"); else CTS=("${LUNG_CTS[@]}"); fi
