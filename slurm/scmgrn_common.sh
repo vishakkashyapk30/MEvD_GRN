@@ -40,6 +40,10 @@ push() {
 # fetch_raw <name> <dest_file> : scp ada-gw2:$RAW_SHARE/<name> -> dest, size-verified, 5 tries
 fetch_raw() {
   local name="$1" dst="$2" i want got; mkdir -p "$(dirname "$dst")"
+  if [ "${WAIT_RAW:-0}" = 1 ]; then       # inputs are being uploaded from the laptop: wait (<= 8 h) for the final name
+    for i in $(seq 1 240); do ssh -o BatchMode=yes "$RAW_HOST" "test -e '$RAW_SHARE/$name'" && break
+      echo "[fetch_raw] waiting for $name ($(date +%T))"; sleep 120; done
+  fi
   want=$(ssh -o BatchMode=yes "$RAW_HOST" "stat -c %s '$RAW_SHARE/$name'") || return 1
   for i in 1 2 3 4 5; do
     scp -q -o BatchMode=yes "$RAW_HOST:$RAW_SHARE/$name" "$dst.part" && got=$(stat -c %s "$dst.part") \
