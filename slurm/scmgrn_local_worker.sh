@@ -7,7 +7,7 @@
 #                                                      # stay in claims/ -> release them with the reset note in docs
 set -uo pipefail
 export DS="${DS:-lung}" KINDS=mevd WAIT_FOR_BUILD=1 DEVICE=cuda:0
-export RAW_HOST="${RAW_HOST:-ada-gw2}"
+export RAW_HOST="${RAW_HOST:-${ADA_USER:-vishakkashyap.k}@ada-gw2}"
 export SHARE="/home2/${ADA_USER:-vishakkashyap.k}/scmgrn"                 # path ON ADA
 export REPO="${REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
 export SCR="${LOCAL_SCR:-$HOME/.cache/mevd_scmgrn_local}"; export SCMGRN_ROOT_LOCAL="$SCR/scmgrn"
