@@ -25,8 +25,10 @@ slot_of <- function(o, s) { v <- tryCatch(methods::slot(o, s), error = function(
   if (is.null(v)) v <- attr(o, s, exact = TRUE); v }
 
 message("reading ", rds, " (SeuratObject available: ", have_so, ")")
-con <- if (grepl("\\.gz$", rds)) gzfile(rds, "rb") else file(rds, "rb")
-obj <- readRDS(con); close(con)
+# NB the GEO file GSM4508936_lung_filtered.seurat.RDS.gz is gzipped TWICE (saveRDS output, which is itself
+# gzip-compressed, wrapped in another .gz). For a ".gz" input we strip ONE layer with gzfile(); an input
+# without ".gz" is passed to readRDS() as a path, which handles a gzip-compressed RDS natively.
+if (grepl("\\.gz$", rds)) { con <- gzfile(rds, "rb"); obj <- readRDS(con); close(con) } else obj <- readRDS(rds)
 assays <- slot_of(obj, "assays")
 message("assays: ", paste(names(assays), collapse = ", "))
 meta <- slot_of(obj, "meta.data")
