@@ -32,7 +32,7 @@ OFFICIAL_SEEDS=(${OFFICIAL_SEEDS:-666 42 43 44 45 46})
 # variant = <model config stem>:<obs|noobs>:<smg|nosmg>
 VARIANTS=(${VARIANTS:-mevd_fm_h384:obs:smg mevd_fm_h384:obs:nosmg mevd_fm_h384:noobs:nosmg mevd_fm_h384_directed:obs:nosmg})
 UNITS=()
-for CT in "${LUNG_CTS[@]}"; do
+for CT in "${CTS[@]}"; do
   for S in "${OFFICIAL_SEEDS[@]}"; do UNITS+=("official $CT x $S"); done
   for V in "${VARIANTS[@]}"; do for S in "${SEEDS[@]}"; do UNITS+=("mevd $CT $V $S"); done; done
 done
@@ -40,8 +40,8 @@ pull official/ScmultiomeGRN-main
 declare -A STAGED=()
 stage_ct() {
   local CT=$1; [ -n "${STAGED[$CT]:-}" ] && return 0
-  pull "graph/lung/$CT"; pull "splits/lung/$CT"; pull "processed/lung/$CT"; pull "results/lung/$CT"
-  rm -rf "$SCMGRN_ROOT_LOCAL/graph/lung/$CT/work"
+  pull "graph/$DS/$CT"; pull "splits/$DS/$CT"; pull "processed/$DS/$CT"; pull "results/$DS/$CT"
+  rm -rf "$SCMGRN_ROOT_LOCAL/graph/$DS/$CT/work"
   STAGED[$CT]=1
 }
 for k in "${!UNITS[@]}"; do
@@ -50,21 +50,21 @@ for k in "${!UNITS[@]}"; do
   stage_ct "$CT"
   echo "===== unit $k: ${UNITS[$k]} ($(date +%T)) ====="
   if [ "$KIND" = official ]; then
-    python -u scripts/18_scmgrn_official_repro.py --config configs/scmgrn/lung.yaml \
+    python -u scripts/18_scmgrn_official_repro.py --config configs/scmgrn/$DS.yaml \
       --root "$SCMGRN_ROOT_LOCAL" --cell_type "$CT" --folds 1-10 --skip_existing --model_seed "$S" \
       --work_dir "$SCR/official_work/$CT" || echo "[warn] official repro failed for $CT seed $S"
   else
     IFS=: read -r MC OBS SMG <<<"$V"
-    if [ ! -e "$SCMGRN_ROOT_LOCAL/processed/lung/$CT/fm_gene_embeddings.npy" ]; then   # fallback; normally built by scmgrn_build.sh
-      python -u scripts/16_scmgrn_build_benchmark.py --config configs/scmgrn/lung.yaml \
+    if [ ! -e "$SCMGRN_ROOT_LOCAL/processed/$DS/$CT/fm_gene_embeddings.npy" ]; then   # fallback; normally built by scmgrn_build.sh
+      python -u scripts/16_scmgrn_build_benchmark.py --config configs/scmgrn/$DS.yaml \
         --root "$SCMGRN_ROOT_LOCAL" --cell_type "$CT" --steps fm
-      push "processed/lung/$CT"
+      push "processed/$DS/$CT"
     fi
     FLAG=""; [ "$OBS" = obs ] && FLAG="--obs_graph"; [ "$SMG" = smg ] && FLAG="$FLAG --smg_feats"
-    python -u scripts/17_scmgrn_train_eval.py --config configs/scmgrn/lung.yaml \
+    python -u scripts/17_scmgrn_train_eval.py --config configs/scmgrn/$DS.yaml \
       --model_config "configs/scmgrn/$MC.yaml" $FLAG --root "$SCMGRN_ROOT_LOCAL" \
       --cell_type "$CT" --seed "$S" --folds 1-10 --device cuda:0 --skip_existing --tmp_dir "$SCR"
   fi
-  push "results/lung/$CT"
+  push "results/$DS/$CT"
 done
 echo "[work] shard $SLURM_ARRAY_TASK_ID done"

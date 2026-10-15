@@ -169,7 +169,7 @@ Files (all new unless marked):
 
 The smoke numbers are meaningless as results: a 13-node graph gives 1-2 test pairs per fold.
 
-## 8. Runbook for Ada (nothing has been run on Ada yet)
+## 8. Runbook for Ada (SUPERSEDED by section 11; kept for the original design)
 
 Once Ada is back, re-check the post-upgrade environment first:
 `sinfo -o "%N %G %f"`, `module avail`, `sacctmgr show assoc user=$USER format=Account,QOS,DefaultQOS`.
@@ -225,3 +225,57 @@ Results are **not** tracked by git as-is: `.gitignore` ignores `results/*`. To t
 
 - **Test negatives are seen in training.** `MEvDTrainer._build_train_edges` samples random negatives from `data.negative_pool`, which is the *full* pool. `create_global_edge_splits` draws the val/test negatives from chunks of that same pool. For K562 localization (~818k train positives × `neg_ratio` 5 > the 1M pool cap), essentially every val/test negative is a label-0 training example every epoch. The fix is to sample from `splits["train"]["neg"]` (or the train chunk) only. This would change the existing reported numbers, so it needs a deliberate rerun. **Fixed 2026-09-30** on branch `leak-fix-and-benchmarks`. `MEvDTrainer.restrict_negative_pool` removes every tier's val/test negatives from the pool before training. Every training entry point (03, 06, 12, 17) calls it, `train_stage` refuses to run without it, and `scripts/00_sanity_check.py` checks both. Measured on the local K562 splits: 100% of every tier's val/test negatives were inside the sampling pool. Setting `training.exclude_eval_negatives: false` reproduces the pre-fix numbers for the before/after comparison. The numbers in results.md and the paper predate the fix.
 - **The TF-candidate graph excludes all positives, including val/test.** `02_preprocess.py` calls `build_prior_graph(..., evidence=<all tiers, all splits>, exclude_positives=True)`, so a pair's *absence* from a TF's top-500 candidates is correlated with its being a held-out positive. The effect is weak at 22,943 genes, but it is label-dependent graph construction. The fix is to exclude only train positives, or build it label-free (as done here).
+
+## 11. 2026-10-16 revision: apples-to-apples head-to-head (branch `scmgrn-tftf`)
+
+**Why.** This week the only goal is a fair head-to-head with scMultiomeGRN: same datasets, same splits, same metric code, same input information, and the same task. Sections 1-9 still describe the benchmark; this section overrides the MeVD-GRN side and the Ada runbook. Nothing below has been run on real data yet (Ada was unreachable on 2026-10-16: the laptop was on a phone hotspot rather than the IIIT LAN/VPN, and `ada-gw2` did not resolve).
+
+### 11.1 Task parity: native undirected TF-TF link prediction
+The old MeVD-GRN predicts directed TF->target edges, and sections 5-6 above patched that by averaging sigma(i->j) and sigma(j->i). The model now has `task: undirected` (`src/models/mevd_grn.py`, `SymmetricPairDecoder` in `src/models/decoder.py`):
+- one node embedding (RNA and ATAC GNN channels fused after message passing);
+- `logit(u,v) = MLP([h_u*h_v, |h_u-h_v|, h_u+h_v]) + h_u.diag(d).h_v + w*coexpr(u,v) + Linear(pair_feat(u,v)) + b`, invariant to swapping u and v, so S is symmetric by construction (unit test `tests/test_undirected_model.py`);
+- every training/eval example is one unordered pair (u<v); positives are the fold's train edges, negatives come only from the fold's train negatives (`scripts/17`, `unordered()`);
+- all message-passing relations are symmetrised by the GNN (`to_bidirectional`);
+- the directed model remains available (`model.task: directed`) as ablation A3. SC-MO-GRN-DB and BEAR code paths are unchanged (default `task: directed`).
+
+### 11.2 Input parity (label-free)
+scMultiomeGRN sees MAESTRO RP node features, GRNBoost2 TF x gene importances, 16 x 16 joint-histogram edge features, and the train adjacency. MeVD-GRN now can see all four (`--smg_feats` plus `--obs_graph`):
+- `scripts/16 --steps smg` writes `smg_node_feats.npy` (SVD-64 of the RP matrix and of the GRNBoost2 matrix, fit on all nodes, features only) and `smg_pair_feats.npy` (the paper's eq. 1-2 histogram for every TF pair, symmetrised as (e + e^T)/2 and stored as its 136 unique values, float16);
+- the histogram port is tested against numpy's `histogram2d` formula used by the official `compute_edge_attr` (`tests/test_smg_features.py`);
+- both depend on expression/accessibility only, never on labels.
+Difference from the official use: scMultiomeGRN applies the histogram only on message-passing edges (train adjacency); MeVD-GRN adds it as a decoder term for every pair (still label-free).
+
+### 11.3 Variants (frozen before any result)
+| Name | Model | Flags |
+|---|---|---|
+| **H** (headline) | undirected, FM + h384/l2 | `--obs_graph --smg_feats` |
+| A1 | undirected | `--obs_graph` |
+| A2 | undirected | label-free graphs only |
+| A3 | old directed model, symmetrised | `--obs_graph` (`mevd_fm_h384_directed.yaml`) |
+| official | scMultiomeGRN code, unmodified | seeds 666, 42-46 |
+MeVD-GRN: 5 seeds (42-46) x 10 folds per cell type. Not built, deliberately: an "all train negatives" variant (neg_ratio = all), which would multiply epoch cost by ~N^2/E; it can be added if val AUPR suggests it matters.
+
+### 11.4 Reporting rule (zero leakage)
+The paper's AUROC/AUPR are the full N x N matrix ("all"), which contains the training edges. Headline = held-out `test` fold for both methods; the `all` table is printed second and labelled "paper protocol, contains training edges". `scripts/19` also runs fold-paired Wilcoxon tests (H minus official, 10 folds x cell types) and aborts if any MeVD-GRN fold is not `zero_leak`.
+
+### 11.5 Ada runbook (post-upgrade; ada-gw2 only; batch jobs on 2080 Ti)
+Storage: `/share1` holds only the lung RDS.gz and hg19.fa.gz (it is at ~3190/3200 files; not mounted on compute nodes, so jobs use verified `scp` from ada-gw2); derived data and results live in `$HOME/scmgrn` (visible on nodes); all compute runs in node `/scratch`.
+```bash
+# on ada-gw2 (login node: only git/sbatch/squeue), repo at ~/mevd_grn on branch scmgrn-tftf
+git fetch origin && git checkout scmgrn-tftf && git pull
+bash slurm/scmgrn_submit_all.sh          # setup -> prep -> build[0-2] -> work[0-3]; 9 jobs
+# afterwards, as a batch job:
+sbatch -p u22 -A research --qos=medium -n 1 -t 00:30:00 --wrap "python scripts/19_scmgrn_compile.py --config configs/scmgrn/lung.yaml --root \$HOME/scmgrn"
+# hematopoiesis:
+sbatch slurm/scmgrn_hema_prep.sh
+DS=hema SKIP_SETUP=1 SKIP_PREP=1 bash slurm/scmgrn_submit_all.sh
+```
+Gates before any claim: (1) per-cell-type "Initial" edge counts of the regenerated graphs of the same order as Table S1; (2) the official re-run on `all` lands near the paper (mean AUROC 0.924 / AUPR 0.790); (3) `split_verification.json` says IDENTICAL. If a gate fails, stop and report.
+
+### 11.6 Hematopoiesis inputs (built by `scripts/14b_scmgrn_hema_prepare.py`, `slurm/scmgrn_hema_prep.sh`)
+- scATAC: pinellolab `metadata.tsv` gives HSC 347 / CMP 502 / GMP 402 cells, matching the paper; counts come from the single-cell BAMs (Dropbox tarball) via `bedtools coverage -counts` over `combined.sorted.merged.bed`. The BAM file naming (`<cell id>.bam`) is assumed from the metadata; the script aborts with a clear message if it differs.
+- scRNA: `mmc4` (Data S2) is a tar.gz whose `scRNAseq_data.mat` holds 12,558 genes x 14,432 cells labelled cd34 / cmp0 / cmp1 / cmp2 / gmp / hsc / mono. **Assumption (the paper does not say):** HSC = `hsc` (2,268 cells), GMP = `gmp` (1,096), CMP = cmp0+cmp1+cmp2 (4,454). The RNA half was built and checked locally; the ATAC half is untested until it runs on Ada.
+- `configs/scmgrn/hema.yaml` holds the Supp. Fig. S1 targets.
+
+### 11.7 Status (2026-10-16)
+Done locally: model/task change with unit tests; smg features; script 16/17/19 changes; Ada scripts and hema inputs; end-to-end smoke test on a synthetic 80-TF benchmark (three variants, 10 folds, compile with paired tests). Not done: anything on real lung/hema data (needs Ada), the fidelity gates, results.
