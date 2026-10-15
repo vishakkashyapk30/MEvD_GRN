@@ -14,6 +14,9 @@ Steps (``--steps``, comma-separated, default all but ``fm``):
             subprocess with a stub pytorch_lightning) and check byte-identity
   processed MeVD-GRN inputs over the same node set (features from MeVD-GRN's
             own preprocessing; label-free message-passing graphs)
+  smg       MeVD-GRN input parity (label-free): SVD-reduced MAESTRO RP + GRNBoost2 node
+            features (smg_node_feats.npy) and the symmetrised 16x16 joint-histogram
+            edge feature for all TF pairs (smg_pair_feats.npy)
   fm        Geneformer embeddings for the node set (needs HF cache/internet)
 
 Usage:
@@ -254,6 +257,21 @@ def step_processed(cfg, root, ct, gdir, pdir, mcfg_path):
     log(f"MeVD-GRN processed -> {pdir}: {summ}")
 
 
+def step_smg(gdir, pdir, k=64):
+    from src.benchmarks.scmgrn_features import joint_histogram_pair_feats, svd_reduce
+    nodes = [l.strip() for l in open(gdir / "x_node.txt") if l.strip()]
+    atac = pd.read_csv(gdir / "x_atac_rp_score_feature.txt", sep="\t", index_col=0).loc[nodes]
+    rna = pd.read_csv(gdir / "x_scRNA_grnboost2_feature.txt", sep="\t", index_col=0).loc[nodes]
+    expr = pd.read_csv(gdir / "tmp" / "scrna.csv", index_col=0).loc[nodes]       # TFs x cells
+    pdir.mkdir(parents=True, exist_ok=True)
+    node = np.concatenate([svd_reduce(atac.values, k), svd_reduce(rna.values, k)], axis=1)
+    np.save(pdir / "smg_node_feats.npy", node)
+    log(f"smg node feats {node.shape} (ATAC RP {atac.shape} + GRNBoost2 {rna.shape} -> SVD {k} each)")
+    pair = joint_histogram_pair_feats(expr.values)
+    np.save(pdir / "smg_pair_feats.npy", pair)
+    log(f"smg pair feats {pair.shape} {pair.dtype} ({pair.nbytes / 1e6:.0f} MB) from {expr.shape[1]} cells")
+
+
 def step_fm(pdir):
     spec = importlib.util.spec_from_file_location("fm11", REPO / "scripts" / "11_extract_fm_embeddings.py")
     mod = importlib.util.module_from_spec(spec)
@@ -273,7 +291,7 @@ def main():
                     help="MeVD-GRN config whose `data` block drives the processed step")
     ap.add_argument("--root", default=os.environ.get("SCMGRN_ROOT", "data/scmgrn"))
     ap.add_argument("--cell_type", required=True)
-    ap.add_argument("--steps", default="gt,official,splits,verify,processed")
+    ap.add_argument("--steps", default="gt,official,splits,verify,processed,smg")
     ap.add_argument("--fimo_bin", default="fimo")
     ap.add_argument("--n_jobs", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", 8)))
     ap.add_argument("--chroms", default=None, help="smoke test only: restrict peaks to these chromosomes")
@@ -301,6 +319,8 @@ def main():
             step_verify(cfg, root, ct, gdir, sroot)
         elif s == "processed":
             step_processed(cfg, root, ct, gdir, pdir, args.model_config)
+        elif s == "smg":
+            step_smg(gdir, pdir)
         elif s == "fm":
             step_fm(pdir)
         else:

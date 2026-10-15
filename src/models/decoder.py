@@ -87,3 +87,39 @@ class RoleAwareDecoder(nn.Module):
             e = self.edge_mlp(torch.cat([coexpr.unsqueeze(-1), openness_j], dim=-1))
             return raw + self.edge_to_logit(e).squeeze(-1) + self.b
         return raw + self.w_coexp * coexpr + self.open_proj(openness_j).squeeze(-1) + self.b
+
+
+class SymmetricPairDecoder(nn.Module):
+    """Permutation-invariant pair score for UNDIRECTED TF-TF link prediction
+    (the scMultiomeGRN task): score(u, v) == score(v, u) exactly.
+
+        logit = MLP([h_u * h_v, |h_u - h_v|, h_u + h_v])      # symmetric pair embedding
+              + (h_u * d * h_v).sum()                          # diagonal bilinear (symmetric)
+              + w_coexp * coexpr(u, v)                         # label-free expression-signature term
+              + Linear(pair_feat(u, v))                        # optional symmetric pair features
+              + b
+
+    Every term is invariant to swapping u and v, so no TF/target role exists.
+    `pair_feat` must itself be symmetric (the caller symmetrises it).
+    """
+
+    def __init__(self, dim: int = 128, pair_dim: int = 0, dropout: float = 0.1):
+        super().__init__()
+        self.mlp = nn.Sequential(nn.Linear(3 * dim, dim), nn.GELU(), nn.Dropout(dropout),
+                                 nn.Linear(dim, 1))
+        self.d = nn.Parameter(torch.empty(dim))
+        nn.init.normal_(self.d, std=dim ** -0.5)
+        self.w_coexp = nn.Parameter(torch.ones(1))
+        self.b = nn.Parameter(torch.zeros(1))
+        self.pair_lin = nn.Linear(pair_dim, 1) if pair_dim > 0 else None
+        if self.pair_lin is not None:
+            nn.init.zeros_(self.pair_lin.weight)
+            nn.init.zeros_(self.pair_lin.bias)
+
+    def forward(self, h_u: torch.Tensor, h_v: torch.Tensor, coexpr: torch.Tensor,
+                pair_feat: "torch.Tensor | None" = None) -> torch.Tensor:
+        z = torch.cat([h_u * h_v, (h_u - h_v).abs(), h_u + h_v], dim=-1)
+        out = self.mlp(z).squeeze(-1) + (h_u * self.d * h_v).sum(-1) + self.w_coexp * coexpr + self.b
+        if self.pair_lin is not None and pair_feat is not None:
+            out = out + self.pair_lin(pair_feat).squeeze(-1)
+        return out

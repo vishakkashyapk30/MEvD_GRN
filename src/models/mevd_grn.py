@@ -15,6 +15,11 @@ Ablation hooks (set at construction):
   integration='concat'  -> concat fusion + bilinear decoder
   graph_mode='both'|'coexpr'|'tf_candidate'  -> which prior graph(s) the GNN sees
   use_edge_mlp=True     -> nonlinear edge embedding in the role-aware decoder
+  task='undirected'     -> UNDIRECTED TF-TF link prediction (scMultiomeGRN's task): one
+                           node embedding (RNA/ATAC channels fused after the GNNs) and a
+                           permutation-invariant SymmetricPairDecoder; score(u,v)==score(v,u).
+                           Optional label-free side features (set_side_features) and
+                           symmetric pair features (set_pair_feats).
 decode/forward return LOGITS (use predict() for probabilities).
 """
 from __future__ import annotations
@@ -24,7 +29,7 @@ from typing import List, Optional, Tuple
 import torch
 import torch.nn as nn
 
-from src.models.decoder import BilinearDecoder, RoleAwareDecoder
+from src.models.decoder import BilinearDecoder, RoleAwareDecoder, SymmetricPairDecoder
 from src.models.encoders import ATACEncoder, FMEncoder, RNAEncoder
 from src.models.fusion import ConcatFusion, GatedFusion
 from src.models.gnn import GNNBackbone
@@ -42,8 +47,12 @@ class MEvDGRN(nn.Module):
                  use_edge_mlp: bool = False,
                  combine_mode: str = "sum",
                  use_fm: bool = False, fm_in_dim: int = 768,
-                 use_motif: bool = False):
+                 use_motif: bool = False,
+                 task: str = "directed", side_in_dim: int = 0, pair_dim: int = 0):
         super().__init__()
+        if task not in ("directed", "undirected"):
+            raise ValueError(f"task must be 'directed' or 'undirected', got {task!r}")
+        self.task = task
         if graph_mode not in _GRAPH_MODES:
             raise ValueError(f"graph_mode must be one of {_GRAPH_MODES}, got {graph_mode!r}")
         self.use_atac = use_atac
@@ -66,7 +75,26 @@ class MEvDGRN(nn.Module):
         # hand-built co-expression signature used at decode time.
         self.fm_encoder = FMEncoder(fm_in_dim, hidden_dim, hidden_dim, dropout) if use_fm else None
 
-        if integration == "role_aware":
+        # label-free per-node side features (e.g. scMultiomeGRN's MAESTRO / GRNBoost2 inputs,
+        # SVD-reduced); fused additively into the RNA channel like the FM embedding.
+        self.side_encoder = FMEncoder(side_in_dim, hidden_dim, hidden_dim, dropout) if side_in_dim else None
+        self._side: Optional[torch.Tensor] = None
+        self._pair: Optional[torch.Tensor] = None                 # (N, N, pair_dim), symmetric
+        if task == "undirected":
+            self.node_fuse = nn.Sequential(nn.Linear(2 * hidden_dim, hidden_dim),
+                                           nn.LayerNorm(hidden_dim), nn.GELU())
+
+        if task == "undirected":
+            if integration != "role_aware":
+                raise ValueError("task='undirected' requires integration='role_aware'")
+            self.gnn_rna = GNNBackbone(hidden_dim, hidden_dim, n_gnn_layers, dropout,
+                                       combine_mode=combine_mode, n_relations=self.n_relations) if use_gnn else None
+            self.gnn_atac = GNNBackbone(hidden_dim, hidden_dim, n_gnn_layers, dropout,
+                                        combine_mode=combine_mode, n_relations=self.n_relations) if use_gnn else None
+            self.fusion = None
+            self.gnn = None
+            self.decoder = SymmetricPairDecoder(hidden_dim, pair_dim=pair_dim, dropout=dropout)
+        elif integration == "role_aware":
             self.gnn_rna = GNNBackbone(hidden_dim, hidden_dim, n_gnn_layers, dropout,
                                        combine_mode=combine_mode, n_relations=self.n_relations) if use_gnn else None
             self.gnn_atac = GNNBackbone(hidden_dim, hidden_dim, n_gnn_layers, dropout,
@@ -80,6 +108,15 @@ class MEvDGRN(nn.Module):
                                    combine_mode=combine_mode, n_relations=self.n_relations) if use_gnn else None
             self.gnn_rna = self.gnn_atac = None
             self.decoder = BilinearDecoder(hidden_dim)
+
+    def set_side_features(self, side: Optional[torch.Tensor]) -> None:
+        """(N, side_in_dim) label-free node features (task='undirected' inputs)."""
+        self._side = side
+
+    def set_pair_feats(self, pair: Optional[torch.Tensor]) -> None:
+        """(N, N, pair_dim) SYMMETRIC label-free pair features, kept on the same device
+        as the model (call after model.to(device))."""
+        self._pair = pair
 
     def get_relation_weights(self) -> dict:
         """Learned per-layer relation-importance weights (combine_mode="gated"
@@ -121,12 +158,17 @@ class MEvDGRN(nn.Module):
         h_rna = self.rna_encoder(rna_features)
         if self.use_fm and fm_features is not None and fm_features.numel():
             h_rna = h_rna + self.fm_encoder(fm_features)
+        if self.side_encoder is not None and self._side is not None:
+            h_rna = h_rna + self.side_encoder(self._side)
         h_atac = self.atac_encoder(atac_features) if self.use_atac else torch.zeros_like(h_rna)
         graphs = self._select_graphs(coexpr_edges, tf_candidate_edges, motif_edges)
         if self.integration == "role_aware":
             if self.use_gnn:
                 h_rna = self.gnn_rna(h_rna, graphs)
                 h_atac = self.gnn_atac(h_atac, graphs)
+            if self.task == "undirected":                    # single node embedding
+                h = self.node_fuse(torch.cat([h_rna, h_atac], dim=-1))
+                return h, h
             return h_rna, h_atac
         h = self.fusion(h_rna, h_atac)
         if self.use_gnn:
@@ -138,6 +180,13 @@ class MEvDGRN(nn.Module):
                signatures: Optional[torch.Tensor] = None,
                openness: Optional[torch.Tensor] = None) -> torch.Tensor:
         h_rna, h_atac = emb
+        if self.task == "undirected":
+            if signatures is not None and signatures.numel():
+                coexpr = (signatures[tf_idx] * signatures[target_idx]).sum(dim=-1)
+            else:
+                coexpr = torch.zeros(tf_idx.shape[0], device=h_rna.device)
+            pf = self._pair[tf_idx, target_idx].float() if self._pair is not None else None
+            return self.decoder(h_rna[tf_idx], h_rna[target_idx], coexpr, pf)
         if self.integration != "role_aware":
             return self.decoder(h_rna[tf_idx], h_rna[target_idx])          # bilinear on fused
         if signatures is not None and signatures.numel():

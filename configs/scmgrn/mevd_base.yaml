@@ -18,6 +18,8 @@ data:
   min_peaks_per_cell: 0
 
 model:
+  task: undirected                 # native undirected TF-TF link prediction (scMultiomeGRN's task);
+                                   # `directed` = old TF->target model + symmetrised scores (ablation A3)
   use_motif: false                 # GT is itself a motif scan -> MeVD-GRN's motif relation is disallowed
   # (scripts/17 --obs_graph re-uses the 3rd relation slot for the fold's TRAIN adjacency)
 
