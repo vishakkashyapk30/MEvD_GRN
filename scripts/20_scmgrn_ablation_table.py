@@ -35,6 +35,10 @@ ORDER = [
     ("mevd_abl_tfcand_obs_smg", "TF-candidate graph only (also drops the training links)"),
     ("mevd_abl_base_obs_smg", "base size (128-wide, no Geneformer)"),
     ("mevd_abl_min_noobs", "floor: 128-wide, no Geneformer, no ATAC channel, no graph network, no training graph, no scMultiomeGRN inputs"),
+    ("mevd_abl_fl_atac_noobs", "floor + only the ATAC channel"),
+    ("mevd_abl_fl_fm_noobs", "floor + only the Geneformer embedding"),
+    ("mevd_abl_fl_gnn_noobs", "floor + only the graph network (label-free graphs)"),
+    ("mevd_abl_min_noobs_smgnode", "floor + only the scMultiomeGRN node features"),
     ("official_scmultiomegrn", "scMultiomeGRN, official code (reference)"),
 ]
 METRICS = ("aupr", "auroc")
