@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="DejaVu Sans, Arial, sans-serif">
+<defs><marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6B7280"/></marker><marker id="arrs" markerWidth="10" markerHeight="10" refX="2" refY="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1F2937"/></marker></defs>
+<rect width="1600" height="900" fill="#FFFFFF"/>
+<text x="60" y="66" font-size="38" font-weight="700" fill="#1F2937">MeVD-GRN</text>
+<text x="60" y="100" font-size="19" fill="#8A94A0">Do two transcription factors (TFs) form a regulatory link?</text>
+<text x="190" y="160" text-anchor="middle" font-size="16" font-weight="700" letter-spacing="1.5" fill="#8A94A0">WHAT IT READS</text>
+<text x="560" y="160" text-anchor="middle" font-size="16" font-weight="700" letter-spacing="1.5" fill="#8A94A0">TF GRAPHS</text>
+<text x="930" y="160" text-anchor="middle" font-size="16" font-weight="700" letter-spacing="1.5" fill="#8A94A0">TWO GRAPH NETWORKS</text>
+<text x="1425" y="160" text-anchor="middle" font-size="16" font-weight="700" letter-spacing="1.5" fill="#8A94A0">SCORE A PAIR</text>
+<rect x="60" y="190" width="260" height="110" rx="18" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<text x="190.0" y="243.0" text-anchor="middle" font-size="22" font-weight="700" fill="#1F2937">scRNA + scATAC</text>
+<text x="190.0" y="269.0" text-anchor="middle" font-size="15" fill="#8A94A0">one summary per TF</text>
+<rect x="60" y="330" width="260" height="110" rx="18" fill="#FFFFFF" stroke="#CC79A7" stroke-width="3"/>
+<text x="190.0" y="383.0" text-anchor="middle" font-size="22" font-weight="700" fill="#1F2937">Geneformer</text>
+<text x="190.0" y="409.0" text-anchor="middle" font-size="15" fill="#8A94A0">pretrained gene identity</text>
+<rect x="60" y="470" width="260" height="110" rx="18" fill="#FFFFFF" stroke="#8A94A0" stroke-width="3" stroke-dasharray="8 6"/>
+<text x="190.0" y="523.0" text-anchor="middle" font-size="22" font-weight="700" fill="#1F2937">Matched features</text>
+<text x="190.0" y="549.0" text-anchor="middle" font-size="15" fill="#8A94A0">scMultiomeGRN's own, optional</text>
+<path d="M322,385 L350,385 L350,525 L322,525" fill="none" stroke="#CC79A7" stroke-width="3"/>
+<rect x="450" y="195" width="220" height="180" rx="18" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<line x1="500" y1="241" x2="548" y2="223" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="548" y1="223" x2="606" y2="245" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="500" y1="241" x2="520" y2="297" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="548" y1="223" x2="576" y2="287" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="606" y1="245" x2="576" y2="287" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="520" y1="297" x2="576" y2="287" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="576" y1="287" x2="622" y2="311" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="576" y1="287" x2="556" y2="325" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<line x1="520" y1="297" x2="556" y2="325" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
+<circle cx="500" cy="241" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="548" cy="223" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="606" cy="245" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="520" cy="297" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="576" cy="287" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="622" cy="311" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="556" cy="325" r="7" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<text x="560" y="362" text-anchor="middle" font-size="16" font-weight="700" fill="#1F2937">Co-expressed TFs</text>
+<rect x="450" y="395" width="220" height="180" rx="18" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<line x1="576" y1="487" x2="500" y2="441" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<line x1="576" y1="487" x2="548" y2="423" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<line x1="576" y1="487" x2="606" y2="445" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<line x1="576" y1="487" x2="520" y2="497" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<line x1="576" y1="487" x2="622" y2="511" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<line x1="576" y1="487" x2="556" y2="525" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<line x1="500" y1="441" x2="548" y2="423" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<circle cx="500" cy="441" r="7" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<circle cx="548" cy="423" r="7" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<circle cx="606" cy="445" r="7" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<circle cx="520" cy="497" r="7" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<circle cx="576" cy="487" r="11" fill="#E69F00" stroke="#E69F00" stroke-width="3"/>
+<circle cx="622" cy="511" r="7" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<circle cx="556" cy="525" r="7" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<text x="560" y="562" text-anchor="middle" font-size="16" font-weight="700" fill="#1F2937">Likely partner TFs</text>
+<text x="560" y="602" text-anchor="middle" font-size="15" fill="#8A94A0">built without any labels</text>
+<rect x="440" y="620" width="240" height="38" rx="19" fill="#FFFFFF" stroke="#009E73" stroke-width="2.5" stroke-dasharray="6 4"/>
+<text x="560" y="645" text-anchor="middle" font-size="16" font-weight="600" fill="#1F2937">+ known training links</text>
+<line x1="322" y1="235" x2="446" y2="270" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<line x1="322" y1="270" x2="446" y2="440" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<rect x="830" y="215" width="200" height="100" rx="18" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<text x="930.0" y="263.0" text-anchor="middle" font-size="22" font-weight="700" fill="#1F2937">RNA network</text>
+<text x="930.0" y="289.0" text-anchor="middle" font-size="15" fill="#8A94A0">graph network</text>
+<rect x="830" y="405" width="200" height="100" rx="18" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<text x="930.0" y="453.0" text-anchor="middle" font-size="22" font-weight="700" fill="#1F2937">ATAC network</text>
+<text x="930.0" y="479.0" text-anchor="middle" font-size="15" fill="#8A94A0">graph network</text>
+<line x1="672" y1="285" x2="828" y2="265" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<line x1="672" y1="485" x2="828" y2="455" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<rect x="1075" y="215" width="46" height="290" rx="23" fill="#CC79A7" opacity="0.18" stroke="#CC79A7" stroke-width="3"/>
+<text transform="translate(1106,360) rotate(-90)" text-anchor="middle" font-size="17" font-weight="700" fill="#1F2937">one embedding per TF</text>
+<line x1="1032" y1="265" x2="1073" y2="285" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<line x1="1032" y1="455" x2="1073" y2="435" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<path d="M350,455 L350,690 L1098,690 L1098,508" fill="none" stroke="#CC79A7" stroke-width="3" stroke-dasharray="7 6" marker-end="url(#arr)"/>
+<text x="880" y="680" text-anchor="middle" font-size="14" fill="#CC79A7">also feed the networks</text>
+<rect x="1230" y="190" width="300" height="420" rx="18" fill="#FFFFFF" stroke="#1F2937" stroke-width="3"/>
+<circle cx="1305" cy="290" r="30" fill="#1F2937"/><text x="1305" y="298" text-anchor="middle" font-size="22" font-weight="700" fill="#FFFFFF">u</text>
+<circle cx="1455" cy="290" r="30" fill="#1F2937"/><text x="1455" y="298" text-anchor="middle" font-size="22" font-weight="700" fill="#FFFFFF">v</text>
+<line x1="1366" y1="290" x2="1394" y2="290" stroke="#1F2937" stroke-width="3" marker-start="url(#arrs)" marker-end="url(#arrs)"/>
+<text x="1380" y="356" text-anchor="middle" font-size="17" fill="#8A94A0">same score either way</text>
+<text x="1380" y="470" text-anchor="middle" font-size="64" font-weight="700" fill="#009E73">0.93</text>
+<text x="1380" y="506" text-anchor="middle" font-size="17" fill="#1F2937">chance of a link</text>
+<text x="1380" y="532" text-anchor="middle" font-size="14" fill="#8A94A0">(example score)</text>
+<line x1="1125" y1="360" x2="1228" y2="360" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<rect x="60" y="735" width="1470" height="130" rx="22" fill="#F3F4F6"/>
+<text x="90" y="772" font-size="16" font-weight="700" letter-spacing="1.5" fill="#8A94A0">HOW IT IS TRAINED AND TESTED</text>
+<rect x="90" y="788" width="410" height="58" rx="14" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+<circle cx="122" cy="817" r="18" fill="#0072B2"/><text x="122" y="824" text-anchor="middle" font-size="19" font-weight="700" fill="#FFFFFF">1</text>
+<text x="152" y="811" font-size="17" font-weight="700" fill="#1F2937">Learn from known links</text>
+<text x="152" y="832" font-size="14" fill="#8A94A0">a part of the TF-TF links, never the test ones</text>
+<rect x="540" y="788" width="410" height="58" rx="14" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+<circle cx="572" cy="817" r="18" fill="#E69F00"/><text x="572" y="824" text-anchor="middle" font-size="19" font-weight="700" fill="#FFFFFF">2</text>
+<text x="602" y="811" font-size="17" font-weight="700" fill="#1F2937">Hold out a test fold</text>
+<text x="602" y="832" font-size="14" fill="#8A94A0">same official folds as scMultiomeGRN</text>
+<rect x="990" y="788" width="410" height="58" rx="14" fill="#FFFFFF" stroke="#009E73" stroke-width="3"/>
+<circle cx="1022" cy="817" r="18" fill="#009E73"/><text x="1022" y="824" text-anchor="middle" font-size="19" font-weight="700" fill="#FFFFFF">3</text>
+<text x="1052" y="811" font-size="17" font-weight="700" fill="#1F2937">Score with their metric</text>
+<text x="1052" y="832" font-size="14" fill="#8A94A0">AUROC and AUPR on links never trained on</text>
+<line x1="500" y1="817" x2="538" y2="817" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+<line x1="950" y1="817" x2="988" y2="817" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
+</svg>
