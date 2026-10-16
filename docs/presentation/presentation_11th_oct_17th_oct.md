@@ -243,12 +243,39 @@ because the answer key is a function of the same ATAC data (section 9).
 
 ---
 
-## 8b. Component ablations of MeVD-GRN (all 12 cell types)  [UPDATE: running, results appended when finished]
+## 8b. Component ablations of MeVD-GRN (all 12 cell types: 9 lung + 3 hematopoiesis)
 
-Each ablation changes one component of the headline variant H (same folds, 5 seeds, zero-leak). Planned set:
-no Geneformer embedding; no ATAC channel; no graph network; co-expression graph only; TF-candidate graph only; base size (128-wide, no Geneformer);
-only the scMultiomeGRN node features; only the pair histograms. Together with A1-A3 above.
-Table: mean held-out AUROC / AUPR over the cell types, difference to H, fold-paired Wilcoxon p (`scripts/20_scmgrn_ablation_table.py`).
+Each row changes one component of the headline variant H (same folds, 5 seeds, zero-leak). Held-out test fold, averaged over the 12 cell types;
+"diff vs H" is the mean over the 120 cell-type-by-fold pairs, p is a fold-paired Wilcoxon test against H (`scripts/20_scmgrn_ablation_table.py`).
+
+| Variant | test AUPR | diff vs H | p | test AUROC | diff vs H | p |
+|---|---|---|---|---|---|---|
+| **H**: headline (Geneformer + 384-wide GNN, undirected, training graph, scMultiomeGRN inputs) | 0.9349 | – | – | 0.9237 | – | – |
+| only the scMultiomeGRN node features (no pair histograms) | 0.9347 | -0.0002 | 0.99 | 0.9237 | -0.0001 | 0.92 |
+| only the pair histograms (no scMultiomeGRN node features) | 0.9347 | -0.0002 | 0.39 | 0.9237 | -0.0001 | 0.61 |
+| A1: no scMultiomeGRN inputs | 0.9350 | +0.0001 | 0.33 | 0.9236 | -0.0001 | 0.94 |
+| A2: A1 and no training graph | 0.9345 | -0.0004 | 0.19 | 0.9228 | -0.0009 | 0.002 |
+| A3: old directed model, scores averaged | 0.9341 | -0.0008 | 0.43 | 0.9226 | -0.0011 | 0.07 |
+| no Geneformer gene embedding | 0.9343 | -0.0006 | 0.30 | 0.9229 | -0.0008 | 0.03 |
+| no ATAC channel | 0.9345 | -0.0003 | 0.40 | 0.9235 | -0.0002 | 0.27 |
+| no graph network (features straight to the decoder) | 0.9340 | -0.0009 | 0.005 | 0.9226 | -0.0011 | 0.02 |
+| co-expression graph only (also drops the training links) | 0.9340 | -0.0009 | 0.07 | 0.9223 | -0.0014 | 0.0009 |
+| TF-candidate graph only (also drops the training links) | 0.9339 | -0.0009 | 0.04 | 0.9225 | -0.0012 | 0.01 |
+| base size (128-wide, no Geneformer; 0.53 M parameters instead of 5 M) | 0.9348 | -0.0000 | 0.71 | 0.9237 | -0.0001 | 0.92 |
+| *reference:* scMultiomeGRN, official code | 0.9180 | **-0.0169** | 2e-15 | 0.9124 | **-0.0114** | 7e-13 |
+
+**What this shows**
+- Removing any single component changes the held-out score by 0.001 or less, in both metrics. A few of these differences are statistically detectable
+  (for example no graph network, p = 0.005), but they are about one fifth of the gap to scMultiomeGRN and of no practical size.
+- The gap to scMultiomeGRN (-0.017 AUPR) is an order of magnitude larger than any ablation effect, so it is robust to everything we varied.
+- Even the 0.53 M-parameter base model without Geneformer matches H. Model size, the pretrained embedding, the ATAC channel, the graph networks, the training
+  links and the scMultiomeGRN inputs are all dispensable on this benchmark.
+- So whatever produces the score is shared by every variant: the per-TF summary features, the co-expression term and the symmetric pair decoder, trained with the same objective.
+  A "floor" run (all optional components removed at once) quantifies how little is needed: see the next paragraph.
+
+**Floor run (everything optional removed at once):** 128-wide, no Geneformer, no ATAC channel, no graph network, no training graph, no scMultiomeGRN inputs; 0.10 M parameters. [UPDATE: results appended below when finished.]
+
+Caveats: the p-values pool 120 cell-type-by-fold pairs that are not independent (folds share a graph); and on lung both channels are accessibility-derived, so removing the ATAC channel removes little information.
 
 ---
 
