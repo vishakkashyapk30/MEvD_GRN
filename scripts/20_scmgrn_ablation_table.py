@@ -34,6 +34,7 @@ ORDER = [
     ("mevd_abl_coexpr_obs_smg", "co-expression graph only (also drops the training links)"),
     ("mevd_abl_tfcand_obs_smg", "TF-candidate graph only (also drops the training links)"),
     ("mevd_abl_base_obs_smg", "base size (128-wide, no Geneformer)"),
+    ("mevd_abl_min_noobs", "floor: 128-wide, no Geneformer, no ATAC channel, no graph network, no training graph, no scMultiomeGRN inputs"),
     ("official_scmultiomegrn", "scMultiomeGRN, official code (reference)"),
 ]
 METRICS = ("aupr", "auroc")

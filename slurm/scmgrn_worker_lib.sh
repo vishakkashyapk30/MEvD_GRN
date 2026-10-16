@@ -18,7 +18,7 @@ KINDS=${KINDS:-official mevd}
 # ABLATION=1: component ablations of the headline variant H (one change each; variant = <config>:<obs|noobs>:<smg|smgnode|smgpair|nosmg>)
 # on top of the same folds and seeds. MeVD-GRN only; the official code is not re-run.
 if [ -n "${ABLATION:-}" ]; then
-  VARIANTS=(mevd_abl_nofm:obs:smg mevd_abl_noatac:obs:smg mevd_abl_nognn:obs:smg mevd_abl_coexpr:obs:smg mevd_abl_tfcand:obs:smg mevd_abl_base:obs:smg mevd_fm_h384:obs:smgnode mevd_fm_h384:obs:smgpair)
+  VARIANTS=(mevd_abl_nofm:obs:smg mevd_abl_noatac:obs:smg mevd_abl_nognn:obs:smg mevd_abl_coexpr:obs:smg mevd_abl_tfcand:obs:smg mevd_abl_base:obs:smg mevd_fm_h384:obs:smgnode mevd_fm_h384:obs:smgpair mevd_abl_min:noobs:nosmg)
   KINDS=mevd
 fi                         # the laptop worker sets KINDS=mevd
 if [ "$DS" = hema ]; then WORK_CTS=(HSC GMP CMP)
