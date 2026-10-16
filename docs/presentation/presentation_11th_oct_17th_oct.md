@@ -173,8 +173,6 @@ within a cell type as independent although they share a graph, so it is optimist
 
 ---
 
----
-
 ## 8. Ablations: what produces the score?
 
 On the held-out fold, the four MeVD-GRN variants are within about 0.005 of each other on every cell type finished (7 lung, 2 hematopoiesis).
