@@ -14,7 +14,13 @@
 SEEDS=(${SEEDS:-42 43 44 45 46})
 OFFICIAL_SEEDS=(${OFFICIAL_SEEDS:-666 42})      # the official code is near-deterministic across seeds (Myeloid, 6 seeds: all within 0.001) and costs ~5 min/fold on the big cell types; MeVD-GRN keeps 5 seeds
 VARIANTS=(${VARIANTS:-mevd_fm_h384:obs:smg mevd_fm_h384:obs:nosmg mevd_fm_h384:noobs:nosmg mevd_fm_h384_directed:obs:nosmg})
-KINDS=${KINDS:-official mevd}                         # the laptop worker sets KINDS=mevd
+KINDS=${KINDS:-official mevd}
+# ABLATION=1: component ablations of the headline variant H (one change each; variant = <config>:<obs|noobs>:<smg|smgnode|smgpair|nosmg>)
+# on top of the same folds and seeds. MeVD-GRN only; the official code is not re-run.
+if [ -n "${ABLATION:-}" ]; then
+  VARIANTS=(mevd_abl_nofm:obs:smg mevd_abl_noatac:obs:smg mevd_abl_nognn:obs:smg mevd_abl_coexpr:obs:smg mevd_abl_tfcand:obs:smg mevd_abl_base:obs:smg mevd_fm_h384:obs:smgnode mevd_fm_h384:obs:smgpair)
+  KINDS=mevd
+fi                         # the laptop worker sets KINDS=mevd
 if [ "$DS" = hema ]; then WORK_CTS=(HSC GMP CMP)
 else WORK_CTS=(Myeloid_cells Lymphoid_cells Megakaryocytes Neuroendocrine_cells Lymphatic_endothelial_cells
                Bronchiolar_and_alveolar_epithelial_cells Ciliated_epithelial_cells Vascular_endothelial_cells Stromal_cells)
@@ -45,7 +51,8 @@ run_unit() {   # run_unit <kind> <ct> <variant> <seed>   (data for <ct> already 
       --work_dir "$SCR/official_work/$CT"
   else
     IFS=: read -r MC OBS SMG <<<"$V"
-    [ "$OBS" = obs ] && FLAG="--obs_graph"; [ "$SMG" = smg ] && FLAG="$FLAG --smg_feats"
+    [ "$OBS" = obs ] && FLAG="--obs_graph"
+    case "$SMG" in smg) FLAG="$FLAG --smg_feats";; smgnode) FLAG="$FLAG --smg_feats --smg_parts node";; smgpair) FLAG="$FLAG --smg_feats --smg_parts pair";; esac
     python -u scripts/17_scmgrn_train_eval.py --config configs/scmgrn/$DS.yaml \
       --model_config "configs/scmgrn/$MC.yaml" $FLAG --root "$SCMGRN_ROOT_LOCAL" \
       --cell_type "$CT" --seed "$S" --folds 1-10 --device "${DEVICE:-cuda:0}" --skip_existing --tmp_dir "$SCR" ${EXTRA_ARGS:-}
