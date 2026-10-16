@@ -9,7 +9,7 @@ Branch `scmgrn-tftf`. Experiment write-up with every deviation: `docs/experiment
 
 ---
 
-## 1. Summary (updated 16 Oct, 17:10; 7 of 9 lung cell types and 2 of 3 hematopoiesis cell types have both methods finished)
+## 1. Summary (updated 16 Oct, 17:40; 8 of 9 lung cell types and 2 of 3 hematopoiesis cell types have both methods finished)
 
 1. **We rebuilt scMultiomeGRN's benchmark and reproduced its published numbers.** The regenerated TF-TF answer keys are within
    5% of the paper's link counts on all 9 lung cell types, our fold files are byte-identical to what their split code writes,
@@ -17,13 +17,13 @@ Branch `scmgrn-tftf`. Experiment write-up with every deviation: `docs/experiment
    Myeloid 0.943 / 0.849, HSC 0.927 / 0.696, on the paper's metric).
 2. **We changed MeVD-GRN to predict undirected TF-TF links**, the task scMultiomeGRN solves (it used to predict directed TF-to-gene edges),
    and gave it scMultiomeGRN's own inputs.
-3. **On the held-out test fold, MeVD-GRN beats scMultiomeGRN on 6 of the 7 lung cell types finished, and on both hematopoiesis cell types finished.**
-   Lung, pooled: **+0.014 AUPR, +0.010 AUROC**; individually significant on 5 of 7 cell types. Hematopoiesis: +0.020 AUPR on HSC (p = 0.002), +0.008 on GMP (p = 0.049).
+3. **On the held-out test fold, MeVD-GRN beats scMultiomeGRN on 7 of the 8 lung cell types finished, and on both hematopoiesis cell types finished.**
+   Lung, pooled: **+0.017 AUPR, +0.013 AUROC**; individually significant on 5 of 8 cell types. Hematopoiesis: +0.020 AUPR on HSC (p = 0.002), +0.008 on GMP (p = 0.049).
    The gains are small (1 to 2 points) next to the fold-to-fold spread (2 to 5 points). Myeloid is the one lung cell type where scMultiomeGRN is ahead (not significant).
 4. **The ablations say the gain does not come from the scMultiomeGRN-specific inputs or from the training graph.** A variant that never sees
    the training links scores the same as the full model. This fits the main caveat of the benchmark: the answer key is generated from the
    same ATAC data the models read (section 10).
-5. **Status:** see section 12. Remaining: Vascular endothelial and Stromal (lung), CMP (hematopoiesis).
+5. **Status:** see section 12. Remaining: Stromal (lung), CMP (hematopoiesis).
 
 ---
 
@@ -129,7 +129,7 @@ the links the model trained on). We report both and label the second.
 | Lymphatic endothelial | 0.93 / 0.81 | 0.915 / 0.781 |
 | Bronchiolar and alveolar | 0.91 / 0.76 | 0.913 / 0.760 |
 | Ciliated epithelial | 0.93 / 0.75 | 0.918 / 0.730 |
-| Vascular endothelial (4 of 10 folds so far) | 0.90 / 0.67 | 0.892 / 0.65 |
+| Vascular endothelial | 0.90 / 0.67 | 0.899 / 0.668 |
 | HSC (hematopoiesis) | 0.92 / 0.67 | 0.927 / 0.696 |
 | GMP (hematopoiesis) | 0.93 / 0.71 | 0.928 / 0.681 |
 
@@ -137,7 +137,7 @@ The re-runs match the paper to within about 0.01 AUROC and 0.03 AUPR (closest on
 
 ---
 
-## 7. Headline result: held-out test fold, lung (7 of 9 cell types finished)
+## 7. Headline result: held-out test fold, lung (8 of 9 cell types finished)
 
 AUROC / AUPR, mean over 10 folds then over seeds.
 
@@ -145,6 +145,7 @@ AUROC / AUPR, mean over 10 folds then over seeds.
 |---|---|---|---|---|---|
 | Bronchiolar and alveolar | **0.914 / 0.930** | 0.913 / 0.930 | 0.913 / 0.929 | 0.915 / 0.931 | 0.901 / 0.911 |
 | Ciliated epithelial | **0.928 / 0.940** | 0.928 / 0.940 | 0.927 / 0.939 | 0.928 / 0.940 | 0.912 / 0.915 |
+| Vascular endothelial | **0.923 / 0.934** | 0.923 / 0.935 | 0.921 / 0.932 | 0.923 / 0.934 | 0.894 / 0.902 |
 | Lymphatic endothelial | **0.922 / 0.937** | 0.921 / 0.935 | 0.920 / 0.934 | 0.919 / 0.933 | 0.908 / 0.917 |
 | Megakaryocytes | **0.905 / 0.923** | 0.907 / 0.925 | 0.902 / 0.923 | 0.901 / 0.920 | 0.898 / 0.915 |
 | Myeloid | 0.927 / 0.933 | 0.928 / 0.936 | 0.928 / 0.937 | 0.930 / 0.939 | **0.930 / 0.943** |
@@ -157,6 +158,7 @@ Fold-paired comparison, H minus official code (10 folds per cell type, Wilcoxon 
 
 | Cell type | AUPR difference | p | AUROC difference | p |
 |---|---|---|---|---|
+| Vascular endothelial | +0.033 | 0.002 | +0.029 | 0.002 |
 | Ciliated epithelial | +0.025 | 0.002 | +0.016 | 0.004 |
 | Neuroendocrine | +0.021 | 0.002 | +0.015 | 0.004 |
 | Lymphatic endothelial | +0.020 | 0.002 | +0.014 | 0.010 |
@@ -164,10 +166,10 @@ Fold-paired comparison, H minus official code (10 folds per cell type, Wilcoxon 
 | Lymphoid | +0.017 | 0.105 | +0.009 | 0.375 |
 | Megakaryocytes | +0.009 | 0.160 | +0.007 | 0.275 |
 | Myeloid | -0.011 | 0.375 | -0.003 | 0.695 |
-| **Pooled (70 fold pairs)** | **+0.014** | **1e-7** | **+0.010** | **2e-6** |
+| **Pooled (80 fold pairs)** | **+0.017** | **2e-9** | **+0.013** | **2e-8** |
 
-In 80% of the 70 cell-type-by-fold pairs MeVD-GRN is ahead on AUPR (73% on AUROC).
-How to read this: the gains are small (one to two points of AUPR), the fold-to-fold standard deviation is 2 to 5 points, 5 of 7 cell types are
+In 82% of the 80 cell-type-by-fold pairs MeVD-GRN is ahead on AUPR (76% on AUROC).
+How to read this: the gains are small (one to two points of AUPR), the fold-to-fold standard deviation is 2 to 5 points, 5 of 8 cell types are
 individually significant (with only 10 folds each, p = 0.002 is the smallest value a paired test can give), and the pooled p-value treats folds
 within a cell type as independent although they share a graph, so it is optimistic.
 
@@ -197,6 +199,7 @@ AUROC / AUPR. **This set includes the links the model was trained on, so it is n
 |---|---|---|---|---|
 | Bronchiolar and alveolar | 0.940 / 0.849 | 0.938 / 0.855 | 0.913 / 0.760 | 0.91 / 0.76 |
 | Ciliated epithelial | 0.938 / 0.828 | 0.939 / 0.833 | 0.918 / 0.730 | 0.93 / 0.75 |
+| Vascular endothelial | 0.935 / 0.800 | 0.935 / 0.802 | 0.899 / 0.668 | 0.90 / 0.67 |
 | Lymphatic endothelial | 0.939 / 0.850 | 0.942 / 0.862 | 0.915 / 0.781 | 0.93 / 0.81 |
 | Megakaryocytes | 0.938 / 0.846 | 0.937 / 0.855 | 0.917 / 0.788 | 0.92 / 0.78 |
 | Myeloid | 0.956 / 0.877 | 0.958 / 0.892 | 0.943 / 0.849 | 0.95 / 0.85 |
@@ -205,7 +208,7 @@ AUROC / AUPR. **This set includes the links the model was trained on, so it is n
 
 ![paper protocol](figs_scmgrn/fig_paper.png)
 
-The pooled difference on this set is +0.065 AUPR (70 pairs). It is larger than on the held-out fold because a higher-capacity model fits the training links better;
+The pooled difference on this set is +0.074 AUPR (80 pairs). It is larger than on the held-out fold because a higher-capacity model fits the training links better;
 it should not be read as better generalisation.
 
 ---
@@ -247,13 +250,12 @@ The same pattern as lung: a small held-out-fold gain, and the four MeVD-GRN vari
 
 ---
 
-## 12. Progress of the runs (updated 16 Oct, 17:10)
+## 12. Progress of the runs (updated 16 Oct, 17:40)
 
 | Dataset / cell type | Status | MeVD-GRN (4 variants × 5 seeds × 10 folds) | Official code |
 |---|---|---|---|
 | Lung: Myeloid, Lymphoid, Megakaryocytes, Neuroendocrine, Lymphatic | **finished** | done | 6 seeds done |
-| Lung: Bronchiolar, Ciliated | **finished** | done | 2 seeds done |
-| Lung: Vascular endothelial (10k directed entries, 271 TFs) | running | in progress | in progress (fold 4 of 10) |
+| Lung: Bronchiolar, Ciliated, Vascular endothelial | **finished** | done | 2 seeds done |
 | Lung: Stromal (43k cells) | queued last; may hit the memory limit of the official code | – | – |
 | Hematopoiesis: HSC, GMP | **finished** | done | 2 seeds done |
 | Hematopoiesis: CMP | running | done | in progress |
