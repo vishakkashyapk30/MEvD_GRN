@@ -13,7 +13,7 @@ export REPO="${REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
 export SCR="${LOCAL_SCR:-$HOME/.cache/mevd_scmgrn_local}"; export SCMGRN_ROOT_LOCAL="$SCR/scmgrn"
 mkdir -p "$SCMGRN_ROOT_LOCAL"; cd "$REPO"
 source "$REPO/slurm/scmgrn_worker_lib.sh"
-SSH="ssh -o BatchMode=yes -o ConnectTimeout=20 $RAW_HOST"
+SSH="ssh -n -o BatchMode=yes -o ConnectTimeout=20 $RAW_HOST"   # -n: ssh must not swallow the unit list the worker loop reads from stdin
 q_exec() { $SSH "$(printf '%q ' "$@")"; }
 stage_ct() { local CT=$1 r
   for r in graph splits processed; do
