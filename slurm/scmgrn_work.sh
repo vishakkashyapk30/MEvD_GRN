@@ -12,7 +12,7 @@
 #SBATCH -n 1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=2
-#SBATCH --mem-per-cpu=3000
+#SBATCH --mem=30G                      # the official code loads the dense expression matrix (Bronchiolar 19k cells x 14k genes, Stromal 43k x 11.5k): 6 GB (2 CPUs x 3 GB) gets it OOM-killed with no traceback
 #SBATCH --time=3-12:00:00
 #SBATCH --array=0-3%4
 #SBATCH --output=logs/smg_work_%A_%a.out
