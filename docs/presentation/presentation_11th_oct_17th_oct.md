@@ -264,7 +264,7 @@ The same pattern as lung: a small held-out-fold gain, and the four MeVD-GRN vari
 
 ---
 
-## 12. Engineering notes (for the record)
+## 13. Engineering notes (for the record)
 
 Problems met and fixed while running on real data, all in `docs/experiments/scmultiomegrn_generalization.md` section 11.8:
 - Ada's outbound internet is about 10 to 140 KB/s per connection; the 3 GB lung file was streamed from the laptop over the VPN (about 3.5 hours).
