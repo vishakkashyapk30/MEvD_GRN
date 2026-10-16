@@ -43,7 +43,7 @@ def collect(root: Path):
     """runs[(dataset, ct)][variant][fold] -> {metric: [per-seed values]}"""
     runs = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
     for p in root.glob("results/*/*/*/seed*/fold*.json"):
-        ds, ct, variant = p.parts[-6], p.parts[-5], p.parts[-4]
+        ds, ct, variant = p.parts[-5], p.parts[-4], p.parts[-3]      # results/<ds>/<ct>/<variant>/seed*/fold*.json
         fold = int(p.stem.replace("fold", ""))
         d = json.load(open(p))
         if variant.startswith("mevd_") and not (d.get("leak_status") or {}).get("zero_leak", False):
