@@ -9,7 +9,7 @@ Branch `scmgrn-tftf`. Experiment write-up with every deviation: `docs/experiment
 
 ---
 
-## 1. Summary (updated 16 Oct, 17:40; 8 of 9 lung cell types and 2 of 3 hematopoiesis cell types have both methods finished)
+## 1. Summary (updated 16 Oct, 18:20; 8 of 9 lung cell types and all 3 hematopoiesis cell types have both methods finished)
 
 1. **We rebuilt scMultiomeGRN's benchmark and reproduced its published numbers.** The regenerated TF-TF answer keys are within
    5% of the paper's link counts on all 9 lung cell types, our fold files are byte-identical to what their split code writes,
@@ -17,13 +17,13 @@ Branch `scmgrn-tftf`. Experiment write-up with every deviation: `docs/experiment
    Myeloid 0.943 / 0.849, HSC 0.927 / 0.696, on the paper's metric).
 2. **We changed MeVD-GRN to predict undirected TF-TF links**, the task scMultiomeGRN solves (it used to predict directed TF-to-gene edges),
    and gave it scMultiomeGRN's own inputs.
-3. **On the held-out test fold, MeVD-GRN beats scMultiomeGRN on 7 of the 8 lung cell types finished, and on both hematopoiesis cell types finished.**
-   Lung, pooled: **+0.017 AUPR, +0.013 AUROC**; individually significant on 5 of 8 cell types. Hematopoiesis: +0.020 AUPR on HSC (p = 0.002), +0.008 on GMP (p = 0.049).
+3. **On the held-out test fold, MeVD-GRN beats scMultiomeGRN on 7 of the 8 lung cell types finished, and on all three hematopoiesis cell types.**
+   Lung, pooled: **+0.017 AUPR, +0.013 AUROC**; individually significant on 5 of 8 cell types. Hematopoiesis, pooled over HSC, CMP and GMP: +0.017 AUPR (+0.020 HSC, +0.023 CMP, +0.008 GMP) and +0.009 AUROC.
    The gains are small (1 to 3 points) next to the fold-to-fold spread (2 to 5 points). Myeloid is the one lung cell type where scMultiomeGRN is ahead (not significant).
 4. **The ablations say the gain does not come from the scMultiomeGRN-specific inputs or from the training graph.** A variant that never sees
    the training links scores the same as the full model. This fits the main caveat of the benchmark: the answer key is generated from the
    same ATAC data the models read (section 10).
-5. **Status:** see section 12. Remaining: Stromal (lung), CMP (hematopoiesis).
+5. **Status:** see section 12. Remaining: the scMultiomeGRN official-code run on Stromal (lung), expected around 20:30; its MeVD-GRN runs are finished.
 
 ---
 
@@ -178,6 +178,7 @@ the links the model trained on). We report both and label the second.
 | Ciliated epithelial | 0.93 / 0.75 | 0.918 / 0.730 |
 | Vascular endothelial | 0.90 / 0.67 | 0.899 / 0.668 |
 | HSC (hematopoiesis) | 0.92 / 0.67 | 0.927 / 0.696 |
+| CMP (hematopoiesis) | 0.92 / 0.66 | 0.927 / 0.692 |
 | GMP (hematopoiesis) | 0.93 / 0.71 | 0.928 / 0.681 |
 
 The re-runs match the paper to within about 0.01 AUROC and 0.03 AUPR (closest on Bronchiolar, Myeloid, Lymphoid, Neuroendocrine, HSC). The benchmark therefore reproduces the paper; comparisons made on it are meaningful.
@@ -260,24 +261,33 @@ it should not be read as better generalisation.
 
 ---
 
-## 9b. Hematopoiesis (Buenrostro 2018): HSC and GMP finished, CMP running
+## 9b. Hematopoiesis (Buenrostro 2018): HSC, CMP, GMP (all finished)
 
 Held-out test fold, AUROC / AUPR:
 
 | Cell type | **MeVD-GRN H** | A1 | A2 | A3 | scMultiomeGRN (official code) |
 |---|---|---|---|---|---|
 | HSC | **0.934 / 0.940** | 0.934 / 0.941 | 0.931 / 0.937 | 0.932 / 0.940 | 0.922 / 0.921 |
+| CMP | **0.925 / 0.932** | 0.925 / 0.932 | 0.924 / 0.931 | 0.924 / 0.932 | 0.914 / 0.909 |
 | GMP | **0.925 / 0.934** | 0.925 / 0.935 | 0.922 / 0.934 | 0.924 / 0.935 | 0.921 / 0.926 |
-| CMP | running | | | | |
+| average | **0.928 / 0.936** | 0.928 / 0.936 | 0.926 / 0.934 | 0.927 / 0.936 | 0.919 / 0.919 |
 
-Fold-paired, H minus official: HSC +0.020 AUPR (p = 0.002), +0.012 AUROC (p = 0.002); GMP +0.008 AUPR (p = 0.049), +0.004 AUROC (p = 0.23). Pooled (20 pairs): +0.014 AUPR (p = 5e-5).
+Fold-paired, H minus official: HSC +0.020 AUPR (p = 0.002), +0.012 AUROC (p = 0.002); CMP +0.023 AUPR (p = 0.002), +0.012 AUROC (p = 0.002);
+GMP +0.008 AUPR (p = 0.049), +0.004 AUROC (p = 0.23). Pooled (30 pairs): +0.017 AUPR (p = 6e-8), +0.009 AUROC (p = 8e-7); ahead in 90% of the fold pairs.
 
-Paper protocol (full matrix, contains training links), AUROC / AUPR: HSC: MeVD-GRN 0.945 / 0.790, official re-run 0.927 / 0.696 (paper 0.92 / 0.67);
-GMP: MeVD-GRN 0.943 / 0.784, official re-run 0.928 / 0.681 (paper 0.93 / 0.71).
+Paper protocol (full matrix, contains training links), AUROC / AUPR:
+
+| Cell type | MeVD-GRN H | scMultiomeGRN (official code re-run) | Paper (published) |
+|---|---|---|---|
+| HSC | 0.945 / 0.790 | 0.927 / 0.696 | 0.92 / 0.67 |
+| CMP | 0.945 / 0.800 | 0.927 / 0.692 | 0.92 / 0.66 |
+| GMP | 0.943 / 0.784 | 0.928 / 0.681 | 0.93 / 0.71 |
 
 ![hematopoiesis test fold](figs_scmgrn_hema/fig_test.png)
 
 The same pattern as lung: a small held-out-fold gain, and the four MeVD-GRN variants indistinguishable from each other.
+Caveats specific to hematopoiesis: scATAC and scRNA come from separate experiments (as in the paper), the scATAC counts come from the GEO matrix (GSE96769)
+rather than from per-cell BAM files, and the CMP scRNA cells (cmp0, cmp1, cmp2) are our reading of the paper.
 
 ---
 
@@ -297,15 +307,14 @@ The same pattern as lung: a small held-out-fold gain, and the four MeVD-GRN vari
 
 ---
 
-## 12. Progress of the runs (updated 16 Oct, 17:40)
+## 12. Progress of the runs (updated 16 Oct, 18:20)
 
 | Dataset / cell type | Status | MeVD-GRN (4 variants × 5 seeds × 10 folds) | Official code |
 |---|---|---|---|
 | Lung: Myeloid, Lymphoid, Megakaryocytes, Neuroendocrine, Lymphatic | **finished** | done | 6 seeds done |
 | Lung: Bronchiolar, Ciliated, Vascular endothelial | **finished** | done | 2 seeds done |
-| Lung: Stromal (43k cells) | queued last; may hit the memory limit of the official code | – | – |
-| Hematopoiesis: HSC, GMP | **finished** | done | 2 seeds done |
-| Hematopoiesis: CMP | running | done | in progress |
+| Lung: Stromal (43k cells) | official code running (17 min per fold, 2 seeds in parallel); MeVD-GRN done | done | fold 2 of 10 at 18:05 |
+| Hematopoiesis: HSC, CMP, GMP | **finished** | done | 2 seeds done |
 
 *(Further updates are appended below as results arrive.)*
 
