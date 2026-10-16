@@ -11,7 +11,7 @@
 #SBATCH --constraint=2080ti
 #SBATCH -n 1
 #SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=3
+#SBATCH --cpus-per-task=2
 #SBATCH --mem-per-cpu=3000
 #SBATCH --time=3-12:00:00
 #SBATCH --array=0-3%4
