@@ -1,0 +1,5 @@
+# Ablation (one component changed vs the headline variant H): no graph network (node features go straight to the decoder).
+# Run with --obs_graph --smg_feats like H. Pre-registered before any ablation result existed.
+inherit: mevd_fm_h384.yaml
+model:
+  use_gnn: false

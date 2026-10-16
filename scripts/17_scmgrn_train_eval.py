@@ -69,6 +69,7 @@ def build_model(mcfg: dict, use_motif: bool, side_in_dim: int = 0, pair_dim: int
                    use_edge_mlp=bool(mcfg.get("use_edge_mlp", False)),
                    combine_mode=mcfg.get("combine_mode", "sum"),
                    use_fm=bool(mcfg.get("use_fm", False)), fm_in_dim=int(mcfg.get("fm_in_dim", 768)),
+                   use_atac=bool(mcfg.get("use_atac", True)), use_gnn=bool(mcfg.get("use_gnn", True)),
                    use_motif=use_motif, task=mcfg.get("task", "directed"),
                    side_in_dim=side_in_dim, pair_dim=pair_dim)
 
@@ -124,9 +125,12 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
     if args.smg_feats:
         if not undirected:
             raise SystemExit("--smg_feats needs model.task: undirected")
-        side = torch.from_numpy(np.load(pdir / "smg_node_feats.npy")).float()
-        pair = torch.from_numpy(np.load(pdir / "smg_pair_feats.npy"))
-        assert side.shape[0] == n and pair.shape[:2] == (n, n), "smg features do not match the node set"
+        if args.smg_parts in ("both", "node"):
+            side = torch.from_numpy(np.load(pdir / "smg_node_feats.npy")).float()
+            assert side.shape[0] == n, "smg node features do not match the node set"
+        if args.smg_parts in ("both", "pair"):
+            pair = torch.from_numpy(np.load(pdir / "smg_pair_feats.npy"))
+            assert pair.shape[:2] == (n, n), "smg pair features do not match the node set"
     for p in ("val", "test"):                                    # sanity: nothing held out is trained on
         held = set(map(tuple, f[p]["pos"].tolist())) | set(map(tuple, f[p]["neg"].tolist()))
         trained = set(map(tuple, f["train"]["pos"].tolist())) | set(map(tuple, f["train"]["neg"].tolist()))
@@ -140,6 +144,7 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
     trainer = MEvDTrainer(model, data, cfg, args.device)
     if side is not None:
         model.set_side_features(side.to(args.device))
+    if pair is not None:
         model.set_pair_feats(pair.to(args.device))
     stage = stages_from_config(cfg)[0]
     if args.max_epochs:
@@ -153,7 +158,7 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
     shutil.rmtree(ckpt, ignore_errors=True)
     rec = {"method": "MeVD-GRN", "variant": args.variant, "cell_type": args.cell_type,
            "dataset": dcfg["dataset"], "fold": fold, "seed": seed, "obs_graph": bool(args.obs_graph),
-           "task": cfg["model"].get("task", "directed"), "smg_feats": bool(args.smg_feats),
+           "task": cfg["model"].get("task", "directed"), "smg_feats": bool(args.smg_feats), "smg_parts": args.smg_parts if args.smg_feats else None,
            "model_config": str(args.model_config), "n_params": model.count_parameters(),
            "n_nodes": n, "n_train_pos_directed": int(splits["train"]["pos"].shape[1]),
            "epochs_run": len(res["history"]), "best_val_aupr": res["best_val_aupr"],
@@ -176,6 +181,8 @@ def main():
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--obs_graph", action="store_true")
     ap.add_argument("--smg_feats", action="store_true", help="scMultiomeGRN input parity features")
+    ap.add_argument("--smg_parts", default="both", choices=["both", "node", "pair"],
+                    help="with --smg_feats: both (default), only the SVD node features, or only the pair histograms (ablations)")
     ap.add_argument("--variant", default=None, help="name used in output paths")
     ap.add_argument("--device", default="cuda:0")
     ap.add_argument("--max_epochs", type=int, default=None, help="smoke tests only")
@@ -187,7 +194,7 @@ def main():
         args.device = "cpu"
     if args.variant is None:
         args.variant = Path(args.model_config).stem.replace("mevd_", "") + ("_obs" if args.obs_graph else "_noobs") \
-            + ("_smg" if args.smg_feats else "")
+            + (("_smg" if args.smg_parts == "both" else f"_smg{args.smg_parts}") if args.smg_feats else "")
     dcfg = load_config(args.config)
     if "-" in args.folds:
         a, b = args.folds.split("-")
