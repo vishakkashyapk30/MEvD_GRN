@@ -86,6 +86,53 @@ We regenerated it with the same tools and thresholds. The task is therefore to r
 
 ---
 
+## 3b. What we changed in MeVD-GRN to make the comparison fair
+
+Two changes to the architecture itself, then input and training switches. Code: `src/models/mevd_grn.py` (`task="undirected"`), `src/models/decoder.py`
+(`SymmetricPairDecoder`), `src/benchmarks/scmgrn_features.py`, `scripts/16_scmgrn_build_benchmark.py` (step `smg`), `scripts/17_scmgrn_train_eval.py`.
+
+**1. Architecture changes (so the task matches: undirected TF-TF links)**
+
+| | Before (directed TF → gene) | Now (undirected TF-TF) |
+|---|---|---|
+| Decoder | role-aware: the target's RNA state is gated by its ATAC accessibility; the score depends on which end is the TF | symmetric: `MLP([h_u*h_v, |h_u-h_v|, h_u+h_v])` + diagonal bilinear term + expression-correlation term + optional pair-feature term; the score is identical whichever TF comes first (unit-tested) |
+| Embedding | RNA and ATAC graph-network outputs kept separate until the decoder | RNA and ATAC outputs fused after message passing (`Linear → LayerNorm → GELU`) into one embedding per TF |
+
+**2. Input switches (to give MeVD-GRN the same information scMultiomeGRN has; headline variant H)**
+
+| scMultiomeGRN input | How MeVD-GRN receives it |
+|---|---|
+| MAESTRO accessibility score per TF (per cell) | reduced to 64 numbers (SVD, features only) and added into the RNA channel through an MLP encoder |
+| GRNBoost2 importance of the TF towards every gene | reduced to 64 numbers (SVD, features only), same encoder |
+| 16 × 16 joint-expression histogram per TF pair | symmetrised, 136 values, one linear term in the decoder |
+| the known (training) graph | the fold's training links as a third relation for the graph networks (the slot the motif graph normally uses) |
+| (not an input there) motif relation | switched off, because the answer key is itself a motif scan |
+
+None of these inputs uses a held-out link: the reductions and the histogram depend on expression and accessibility only.
+
+**3. Training-protocol changes**
+- One example per unordered TF pair; negatives drawn only from the fold's training negatives.
+- A single training stage: no multi-evidence curriculum, hard negatives or replay, because the answer key is a single kind of evidence.
+- Best epoch chosen on the validation split's AUPR; up to 2,000 epochs with patience of 100 epochs (matches their budget); learning rate 1e-3, 5 negatives per positive.
+- The symmetric score matrix is scored with their own `metric_fn`.
+
+**4. What stayed the same**
+- The two relational GraphSAGE encoders (RNA channel, ATAC channel) over label-free gene graphs (co-expression kNN, accessibility-based TF-candidate graph).
+- The frozen Geneformer gene embedding, hidden size 384, 2 graph layers (the project's recommended configuration, fixed before any result existed).
+
+**Variants that isolate the changes**
+
+| Variant | Undirected decoder | scMultiomeGRN input features | Training links as graph | Parameters |
+|---|---|---|---|---|
+| H (headline) | yes | yes | yes | 5.07 M |
+| A1 | yes | no | yes | 4.88 M |
+| A2 | yes | no | no | 3.70 M |
+| A3 | no (old directed model, scores averaged) | no | yes | 4.44 M |
+
+On the held-out fold all four are within about 0.005 of each other (section 8), so the headline gain over scMultiomeGRN is not due to the inputs matched to it, the training graph or the undirected decoder.
+
+---
+
 ## 4. What "apples to apples" means here
 
 | | scMultiomeGRN | MeVD-GRN |
