@@ -20,10 +20,10 @@ Branch `scmgrn-tftf`. Experiment write-up with every deviation: `docs/experiment
 3. **On the held-out test fold, MeVD-GRN beats scMultiomeGRN on 8 of the 9 lung cell types, and on all three hematopoiesis cell types.**
    Lung, averaged over the 9 cell types: MeVD-GRN 0.922 / 0.935 vs scMultiomeGRN 0.910 / 0.918 (AUROC / AUPR); pooled paired gain **+0.017 AUPR, +0.012 AUROC**; individually significant on 6 of 9 cell types. Hematopoiesis, pooled over HSC, CMP and GMP: +0.017 AUPR (+0.020 HSC, +0.023 CMP, +0.008 GMP) and +0.009 AUROC.
    The gains are small (1 to 3 points) next to the fold-to-fold spread (2 to 5 points). Myeloid is the one lung cell type where scMultiomeGRN is ahead (not significant).
-4. **The ablations say the gain does not come from any component we varied.** Twelve variants, each changing one component (Geneformer, ATAC channel,
+4. **The ablations say the gain does not come from any single component, and that the information is redundant.** Twelve variants, each changing one component (Geneformer, ATAC channel,
    graph network, either graph, training links, scMultiomeGRN inputs, model size 5 M vs 0.5 M parameters), all score within 0.001 AUPR of the headline variant on average
-   over 12 cell types, while the gap to scMultiomeGRN is -0.017. This fits the main caveat of the benchmark: the answer key is generated from the
-   same ATAC data the models read (section 10), so a very simple model does as well (section 8b).
+   over 12 cell types, while the gap to scMultiomeGRN is -0.017. Removing all optional components at once collapses the score to 0.63, so some route is needed but any one suffices.
+   This fits the main caveat of the benchmark: the answer key is generated from the same ATAC data the models read (section 10).
 5. **Status:** all main runs are finished (section 12). Component ablations of MeVD-GRN are running (section 8b).
 
 ---
@@ -263,18 +263,19 @@ Each row changes one component of the headline variant H (same folds, 5 seeds, z
 | co-expression graph only (also drops the training links) | 0.9340 | -0.0009 | 0.07 | 0.9223 | -0.0014 | 0.0009 |
 | TF-candidate graph only (also drops the training links) | 0.9339 | -0.0009 | 0.04 | 0.9225 | -0.0012 | 0.01 |
 | base size (128-wide, no Geneformer; 0.53 M parameters instead of 5 M) | 0.9348 | -0.0000 | 0.71 | 0.9237 | -0.0001 | 0.92 |
+| **floor**: 128-wide, no Geneformer, no ATAC channel, no graph network, no training links, no scMultiomeGRN inputs (0.10 M parameters) | 0.6326 | **-0.3023** | 2e-21 | 0.6349 | **-0.2888** | 2e-21 |
 | *reference:* scMultiomeGRN, official code | 0.9180 | **-0.0169** | 2e-15 | 0.9124 | **-0.0114** | 7e-13 |
 
 **What this shows**
-- Removing any single component changes the held-out score by 0.001 or less, in both metrics. A few of these differences are statistically detectable
+- Removing any single component changes the held-out score by 0.001 AUPR or less, in both metrics. A few of these differences are statistically detectable
   (for example no graph network, p = 0.005), but they are about one fifth of the gap to scMultiomeGRN and of no practical size.
-- The gap to scMultiomeGRN (-0.017 AUPR) is an order of magnitude larger than any ablation effect, so it is robust to everything we varied.
-- Even the 0.53 M-parameter base model without Geneformer matches H. Model size, the pretrained embedding, the ATAC channel, the graph networks, the training
-  links and the scMultiomeGRN inputs are all dispensable on this benchmark.
-- So whatever produces the score is shared by every variant: the per-TF summary features, the co-expression term and the symmetric pair decoder, trained with the same objective.
-  A "floor" run (all optional components removed at once) quantifies how little is needed: see the next paragraph.
-
-**Floor run (everything optional removed at once):** 128-wide, no Geneformer, no ATAC channel, no graph network, no training graph, no scMultiomeGRN inputs; 0.10 M parameters. [UPDATE: results appended below when finished.]
+- The gap to scMultiomeGRN (-0.017 AUPR) is an order of magnitude larger than any single-component effect, so it is robust to everything varied one at a time.
+- Even the 0.53 M-parameter base model without Geneformer matches H, so model size and the pretrained embedding are not what produces the score.
+- **But the information is redundant, not absent.** The floor model (everything optional removed at once: no Geneformer, no ATAC channel, no graph network, no training links,
+  no scMultiomeGRN inputs; 0.10 M parameters, leaving only the per-TF RNA summary features, the co-expression term and the symmetric decoder) **collapses to 0.633 AUPR / 0.635 AUROC,
+  0.30 below H** (p = 2e-21). So the score is carried by information that several routes provide interchangeably (the ATAC channel, the Geneformer embedding, the graph networks
+  over graphs built from accessibility, the scMultiomeGRN features): any one suffices, none is individually necessary, and none at all is not enough.
+- Which route carries it is tested by adding exactly one route back to the floor model (next table).
 
 Caveats: the p-values pool 120 cell-type-by-fold pairs that are not independent (folds share a graph); and on lung both channels are accessibility-derived, so removing the ATAC channel removes little information.
 
