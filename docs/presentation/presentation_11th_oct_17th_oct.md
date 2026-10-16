@@ -5,11 +5,11 @@ Branch `scmgrn-tftf`. Experiment write-up with every deviation: `docs/experiment
 
 > **Reading guide.** Every MeVD-GRN number here is zero-leakage: the held-out fold's links and non-links never enter training,
 > and the input graphs are built without labels (checked in code on every fold, recorded in every result file).
-> Sections marked **[UPDATE]** are appended as runs finish. A table shows "–" where a run has not finished.
+> All runs are finished; this file is the final version (17 Oct, 03:30).
 
 ---
 
-## 1. Summary (updated 16 Oct, 20:20; all 9 lung and all 3 hematopoiesis cell types have both methods finished)
+## 1. Summary (final, 17 Oct 03:30; all 9 lung and all 3 hematopoiesis cell types have both methods finished)
 
 1. **We rebuilt scMultiomeGRN's benchmark and reproduced its published numbers.** The regenerated TF-TF answer keys are within
    5% of the paper's link counts on all 9 lung cell types, our fold files are byte-identical to what their split code writes,
@@ -17,14 +17,17 @@ Branch `scmgrn-tftf`. Experiment write-up with every deviation: `docs/experiment
    Myeloid 0.943 / 0.849, HSC 0.927 / 0.696, on the paper's metric).
 2. **We changed MeVD-GRN to predict undirected TF-TF links**, the task scMultiomeGRN solves (it used to predict directed TF-to-gene edges),
    and gave it scMultiomeGRN's own inputs.
-3. **On the held-out test fold, MeVD-GRN beats scMultiomeGRN on 8 of the 9 lung cell types, and on all three hematopoiesis cell types.**
+3. **On the held-out test fold, MeVD-GRN beats scMultiomeGRN (before accounting for the trivial baseline in point 5) on 8 of the 9 lung cell types, and on all three hematopoiesis cell types.**
    Lung, averaged over the 9 cell types: MeVD-GRN 0.922 / 0.935 vs scMultiomeGRN 0.910 / 0.918 (AUROC / AUPR); pooled paired gain **+0.017 AUPR, +0.012 AUROC**; individually significant on 6 of 9 cell types. Hematopoiesis, pooled over HSC, CMP and GMP: +0.017 AUPR (+0.020 HSC, +0.023 CMP, +0.008 GMP) and +0.009 AUROC.
    The gains are small (1 to 3 points) next to the fold-to-fold spread (2 to 5 points). Myeloid is the one lung cell type where scMultiomeGRN is ahead (not significant).
 4. **The ablations say the gain does not come from any single component, and that the information is redundant.** Twelve variants, each changing one component (Geneformer, ATAC channel,
    graph network, either graph, training links, scMultiomeGRN inputs, model size 5 M vs 0.5 M parameters), all score within 0.001 AUPR of the headline variant on average
-   over 12 cell types, while the gap to scMultiomeGRN is -0.017. Removing all optional components at once collapses the score to 0.63, so some route is needed but any one suffices.
-   This fits the main caveat of the benchmark: the answer key is generated from the same ATAC data the models read (section 10).
-5. **Status:** all main runs are finished (section 12). Component ablations of MeVD-GRN are running (section 8b).
+   over 12 cell types, while the gap to scMultiomeGRN is -0.017. Removing all optional components at once collapses the score to 0.63, but adding back any one gene-identity route
+   (Geneformer: 0.932) recovers nearly everything.
+5. **A trivial baseline that scores a pair by how many training links its two TFs have beats scMultiomeGRN and recovers most of MeVD-GRN's gain** (section 8c).
+   Held-out AUPR: scMultiomeGRN 0.918, degree baseline 0.929, MeVD-GRN 0.935. About +0.011 of the +0.017 gain is a hub effect; +0.006 AUPR is left beyond it (p = 1e-8).
+   The folds split links, not TFs, so TF identity carries over from training.
+6. **Status:** all runs are finished (section 12).
 
 ---
 
@@ -277,7 +280,46 @@ Each row changes one component of the headline variant H (same folds, 5 seeds, z
   over graphs built from accessibility, the scMultiomeGRN features): any one suffices, none is individually necessary, and none at all is not enough.
 - Which route carries it is tested by adding exactly one route back to the floor model (next table).
 
+**Route isolation: the floor model plus exactly one route** (all 12 cell types, 5 seeds; held-out test fold):
+
+| Floor model plus only ... | test AUPR | diff vs H | test AUROC | diff vs H |
+|---|---|---|---|---|
+| nothing (the floor) | 0.633 | -0.302 | 0.635 | -0.289 |
+| the ATAC channel | 0.836 | -0.099 | 0.823 | -0.101 |
+| the graph network (label-free graphs) | 0.875 | -0.060 | 0.862 | -0.062 |
+| the scMultiomeGRN node features | 0.930 | -0.005 | 0.919 | -0.005 |
+| **the Geneformer embedding** | **0.932** | **-0.003** | **0.921** | **-0.003** |
+
+The Geneformer embedding is a fixed vector per gene, identical in every cell type. A model that only knows which TFs form the pair, with no cell-specific information at all,
+scores 0.932 AUPR: within 0.003 of the headline model and 0.014 above scMultiomeGRN. The scMultiomeGRN node features (also gene-identity-like) do almost as well.
+This points to TF identity as the main source of signal, which the next section tests directly.
+
 Caveats: the p-values pool 120 cell-type-by-fold pairs that are not independent (folds share a graph); and on lung both channels are accessibility-derived, so removing the ATAC channel removes little information.
+
+---
+
+## 8c. A trivial baseline: score a pair by how many training links its two TFs have
+
+**Why.** The official folds split links, not TFs, so every TF appears in the training links. A TF that has many links in training probably has many in the test fold too (a "hub" effect),
+and the route-isolation result above says gene identity alone nearly suffices. The baseline uses no features, no cell data and no model: for a test pair (u, v), count the training
+links of u and of v (the fold's training links only; test and validation links are never used). `scripts/21_scmgrn_degree_baseline.py`, scored with the same code as every other method.
+
+| Method (held-out test fold, 12 cell types) | AUPR | AUROC |
+|---|---|---|
+| scMultiomeGRN, official code | 0.918 | 0.912 |
+| **trivial baseline**: product of the two TFs' training-link counts | 0.924 | 0.912 |
+| **trivial baseline**: logistic regression on the two counts | 0.929 | 0.917 |
+| MeVD-GRN, headline variant H | 0.935 | 0.924 |
+
+**What this says**
+- The trivial degree baseline already **beats scMultiomeGRN's AUPR** (0.924 and 0.929 vs 0.918) and matches or beats its AUROC. On this split scMultiomeGRN does not exceed what training-link counts give.
+- Of MeVD-GRN's +0.017 AUPR over scMultiomeGRN, about +0.011 is obtained by the degree baseline alone (logistic regression); about **+0.006 AUPR and +0.007 AUROC remain beyond hubness**.
+  That remainder is small but significant (fold-paired Wilcoxon over 120 pairs: p = 1e-8 for AUPR, 7e-9 for AUROC).
+- So the honest statement is: MeVD-GRN is better than scMultiomeGRN on this benchmark, but most of the difference is a hub effect that a counting rule reproduces; what the model adds on top is about 0.6 points of AUPR.
+- It also explains the ablations: models that know TF identity (Geneformer, the scMultiomeGRN features) recover almost everything.
+
+**How it fits the literature we reviewed:** BEAR-GRN also found that target in-degree rankers match or beat published GRN methods, and reviewers expect TF-disjoint splits. This benchmark's link-level split lets TF identity leak through the training links.
+A TF-disjoint version of this benchmark (hold out all links of some TFs) would remove the hub shortcut; it is the natural next experiment.
 
 ---
 
@@ -340,6 +382,7 @@ rather than from per-cell BAM files, and the CMP scRNA cells (cmp0, cmp1, cmp2) 
 - **The answer key is built from the same ATAC data the models read** (motif hit in an open promoter). A model can score well by learning that
   rule, without learning regulation. The same holds for scMultiomeGRN; the ablations suggest it holds for us too. This benchmark cannot tell
   "learns regulation" from "learns the construction rule".
+- **The folds split links, not TFs.** TF identity and training-link counts carry over to the test fold, so a counting baseline matches the models (section 8c). A TF-disjoint split is the stricter test.
 - **Lung "RNA" is gene-body accessibility**, not expression, so both modalities come from ATAC.
 - **Small graphs:** the lung cell types have 41 to 271 TFs and 266 to 5,026 links; each held-out fold has only 27 to 503 positive links (hematopoiesis: 150 to 171 TFs, 1,500 to 2,000 links).
 - **Official code seeds:** 6 seeds for the first five cell types, 2 (666 and 42) for the rest, because the code is near-deterministic across seeds
@@ -351,13 +394,14 @@ rather than from per-cell BAM files, and the CMP scRNA cells (cmp0, cmp1, cmp2) 
 
 ---
 
-## 12. Progress of the runs (updated 16 Oct, 20:20)
+## 12. Progress of the runs (final, 17 Oct 03:30)
 
 | Dataset / cell type | Status | MeVD-GRN (4 variants × 5 seeds × 10 folds) | Official code |
 |---|---|---|---|
 | Lung: Myeloid, Lymphoid, Megakaryocytes, Neuroendocrine, Lymphatic | **finished** | done | 6 seeds done |
 | Lung: Bronchiolar, Ciliated, Vascular endothelial | **finished** | done | 2 seeds done |
-| Component ablations of MeVD-GRN (8 variants × 5 seeds, all 12 cell types) | running (see 8b) | in progress | – |
+| Component ablations of MeVD-GRN (13 variants incl. route isolation, 5 seeds, all 12 cell types) | **finished** (8b) | done | – |
+| Trivial TF-degree baselines (all 12 cell types, 10 folds) | **finished** (8c) | – | – |
 | Lung: Stromal (43k cells) | **finished** (official code: 17 min per fold) | done | 2 seeds done |
 | Hematopoiesis: HSC, CMP, GMP | **finished** | done | 2 seeds done |
 
