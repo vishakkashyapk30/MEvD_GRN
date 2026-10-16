@@ -54,12 +54,14 @@ run_unit() {   # run_unit <kind> <ct> <variant> <seed>   (data for <ct> already 
 
 worker_loop() {
   local STAGED_CT="" waited=0 progressed KIND CT V S U
+  declare -A TRIES=()                                             # a unit that fails twice in this worker is skipped
   while true; do
     progressed=0; local pending=0
     while read -r KIND CT V S; do
       [[ " $KINDS " == *" $KIND "* ]] || continue
       U=$(unit_name "$KIND" "$CT" "$V" "$S")
       q_done "$U" && continue
+      [ "${TRIES[$U]:-0}" -ge 2 ] && continue
       pending=1
       ct_ready "$CT" || continue                                  # cell type not built yet
       q_claim "$U" || continue                                    # another worker has it
@@ -72,7 +74,7 @@ worker_loop() {
       if run_unit "$KIND" "$CT" "$V" "$S" && publish_ct "$CT"; then
         q_mark_done "$U"; echo "[worker] DONE $U"
       else
-        echo "[worker] FAILED $U"; q_fail "$U"
+        echo "[worker] FAILED $U"; q_fail "$U"; TRIES[$U]=$(( ${TRIES[$U]:-0} + 1 ))
       fi
       break                                                       # re-scan from the top: current cell type first
     done < <(gen_units)
