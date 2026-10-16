@@ -12,12 +12,12 @@
 #   H  = mevd_fm_h384 : obs : smg      headline          A1 = mevd_fm_h384 : obs : nosmg
 #   A2 = mevd_fm_h384 : noobs : nosmg  label-free graphs  A3 = mevd_fm_h384_directed : obs : nosmg
 SEEDS=(${SEEDS:-42 43 44 45 46})
-OFFICIAL_SEEDS=(${OFFICIAL_SEEDS:-666 42 43 44 45 46})
+OFFICIAL_SEEDS=(${OFFICIAL_SEEDS:-666 42})      # the official code is near-deterministic across seeds (Myeloid, 6 seeds: all within 0.001) and costs ~5 min/fold on the big cell types; MeVD-GRN keeps 5 seeds
 VARIANTS=(${VARIANTS:-mevd_fm_h384:obs:smg mevd_fm_h384:obs:nosmg mevd_fm_h384:noobs:nosmg mevd_fm_h384_directed:obs:nosmg})
 KINDS=${KINDS:-official mevd}                         # the laptop worker sets KINDS=mevd
 if [ "$DS" = hema ]; then WORK_CTS=(HSC GMP CMP)
 else WORK_CTS=(Myeloid_cells Lymphoid_cells Megakaryocytes Neuroendocrine_cells Lymphatic_endothelial_cells
-               Bronchiolar_and_alveolar_epithelial_cells Stromal_cells Ciliated_epithelial_cells Vascular_endothelial_cells)
+               Bronchiolar_and_alveolar_epithelial_cells Ciliated_epithelial_cells Vascular_endothelial_cells Stromal_cells)
 fi
 [ -n "${CTS_ONLY:-}" ] && WORK_CTS=($CTS_ONLY)         # tests only
 gen_units() {   # "kind ct variant seed" per line; official runs first within a cell type
