@@ -9,6 +9,10 @@ After this, scripts/16 / 17 / 18 / 19 run unchanged with configs/scmgrn/hema.yam
         cd34/cmp0/cmp1/cmp2/gmp/hsc/mono). HSC = 'hsc'; GMP = 'gmp'; CMP = cmp0 + cmp1 + cmp2
         (ASSUMPTION: the paper does not say which scRNA labels it used; scATAC and scRNA are
         separate experiments, as in the paper).
+  atac_geo  (used; 57 MB instead of a 14.6 GB BAM tarball) scATAC counts from the original GEO deposit
+        GSE96769: GSE96769_scATACseq_counts.txt.gz (sparse triplets peak/cell/count, cell names in the header
+        line) + GSE96769_PeakFile_20160207.bed.gz (491,437 peaks, hg19); cell labels from the pinellolab
+        metadata.tsv after stripping the "singles-" prefix. Same cells as the BAM route (HSC 347 / CMP 502 / GMP 402).
   atac  scATAC from the pinellolab scATAC-benchmarking inputs: metadata.tsv (cell -> label),
         combined.sorted.merged.bed (peaks) and the deduplicated single-cell BAMs (Dropbox
         tarball, README of the repo), counted per peak with `bedtools coverage -counts`.
@@ -92,16 +96,43 @@ def cmd_atac(a):
         print(f"[atac] {ct}: {len(cells)} cells x {len(peaks)} peaks, nnz={M.nnz}", flush=True)
 
 
+def cmd_atac_geo(a):
+    import gzip
+    with gzip.open(a.counts, "rt") as f:
+        header = f.readline().rstrip("\n")
+        names = [x for x in header.lstrip("#").strip().split(";") if x]
+        trip = pd.read_csv(f, sep="\t", header=None, names=["peak", "cell", "n"], dtype=np.int64)
+    norm = lambda n: n.lower()[len("singles-"):] if n.lower().startswith("singles-") else n.lower()   # GEO and pinellolab names differ in case and "singles-" prefix
+    raw_names = names
+    names = [norm(n) for n in names]
+    bed = pd.read_csv(a.peaks, sep="\t", header=None, usecols=[0, 1, 2])
+    peaks = [f"{c}:{s_}-{e}" for c, s_, e in bed.itertuples(index=False)]
+    assert trip["peak"].max() <= len(peaks) and trip["cell"].max() <= len(names), "triplet indices exceed peak/cell lists"
+    M = sp.csc_matrix((trip["n"].to_numpy(), (trip["peak"].to_numpy() - 1, trip["cell"].to_numpy() - 1)),
+                      shape=(len(peaks), len(names)))
+    meta = pd.read_csv(a.metadata, sep="\t")
+    lab = {norm(str(k)): str(v) for k, v in (zip(meta.index, meta.iloc[:, 0]) if meta.shape[1] == 1
+                                              else zip(meta.iloc[:, 0], meta.iloc[:, 1]))}
+    print(f"[atac_geo] matrix {M.shape} nnz={M.nnz}; {sum(n in lab for n in names)} of {len(names)} cells have a label", flush=True)
+    for ct in ATAC_LABELS:
+        idx = [i for i, n in enumerate(names) if lab.get(n) == ct]
+        write_mtx(Path(a.out) / ct / "atac", M[:, idx], [raw_names[i] for i in idx], peaks, "peaks.tsv")
+        print(f"[atac_geo] {ct}: {len(idx)} cells x {len(peaks)} peaks", flush=True)
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("rna"); r.add_argument("--mmc4", required=True); r.add_argument("--out", required=True)
+    g = sub.add_parser("atac_geo")
+    g.add_argument("--counts", required=True); g.add_argument("--peaks", required=True)
+    g.add_argument("--metadata", required=True); g.add_argument("--out", required=True)
     t = sub.add_parser("atac")
     t.add_argument("--bam_dir", required=True); t.add_argument("--metadata", required=True)
     t.add_argument("--peaks", required=True); t.add_argument("--out", required=True)
     t.add_argument("--n_jobs", type=int, default=8)
     a = ap.parse_args()
-    {"rna": cmd_rna, "atac": cmd_atac}[a.cmd](a)
+    {"rna": cmd_rna, "atac": cmd_atac, "atac_geo": cmd_atac_geo}[a.cmd](a)
 
 
 if __name__ == "__main__":
