@@ -19,7 +19,7 @@ Branch `scmgrn-tftf`. Experiment write-up with every deviation: `docs/experiment
    and gave it scMultiomeGRN's own inputs.
 3. **On the held-out test fold, MeVD-GRN beats scMultiomeGRN on 7 of the 8 lung cell types finished, and on both hematopoiesis cell types finished.**
    Lung, pooled: **+0.017 AUPR, +0.013 AUROC**; individually significant on 5 of 8 cell types. Hematopoiesis: +0.020 AUPR on HSC (p = 0.002), +0.008 on GMP (p = 0.049).
-   The gains are small (1 to 2 points) next to the fold-to-fold spread (2 to 5 points). Myeloid is the one lung cell type where scMultiomeGRN is ahead (not significant).
+   The gains are small (1 to 3 points) next to the fold-to-fold spread (2 to 5 points). Myeloid is the one lung cell type where scMultiomeGRN is ahead (not significant).
 4. **The ablations say the gain does not come from the scMultiomeGRN-specific inputs or from the training graph.** A variant that never sees
    the training links scores the same as the full model. This fits the main caveat of the benchmark: the answer key is generated from the
    same ATAC data the models read (section 10).
@@ -169,7 +169,7 @@ Fold-paired comparison, H minus official code (10 folds per cell type, Wilcoxon 
 | **Pooled (80 fold pairs)** | **+0.017** | **2e-9** | **+0.013** | **2e-8** |
 
 In 82% of the 80 cell-type-by-fold pairs MeVD-GRN is ahead on AUPR (76% on AUROC).
-How to read this: the gains are small (one to two points of AUPR), the fold-to-fold standard deviation is 2 to 5 points, 5 of 8 cell types are
+How to read this: the gains are small (one to three points of AUPR), the fold-to-fold standard deviation is 2 to 5 points, 5 of 8 cell types are
 individually significant (with only 10 folds each, p = 0.002 is the smallest value a paired test can give), and the pooled p-value treats folds
 within a cell type as independent although they share a graph, so it is optimistic.
 
