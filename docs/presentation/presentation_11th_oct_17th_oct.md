@@ -20,9 +20,10 @@ Branch `scmgrn-tftf`. Experiment write-up with every deviation: `docs/experiment
 3. **On the held-out test fold, MeVD-GRN beats scMultiomeGRN on 8 of the 9 lung cell types, and on all three hematopoiesis cell types.**
    Lung, averaged over the 9 cell types: MeVD-GRN 0.922 / 0.935 vs scMultiomeGRN 0.910 / 0.918 (AUROC / AUPR); pooled paired gain **+0.017 AUPR, +0.012 AUROC**; individually significant on 6 of 9 cell types. Hematopoiesis, pooled over HSC, CMP and GMP: +0.017 AUPR (+0.020 HSC, +0.023 CMP, +0.008 GMP) and +0.009 AUROC.
    The gains are small (1 to 3 points) next to the fold-to-fold spread (2 to 5 points). Myeloid is the one lung cell type where scMultiomeGRN is ahead (not significant).
-4. **The ablations say the gain does not come from the scMultiomeGRN-specific inputs or from the training graph.** A variant that never sees
-   the training links scores the same as the full model. This fits the main caveat of the benchmark: the answer key is generated from the
-   same ATAC data the models read (section 10).
+4. **The ablations say the gain does not come from any component we varied.** Twelve variants, each changing one component (Geneformer, ATAC channel,
+   graph network, either graph, training links, scMultiomeGRN inputs, model size 5 M vs 0.5 M parameters), all score within 0.001 AUPR of the headline variant on average
+   over 12 cell types, while the gap to scMultiomeGRN is -0.017. This fits the main caveat of the benchmark: the answer key is generated from the
+   same ATAC data the models read (section 10), so a very simple model does as well (section 8b).
 5. **Status:** all main runs are finished (section 12). Component ablations of MeVD-GRN are running (section 8b).
 
 ---
@@ -129,7 +130,7 @@ None of these inputs uses a held-out link: the reductions and the histogram depe
 | A2 | yes | no | no | 3.70 M |
 | A3 | no (old directed model, scores averaged) | no | yes | 4.44 M |
 
-On the held-out fold all four are within about 0.005 of each other (section 8), so the headline gain over scMultiomeGRN is not due to the inputs matched to it, the training graph or the undirected decoder.
+On the held-out fold all four are within 0.001 AUPR of each other on average over the 12 cell types, and within about 0.01 on every single one (section 8), so the headline gain over scMultiomeGRN is not due to the inputs matched to it, the training graph or the undirected decoder.
 
 ---
 
@@ -229,7 +230,7 @@ within a cell type as independent although they share a graph, so it is optimist
 
 ## 8. Ablations: what produces the score?
 
-On the held-out fold, the four MeVD-GRN variants are within about 0.005 of each other on every cell type finished (7 lung, 2 hematopoiesis).
+On the held-out fold, the four MeVD-GRN variants (H, A1, A2, A3) are within 0.001 AUPR of each other on average over the 12 cell types (section 8b gives the test), and within about 0.01 on every individual cell type.
 
 - **A2** never sees the training links (only label-free graphs and features) and scores the same as H. The headline gain therefore does not come from
   message passing over known links.
