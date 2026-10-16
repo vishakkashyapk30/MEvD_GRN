@@ -92,17 +92,17 @@ In the result tables, **bold** marks the best score in a row and *italics* the s
 ## 7. The four versions of MeVD-GRN we compared
 
 - To see which of these changes matter, we ran four versions of the model on every cell type.
-- H, the headline version, has everything switched on.
-- A1 drops the scMultiomeGRN input features.
-- A2 also drops the known training links, so it never sees a single known link.
-- A3 is the old directed model, with its two directions averaged.
+- The full model has everything switched on.
+- The version without scMultiomeGRN inputs drops those extra input features.
+- The version without scMultiomeGRN inputs or known links also drops the known training links, so it never sees a single known link.
+- The old directed model is the original MeVD-GRN, with its two directions averaged.
 
 | Version | Symmetric scorer | scMultiomeGRN input features | Known links as a graph | Parameters |
 |---|---|---|---|---|
-| H | yes | yes | yes | 5.07 M |
-| A1 | yes | no | yes | 4.88 M |
-| A2 | yes | no | no | 3.70 M |
-| A3 | no (old directed model) | no | yes | 4.44 M |
+| MeVD-GRN, full model | yes | yes | yes | 5.07 M |
+| Without scMultiomeGRN inputs | yes | no | yes | 4.88 M |
+| Without scMultiomeGRN inputs or known links | yes | no | no | 3.70 M |
+| Old directed model | no | no | yes | 4.44 M |
 
 - All four score within 0.001 AUPR of each other on average over the twelve cell types, and within about 0.01 on any single cell type. Slide 13 explains what that tells us.
 
@@ -151,7 +151,7 @@ In the result tables, **bold** marks the best score in a row and *italics* the s
 
 - The table shows AUROC / AUPR on the held-out links, averaged over the ten folds and then over the seeds.
 
-| Cell type | MeVD-GRN H | A1 | A2 | A3 | scMultiomeGRN (official code) |
+| Cell type | MeVD-GRN, full model | Without scMultiomeGRN inputs | Without scMultiomeGRN inputs or known links | Old directed model | scMultiomeGRN (official code) |
 |---|---|---|---|---|---|
 | Bronchiolar and alveolar | *0.914* / *0.930* | 0.913 / *0.930* | 0.913 / 0.929 | **0.915** / **0.931** | 0.901 / 0.911 |
 | Ciliated epithelial | **0.928** / **0.940** | **0.928** / **0.940** | *0.927* / *0.939* | **0.928** / **0.940** | 0.912 / 0.915 |
@@ -166,7 +166,7 @@ In the result tables, **bold** marks the best score in a row and *italics* the s
 
 ![Held-out test links, lung](figs_scmgrn/fig_test.png)
 
-- To check whether these gaps are real, we compared H with the official code fold by fold, since both used the same folds, with a Wilcoxon signed-rank test.
+- To check whether these gaps are real, we compared the full model with the official code fold by fold, since both used the same folds, with a Wilcoxon signed-rank test.
 
 | Cell type | AUPR difference | p | AUROC difference | p |
 |---|---|---|---|---|
@@ -191,7 +191,7 @@ In the result tables, **bold** marks the best score in a row and *italics* the s
 
 - The blood data show the same pattern on a second, independent dataset.
 
-| Cell type | MeVD-GRN H | A1 | A2 | A3 | scMultiomeGRN (official code) |
+| Cell type | MeVD-GRN, full model | Without scMultiomeGRN inputs | Without scMultiomeGRN inputs or known links | Old directed model | scMultiomeGRN (official code) |
 |---|---|---|---|---|---|
 | HSC | **0.934** / *0.940* | **0.934** / **0.941** | 0.931 / 0.937 | *0.932* / *0.940* | 0.922 / 0.921 |
 | CMP | **0.925** / **0.932** | **0.925** / **0.932** | *0.924* / *0.931* | *0.924* / **0.932** | 0.914 / 0.909 |
@@ -200,24 +200,24 @@ In the result tables, **bold** marks the best score in a row and *italics* the s
 
 ![Held-out test links, hematopoiesis](figs_scmgrn_hema/fig_test.png)
 
-- Fold by fold against the official code, H gains 0.020 AUPR on HSC (p = 0.002), 0.023 on CMP (p = 0.002) and 0.008 on GMP (p = 0.049).
+- Fold by fold against the official code, the full model gains 0.020 AUPR on HSC (p = 0.002), 0.023 on CMP (p = 0.002) and 0.008 on GMP (p = 0.049).
 - Pooled over the 30 fold pairs, the gain is 0.017 AUPR (p = 6e-8) and 0.009 AUROC (p = 8e-7), and MeVD-GRN is ahead in 90% of the pairs.
 - The four MeVD-GRN versions are again almost impossible to tell apart.
 - Keep in mind that the RNA and ATAC data were measured in different cells here, and that the CMP RNA merges three labels.
 
 ## 13. Why does MeVD-GRN score higher? The ablations
 
-- If MeVD-GRN's lead came from one design choice, removing that choice should lower its score. We tested this by changing one part of H at a time and running every version on all twelve cell types with five seeds.
-- The table gives the average held-out score over the twelve cell types, the difference from H, and a fold-paired test against H over 120 pairs.
+- If MeVD-GRN's lead came from one design choice, removing that choice should lower its score. We tested this by changing one part of the full model at a time and running every version on all twelve cell types with five seeds.
+- The table gives the average held-out score over the twelve cell types, the difference from the full model, and a fold-paired test against the full model over 120 pairs.
 
-| Version | AUPR | Difference from H | p | AUROC | Difference from H | p |
+| Version | AUPR | Difference from the full model | p | AUROC | Difference from the full model | p |
 |---|---|---|---|---|---|---|
-| H, the headline model | *0.9349* | – | – | **0.9237** | – | – |
+| MeVD-GRN, full model | *0.9349* | – | – | **0.9237** | – | – |
 | Only the scMultiomeGRN node features (no pair histograms) | 0.9347 | -0.0002 | 0.99 | **0.9237** | -0.0001 | 0.92 |
 | Only the pair histograms (no scMultiomeGRN node features) | 0.9347 | -0.0002 | 0.39 | **0.9237** | -0.0001 | 0.61 |
-| A1: no scMultiomeGRN inputs | **0.9350** | +0.0001 | 0.33 | *0.9236* | -0.0001 | 0.94 |
-| A2: as A1, and no known training links | 0.9345 | -0.0004 | 0.19 | 0.9228 | -0.0009 | 0.002 |
-| A3: the old directed model, both directions averaged | 0.9341 | -0.0008 | 0.43 | 0.9226 | -0.0011 | 0.07 |
+| Without scMultiomeGRN inputs | **0.9350** | +0.0001 | 0.33 | *0.9236* | -0.0001 | 0.94 |
+| Without scMultiomeGRN inputs or known links | 0.9345 | -0.0004 | 0.19 | 0.9228 | -0.0009 | 0.002 |
+| Old directed model, both directions averaged | 0.9341 | -0.0008 | 0.43 | 0.9226 | -0.0011 | 0.07 |
 | No Geneformer gene embedding | 0.9343 | -0.0006 | 0.30 | 0.9229 | -0.0008 | 0.03 |
 | No ATAC channel | 0.9345 | -0.0003 | 0.40 | 0.9235 | -0.0002 | 0.27 |
 | No graph network (features go straight to the scorer) | 0.9340 | -0.0009 | 0.005 | 0.9226 | -0.0011 | 0.02 |
@@ -230,11 +230,11 @@ In the result tables, **bold** marks the best score in a row and *italics* the s
 - No single change matters much. Removing Geneformer, the ATAC channel, the graph networks, either graph, the known links or the scMultiomeGRN inputs, or shrinking the model tenfold, moves AUPR by 0.001 or less.
 - A few of these tiny shifts are statistically detectable (no graph network gives p = 0.005), but each is about a twentieth of the gap to scMultiomeGRN.
 - That gap, 0.017 AUPR, is about twenty times bigger than any of them, so we cannot pin it on one design decision.
-- The floor tells a different story. With everything optional removed at once, the score collapses to 0.633, about 0.30 below H.
+- The floor tells a different story. With everything optional removed at once, the score collapses to 0.633, about 0.30 below the full model.
 - So the useful information is not missing, it is duplicated. Several routes carry it, any one of them is enough, and the model fails only when all of them are gone.
 - To see which routes work on their own, we added exactly one back to the floor model.
 
-| Floor model plus only... | AUPR | Difference from H | AUROC | Difference from H |
+| Floor model plus only... | AUPR | Difference from the full model | AUROC | Difference from the full model |
 |---|---|---|---|---|
 | Nothing added (the floor itself) | 0.633 | -0.302 | 0.635 | -0.289 |
 | The ATAC channel | 0.836 | -0.099 | 0.823 | -0.101 |
@@ -262,7 +262,7 @@ In the result tables, **bold** marks the best score in a row and *italics* the s
 | scMultiomeGRN, official code | 0.918 | 0.912 |
 | No-model baseline: product of the two TFs' training-link counts | 0.924 | 0.912 |
 | No-model baseline: logistic regression on the two counts | *0.929* | *0.917* |
-| MeVD-GRN, headline variant H | **0.935** | **0.924** |
+| MeVD-GRN, full model | **0.935** | **0.924** |
 
 - The counting baseline beats scMultiomeGRN on AUPR and matches or beats it on AUROC. On this split, scMultiomeGRN does no better than a rule that counts known links.
 - Of the 0.017 AUPR that MeVD-GRN gains over scMultiomeGRN, about 0.011 can be had from counting alone.
@@ -275,7 +275,7 @@ In the result tables, **bold** marks the best score in a row and *italics* the s
 - The paper scores the full matrix of all TF pairs, including the links each model was trained on. We show it only so the numbers can be compared with the published ones, and we draw no conclusions from it.
 - The last column holds the published figures for scMultiomeGRN and is not ranked.
 
-| Cell type | MeVD-GRN H | A3 | scMultiomeGRN (official code) | Paper (published, not ranked) |
+| Cell type | MeVD-GRN, full model | Old directed model | scMultiomeGRN (official code) | Paper (published, not ranked) |
 |---|---|---|---|---|
 | Bronchiolar and alveolar | **0.940** / *0.849* | *0.938* / **0.855** | 0.913 / 0.760 | 0.91 / 0.76 |
 | Ciliated epithelial | *0.938* / *0.828* | **0.939** / **0.833** | 0.918 / 0.730 | 0.93 / 0.75 |
