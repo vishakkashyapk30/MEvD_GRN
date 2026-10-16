@@ -40,6 +40,8 @@ ORDER = [
     ("mevd_abl_fl_gnn_noobs", "floor + only the graph network (label-free graphs)"),
     ("mevd_abl_min_noobs_smgnode", "floor + only the scMultiomeGRN node features"),
     ("official_scmultiomegrn", "scMultiomeGRN, official code (reference)"),
+    ("degree_product", "trivial baseline: product of the two TFs' training-link counts (no model, no features)"),
+    ("degree_logreg", "trivial baseline: logistic regression on the two TFs' training-link counts"),
 ]
 METRICS = ("aupr", "auroc")
 
