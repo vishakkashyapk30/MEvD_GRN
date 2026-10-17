@@ -61,12 +61,15 @@ def collect(root: Path):
 
 
 def main():
+    global HEAD
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", required=True)
     ap.add_argument("--out", default="ablation")
     ap.add_argument("--n_folds", type=int, default=10)
     ap.add_argument("--datasets", default="lung,hema")
+    ap.add_argument("--head", default=HEAD, help="reference variant that differences and tests are computed against")
     a = ap.parse_args()
+    HEAD = a.head
     keep = set(a.datasets.split(","))
     runs = {k: v for k, v in collect(Path(a.root)).items() if k[0] in keep}
 

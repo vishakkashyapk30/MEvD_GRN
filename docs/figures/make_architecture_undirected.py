@@ -35,9 +35,7 @@ for x, t in [(190, "WHAT IT READS"), (560, "TF GRAPHS"), (930, "TWO GRAPH NETWOR
 # column 1: inputs
 card(60, 190, 260, 110, BLUE, "scRNA + scATAC", "one summary per TF")
 card(60, 330, 260, 110, PURPLE, "Geneformer", "pretrained gene identity")
-card(60, 470, 260, 110, GREY, "Matched features", "scMultiomeGRN's own, optional", dashed=True)
-# the two extra per-TF sources join one bracket that feeds the encoders (dashed route below)
-a(f'<path d="M322,385 L350,385 L350,525 L322,525" fill="none" stroke="{PURPLE}" stroke-width="3"/>')
+
 
 
 def mini(cx, cy, color, label, star=False):
@@ -71,8 +69,8 @@ a(f'<rect x="1075" y="215" width="46" height="290" rx="23" fill="{PURPLE}" opaci
 a(f'<text transform="translate(1106,360) rotate(-90)" text-anchor="middle" font-size="17" font-weight="700" fill="{INK}">one embedding per TF</text>')
 arrow(1032, 265, 1073, 285); arrow(1032, 455, 1073, 435)
 # the Geneformer identity also feeds the encoders (dashed route underneath)
-a(f'<path d="M350,455 L350,690 L1098,690 L1098,508" fill="none" stroke="{PURPLE}" stroke-width="3" stroke-dasharray="7 6" marker-end="url(#arr)"/>')
-a(f'<text x="880" y="680" text-anchor="middle" font-size="14" fill="{PURPLE}">also feed the networks</text>')
+a(f'<path d="M190,442 L190,690 L1098,690 L1098,508" fill="none" stroke="{PURPLE}" stroke-width="3" stroke-dasharray="7 6" marker-end="url(#arr)"/>')
+a(f'<text x="880" y="680" text-anchor="middle" font-size="14" fill="{PURPLE}">also feeds the networks</text>')
 
 # column 4: symmetric pair score
 a(f'<rect x="1230" y="190" width="300" height="420" rx="18" fill="#FFFFFF" stroke="{INK}" stroke-width="3"/>')

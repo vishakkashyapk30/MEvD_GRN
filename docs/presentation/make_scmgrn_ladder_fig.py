@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """One chart for the whole story: held-out test AUPR (mean over the 12 cell types) of every method and ablation, sorted.
-Reads docs/experiments/scmgrn_results/ablation.json (written by scripts/20_scmgrn_ablation_table.py)."""
+Reads docs/experiments/scmgrn_results/a1_ablation.json (written by scripts/20_scmgrn_ablation_table.py)."""
 import json
 from pathlib import Path
 
@@ -9,7 +9,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 REPO = Path(__file__).resolve().parents[2]
-rows = {r["variant"]: r for r in json.load(open(REPO / "docs/experiments/scmgrn_results/ablation.json")) if r["n_cell_types"]}
+rows = {r["variant"]: r for r in json.load(open(REPO / "docs/experiments/scmgrn_results/a1_ablation.json")) if r["n_cell_types"]}
 spec = [  # (variant key, label, colour group)
     ("mevd_abl_min_noobs", "Floor: only per-TF RNA summary features", "floor"),
     ("mevd_abl_fl_atac_noobs", "Floor + ATAC channel", "route"),
@@ -17,9 +17,8 @@ spec = [  # (variant key, label, colour group)
     ("official_scmultiomegrn", "scMultiomeGRN (official code)", "official"),
     ("degree_product", "Trivial: product of the two TFs' training-link counts", "trivial"),
     ("degree_logreg", "Trivial: logistic regression on the two counts", "trivial"),
-    ("mevd_abl_min_noobs_smgnode", "Floor + scMultiomeGRN node features", "route"),
     ("mevd_abl_fl_fm_noobs", "Floor + Geneformer embedding only", "route"),
-    ("mevd_fm_h384_obs_smg", "MeVD-GRN, headline variant H", "ours"),
+    ("mevd_fm_h384_obs", "MeVD-GRN", "ours"),
 ]
 col = {"floor": "#8A94A0", "route": "#7fb3d5", "official": "#c8602b", "trivial": "#E69F00", "ours": "#1b6ca8"}
 spec = [s for s in spec if s[0] in rows]

@@ -8,11 +8,11 @@ In the result tables, **bold** marks the best score in a row and *italics* the s
 
 - MeVD-GRN was built to predict which transcription factor (TF) regulates which gene. scMultiomeGRN, published in Nucleic Acids Research, tackles a related task: it predicts which pairs of TFs are linked in a given cell type.
 - This week we asked a simple question. If both models are trained and tested on scMultiomeGRN's own datasets, splits and scoring code, which one does better?
-- To make that a fair contest we rebuilt the benchmark from raw data, checked that the authors' own code reproduces their published numbers on our rebuild, and changed MeVD-GRN so that it solves the same task with the same inputs.
+- To make that a fair contest we rebuilt the benchmark from raw data, checked that the authors' own code reproduces their published numbers on our rebuild, and changed MeVD-GRN so that it solves the same task.
 - On the held-out test links MeVD-GRN comes out ahead, but only by a little. Its average AUPR over the nine lung cell types is 0.935, against 0.918 for scMultiomeGRN.
 - MeVD-GRN wins on eight of the nine lung cell types and on all three blood cell types. The difference is statistically significant on six of the nine lung cell types, and Myeloid is the only one where scMultiomeGRN is slightly better.
 - Three later findings change how this result should be read, and we think they matter more than the headline number.
-- First, no single part of MeVD-GRN explains its score. Taking any one part out moves AUPR by 0.001 or less, although taking everything optional out at once drops it to 0.63.
+- First, when we strip MeVD-GRN down to its simplest form its score drops to 0.63, but adding back only the pretrained Geneformer gene embedding brings it to 0.932. That embedding carries no information about the cells, only about which TFs are involved.
 - Second, a rule with no model at all, which just counts how many known links each TF already has, reaches 0.929. That beats scMultiomeGRN and covers about two thirds of MeVD-GRN's lead.
 - Third, the benchmark's answer key is computed from the same ATAC data the models read. Put together, this suggests the benchmark mostly rewards knowing which TFs tend to have many links, and that MeVD-GRN's real edge beyond that is about 0.006 AUPR.
 
@@ -66,9 +66,10 @@ In the result tables, **bold** marks the best score in a row and *italics* the s
 - MeVD-GRN starts by summarising each TF in a handful of numbers taken from the RNA and ATAC data.
 - It adds a pretrained gene embedding from Geneformer. This gives every gene a fixed vector that is the same in every cell type.
 - It then builds two graphs between TFs without looking at any labels. One connects TFs that are co-expressed, and the other connects each TF to the partners it is most likely to relate to, judged from accessibility and expression together.
+- During training it also passes messages over the fold's known training links. The test links are never part of this graph.
 - Two graph networks run over these graphs, one for the RNA view and one for the ATAC view, and their outputs are merged into a single embedding per TF.
 - A pair scorer turns the embeddings of two TFs into the chance that they are linked. The scorer gives the same answer for (u, v) as for (v, u), which is what an undirected task needs.
-- When we switch them on, the model can also use the same extra inputs as scMultiomeGRN, including the known training links.
+- The model has 4.88 million parameters and trains in a few seconds per fold.
 
 ![MeVD-GRN, version used for the scMultiomeGRN comparison](../figures/architecture_undirected_2026-10-17.png)
 
@@ -80,50 +81,25 @@ In the result tables, **bold** marks the best score in a row and *italics* the s
 - We switched off MeVD-GRN's own motif relation. The answer key is itself a motif scan, so using it would be circular.
 - Training uses the same budget as scMultiomeGRN, with at most 2,000 epochs and a stop after 100 epochs without improvement. The epoch we keep is picked on a validation split, never on the test links.
 - The rest of the model is our standard configuration, which was fixed before any result came in: hidden size 384, two graph layers and the Geneformer embedding.
-- To give MeVD-GRN the same information scMultiomeGRN has, we added scMultiomeGRN's inputs as optional extras. None of them involves a held-out link.
 
-| What scMultiomeGRN uses | How MeVD-GRN receives it |
-|---|---|
-| MAESTRO accessibility score of each TF | compressed to 64 numbers per TF and added through a small encoder |
-| GRNBoost2 importance of each TF towards every gene | compressed to 64 numbers per TF, through the same encoder |
-| 16 by 16 joint-expression histogram of each TF pair | made symmetric (136 values) and added as one term in the scorer |
-| The known training links | passed to the graph networks as an extra graph |
-
-## 7. The four versions of MeVD-GRN we compared
-
-- To see which of these changes matter, we ran four versions of the model on every cell type.
-- The full model has everything switched on.
-- The version without scMultiomeGRN inputs drops those extra input features.
-- The version without scMultiomeGRN inputs or known links also drops the known training links, so it never sees a single known link.
-- The old directed model is the original MeVD-GRN, with its two directions averaged.
-
-| Version | Symmetric scorer | scMultiomeGRN input features | Known links as a graph | Parameters |
-|---|---|---|---|---|
-| MeVD-GRN, full model | yes | yes | yes | 5.07 M |
-| Without scMultiomeGRN inputs | yes | no | yes | 4.88 M |
-| Without scMultiomeGRN inputs or known links | yes | no | no | 3.70 M |
-| Old directed model | no | no | yes | 4.44 M |
-
-- All four score within 0.001 AUPR of each other on average over the twelve cell types, and within about 0.01 on any single cell type. Slide 13 explains what that tells us.
-
-## 8. How the comparison was set up
+## 7. How the comparison was set up
 
 - Both methods get the same data, the same splits and the same scoring code.
 - The splits are scMultiomeGRN's own: ten folds made with its random seed, 666. Our fold files are byte-for-byte identical to the ones the authors' split code writes.
 - In each fold, a tenth of the known links plus the same number of random non-links is held out for testing. Another 18% of the links is kept aside for validation.
 - Scores come from the authors' own metric function. AUROC is the chance that a true link is ranked above a non-link, and AUPR is the area under the precision-recall curve.
-- Our headline numbers are on the held-out test links only. The paper scores the full matrix of TF pairs, which includes the training links, so we report that separately on slide 15 to compare with the published figures.
+- Our headline numbers are on the held-out test links only. The paper scores the full matrix of TF pairs, which includes the training links, so we report that separately on slide 14 to compare with the published figures.
 - We ran the official code with six seeds on the first five lung cell types and two seeds on the rest. MeVD-GRN ran with five seeds everywhere.
 
-## 9. How we kept test data out of training
+## 8. How we kept test data out of training
 
 - The test links and non-links never appear in the training data, and a check in the code enforces this on every fold.
 - Negative training examples are drawn only from each fold's training negatives.
 - The graphs MeVD-GRN reads are built without any labels.
 - Every MeVD-GRN result file records that it ran in this zero-leak mode, and the script that compiles the results refuses any file that did not.
-- No setting was tuned on test results. All the versions were fixed before the first result came in.
+- No setting was tuned on test results. The configuration was fixed before the first result came in.
 
-## 10. Did we rebuild the benchmark correctly?
+## 9. Did we rebuild the benchmark correctly?
 
 - The authors do not release their processed data, so the comparison only means something if our rebuild matches theirs. We checked this three ways.
 - Our link counts are within 5% of the paper's Table S1 on all nine lung cell types (slide 3). The largest gap is Vascular endothelial, at 4.6% above.
@@ -147,109 +123,87 @@ In the result tables, **bold** marks the best score in a row and *italics* the s
 
 - Averaged over the nine lung cell types, the re-run scores 0.920 / 0.784, against 0.924 / 0.790 in the paper. We are comparing against a faithful copy of the published method, not a weakened one.
 
-## 11. Main result: lung, held-out test links
+## 10. Main result: lung, held-out test links
 
 - The table shows AUROC / AUPR on the held-out links, averaged over the ten folds and then over the seeds.
 
-| Cell type | MeVD-GRN, full model | Without scMultiomeGRN inputs | Without scMultiomeGRN inputs or known links | Old directed model | scMultiomeGRN (official code) |
-|---|---|---|---|---|---|
-| Bronchiolar and alveolar | *0.914* / *0.930* | 0.913 / *0.930* | 0.913 / 0.929 | **0.915** / **0.931** | 0.901 / 0.911 |
-| Ciliated epithelial | **0.928** / **0.940** | **0.928** / **0.940** | *0.927* / *0.939* | **0.928** / **0.940** | 0.912 / 0.915 |
-| Vascular endothelial | **0.923** / *0.934* | **0.923** / **0.935** | *0.921* / 0.932 | **0.923** / *0.934* | 0.894 / 0.902 |
-| Stromal | **0.929** / **0.941** | **0.929** / **0.941** | **0.929** / **0.941** | *0.928* / *0.940* | 0.920 / 0.923 |
-| Lymphatic endothelial | **0.922** / **0.937** | *0.921* / *0.935* | 0.920 / 0.934 | 0.919 / 0.933 | 0.908 / 0.917 |
-| Megakaryocytes | *0.905* / *0.923* | **0.907** / **0.925** | 0.902 / *0.923* | 0.901 / 0.920 | 0.898 / 0.915 |
-| Myeloid | 0.927 / 0.933 | *0.928* / 0.936 | *0.928* / 0.937 | **0.930** / *0.939* | **0.930** / **0.943** |
-| Neuroendocrine | 0.927 / 0.938 | *0.928* / *0.939* | **0.929** / **0.940** | *0.928* / *0.939* | 0.912 / 0.917 |
-| Lymphoid | *0.926* / *0.935* | 0.922 / 0.932 | **0.927** / **0.937** | 0.921 / 0.926 | 0.917 / 0.918 |
-| Average of the nine | **0.922** / **0.935** | **0.922** / **0.935** | **0.922** / **0.935** | *0.921* / *0.934* | 0.910 / 0.918 |
+| Cell type | MeVD-GRN | scMultiomeGRN (official code) |
+|---|---|---|
+| Bronchiolar and alveolar | **0.913** / **0.929** | *0.901* / *0.911* |
+| Ciliated epithelial | **0.928** / **0.940** | *0.912* / *0.915* |
+| Vascular endothelial | **0.923** / **0.935** | *0.894* / *0.902* |
+| Stromal | **0.929** / **0.941** | *0.920* / *0.923* |
+| Lymphatic endothelial | **0.921** / **0.935** | *0.908* / *0.917* |
+| Megakaryocytes | **0.907** / **0.925** | *0.898* / *0.915* |
+| Myeloid | *0.928* / *0.936* | **0.930** / **0.943** |
+| Neuroendocrine | **0.928** / **0.939** | *0.912* / *0.917* |
+| Lymphoid | **0.922** / **0.932** | *0.917* / *0.918* |
+| Average of the nine | **0.922** / **0.935** | *0.910* / *0.918* |
 
 ![Held-out test links, lung](figs_scmgrn/fig_test.png)
 
-- To check whether these gaps are real, we compared the full model with the official code fold by fold, since both used the same folds, with a Wilcoxon signed-rank test.
+- To check whether these gaps are real, we compared the two methods fold by fold, since both used the same folds, with a Wilcoxon signed-rank test.
 
 | Cell type | AUPR difference | p | AUROC difference | p |
 |---|---|---|---|---|
-| Vascular endothelial | +0.033 | 0.002 | +0.029 | 0.002 |
+| Vascular endothelial | +0.033 | 0.002 | +0.030 | 0.002 |
 | Ciliated epithelial | +0.025 | 0.002 | +0.016 | 0.004 |
-| Neuroendocrine | +0.021 | 0.002 | +0.015 | 0.004 |
-| Lymphatic endothelial | +0.020 | 0.002 | +0.014 | 0.010 |
-| Bronchiolar and alveolar | +0.019 | 0.004 | +0.013 | 0.014 |
-| Stromal | +0.019 | 0.004 | +0.009 | 0.020 |
-| Lymphoid | +0.017 | 0.105 | +0.009 | 0.375 |
-| Megakaryocytes | +0.009 | 0.160 | +0.007 | 0.275 |
-| Myeloid | -0.011 | 0.375 | -0.003 | 0.695 |
-| Pooled over all 90 fold pairs | +0.017 | 5e-11 | +0.012 | 2e-9 |
+| Neuroendocrine | +0.022 | 0.002 | +0.016 | 0.002 |
+| Bronchiolar and alveolar | +0.019 | 0.002 | +0.012 | 0.020 |
+| Lymphatic endothelial | +0.018 | 0.002 | +0.013 | 0.010 |
+| Stromal | +0.018 | 0.004 | +0.009 | 0.010 |
+| Lymphoid | +0.014 | 0.105 | +0.005 | 0.557 |
+| Megakaryocytes | +0.010 | 0.105 | +0.009 | 0.232 |
+| Myeloid | -0.007 | 0.770 | -0.002 | 0.715 |
+| Pooled over all 90 fold pairs | +0.017 | 2e-11 | +0.012 | 1e-9 |
 
-- MeVD-GRN is ahead on AUPR in 83% of the 90 cell-type and fold pairs, and on AUROC in 78%.
+- MeVD-GRN is ahead on AUPR in 88% of the 90 cell-type and fold pairs, and on AUROC in 79%.
 - The gains are small, mostly one to three points of AUPR, while scores move by two to five points from one fold to the next.
 - With only ten folds per cell type, 0.002 is the smallest p-value this test can produce.
 - The pooled p-value treats the folds of one cell type as independent, even though they share a graph, so it is too optimistic.
 - The fair summary is that MeVD-GRN is consistently a little better, not dramatically better.
 
-## 12. Main result: hematopoiesis
+## 11. Main result: hematopoiesis
 
 - The blood data show the same pattern on a second, independent dataset.
 
-| Cell type | MeVD-GRN, full model | Without scMultiomeGRN inputs | Without scMultiomeGRN inputs or known links | Old directed model | scMultiomeGRN (official code) |
-|---|---|---|---|---|---|
-| HSC | **0.934** / *0.940* | **0.934** / **0.941** | 0.931 / 0.937 | *0.932* / *0.940* | 0.922 / 0.921 |
-| CMP | **0.925** / **0.932** | **0.925** / **0.932** | *0.924* / *0.931* | *0.924* / **0.932** | 0.914 / 0.909 |
-| GMP | **0.925** / *0.934* | **0.925** / **0.935** | 0.922 / *0.934* | *0.924* / **0.935** | 0.921 / 0.926 |
-| Average of the three | **0.928** / **0.936** | **0.928** / **0.936** | 0.926 / *0.934* | *0.927* / **0.936** | 0.919 / 0.919 |
+| Cell type | MeVD-GRN | scMultiomeGRN (official code) |
+|---|---|---|
+| HSC | **0.934** / **0.941** | *0.922* / *0.921* |
+| CMP | **0.925** / **0.932** | *0.914* / *0.909* |
+| GMP | **0.925** / **0.935** | *0.921* / *0.926* |
+| Average of the three | **0.928** / **0.936** | *0.919* / *0.919* |
 
 ![Held-out test links, hematopoiesis](figs_scmgrn_hema/fig_test.png)
 
-- Fold by fold against the official code, the full model gains 0.020 AUPR on HSC (p = 0.002), 0.023 on CMP (p = 0.002) and 0.008 on GMP (p = 0.049).
-- Pooled over the 30 fold pairs, the gain is 0.017 AUPR (p = 6e-8) and 0.009 AUROC (p = 8e-7), and MeVD-GRN is ahead in 90% of the pairs.
-- The four MeVD-GRN versions are again almost impossible to tell apart.
+- Fold by fold against the official code, MeVD-GRN gains 0.021 AUPR on HSC (p = 0.002), 0.023 on CMP (p = 0.002) and 0.009 on GMP (p = 0.027).
+- Pooled over the 30 fold pairs, the gain is 0.017 AUPR (p = 4e-8) and 0.009 AUROC (p = 8e-8), and MeVD-GRN is ahead in 93% of the pairs.
 - Keep in mind that the RNA and ATAC data were measured in different cells here, and that the CMP RNA merges three labels.
 
-## 13. Why does MeVD-GRN score higher? The ablations
+## 12. Where does MeVD-GRN's score come from?
 
-- If MeVD-GRN's lead came from one design choice, removing that choice should lower its score. We tested this by changing one part of the full model at a time and running every version on all twelve cell types with five seeds.
-- The table gives the average held-out score over the twelve cell types, the difference from the full model, and a fold-paired test against the full model over 120 pairs.
+- To find out what the model actually relies on, we built a floor model. It keeps only the per-TF summary features, the pair scorer and a smaller network, with no Geneformer embedding, no ATAC channel, no graph network and no known links.
+- We then added back exactly one of those parts at a time and ran every version on all twelve cell types with five seeds.
+- The table gives the average held-out score over the twelve cell types and the difference from MeVD-GRN.
 
-| Version | AUPR | Difference from the full model | p | AUROC | Difference from the full model | p |
-|---|---|---|---|---|---|---|
-| MeVD-GRN, full model | *0.9349* | – | – | **0.9237** | – | – |
-| Only the scMultiomeGRN node features (no pair histograms) | 0.9347 | -0.0002 | 0.99 | **0.9237** | -0.0001 | 0.92 |
-| Only the pair histograms (no scMultiomeGRN node features) | 0.9347 | -0.0002 | 0.39 | **0.9237** | -0.0001 | 0.61 |
-| Without scMultiomeGRN inputs | **0.9350** | +0.0001 | 0.33 | *0.9236* | -0.0001 | 0.94 |
-| Without scMultiomeGRN inputs or known links | 0.9345 | -0.0004 | 0.19 | 0.9228 | -0.0009 | 0.002 |
-| Old directed model, both directions averaged | 0.9341 | -0.0008 | 0.43 | 0.9226 | -0.0011 | 0.07 |
-| No Geneformer gene embedding | 0.9343 | -0.0006 | 0.30 | 0.9229 | -0.0008 | 0.03 |
-| No ATAC channel | 0.9345 | -0.0003 | 0.40 | 0.9235 | -0.0002 | 0.27 |
-| No graph network (features go straight to the scorer) | 0.9340 | -0.0009 | 0.005 | 0.9226 | -0.0011 | 0.02 |
-| Co-expression graph only (this also drops the known links) | 0.9340 | -0.0009 | 0.07 | 0.9223 | -0.0014 | 0.0009 |
-| TF-candidate graph only (this also drops the known links) | 0.9339 | -0.0009 | 0.04 | 0.9225 | -0.0012 | 0.01 |
-| Base size: 128 wide and no Geneformer (0.53 M parameters instead of 5 M) | 0.9348 | -0.0000 | 0.71 | **0.9237** | -0.0001 | 0.92 |
-| Floor: base size, plus no ATAC channel, no graph network, no known links and no scMultiomeGRN inputs (0.10 M parameters) | 0.6326 | -0.3023 | 2e-21 | 0.6349 | -0.2888 | 2e-21 |
-| scMultiomeGRN, official code (for reference) | 0.9180 | -0.0169 | 2e-15 | 0.9124 | -0.0114 | 7e-13 |
-
-- No single change matters much. Removing Geneformer, the ATAC channel, the graph networks, either graph, the known links or the scMultiomeGRN inputs, or shrinking the model tenfold, moves AUPR by 0.001 or less.
-- A few of these tiny shifts are statistically detectable (no graph network gives p = 0.005), but each is about a twentieth of the gap to scMultiomeGRN.
-- That gap, 0.017 AUPR, is about twenty times bigger than any of them, so we cannot pin it on one design decision.
-- The floor tells a different story. With everything optional removed at once, the score collapses to 0.633, about 0.30 below the full model.
-- So the useful information is not missing, it is duplicated. Several routes carry it, any one of them is enough, and the model fails only when all of them are gone.
-- To see which routes work on their own, we added exactly one back to the floor model.
-
-| Floor model plus only... | AUPR | Difference from the full model | AUROC | Difference from the full model |
+| Version | AUPR | Difference from MeVD-GRN | AUROC | Difference from MeVD-GRN |
 |---|---|---|---|---|
-| Nothing added (the floor itself) | 0.633 | -0.302 | 0.635 | -0.289 |
-| The ATAC channel | 0.836 | -0.099 | 0.823 | -0.101 |
-| The graph network over label-free graphs | 0.875 | -0.060 | 0.862 | -0.062 |
-| The scMultiomeGRN node features | *0.930* | -0.005 | *0.919* | -0.005 |
-| The Geneformer embedding | **0.932** | -0.003 | **0.921** | -0.003 |
+| MeVD-GRN | **0.935** | – | **0.924** | – |
+| Floor model: only the per-TF summary features (no Geneformer, no ATAC channel, no graph network, no known links) | 0.633 | -0.302 | 0.635 | -0.289 |
+| Floor model plus the ATAC channel | 0.836 | -0.099 | 0.823 | -0.100 |
+| Floor model plus the graph network over label-free graphs | 0.875 | -0.060 | 0.862 | -0.062 |
+| Floor model plus the Geneformer embedding | *0.932* | -0.003 | *0.921* | -0.003 |
+| scMultiomeGRN, official code (for reference) | 0.918 | -0.017 | 0.912 | -0.011 |
 
+- The floor model collapses to 0.633 AUPR, about 0.30 below MeVD-GRN. The summary features alone are not enough.
+- Adding the ATAC channel brings it to 0.836, and adding the graph network brings it to 0.875. Both help, but neither gets close to the full model.
+- Adding only the Geneformer embedding brings it to 0.932, which is 0.003 below MeVD-GRN and 0.014 above scMultiomeGRN.
 - The Geneformer embedding is a fixed vector per gene and is the same in every cell type. It knows nothing about the cell data, only which TFs are in the pair.
-- Even so, a model that only knows which two TFs it is looking at scores 0.932 AUPR. That is 0.003 below the full model and 0.014 above scMultiomeGRN.
-- The scMultiomeGRN node features, which also act mostly as an identity tag for each TF, do almost as well.
-- This points to the identity of the TFs, rather than anything specific to the cell type, as the main source of signal. The next slide tests that directly.
+- So a model that only knows which two TFs it is looking at does almost as well as the full model. This points to the identity of the TFs, rather than anything specific to the cell type, as the main source of signal. The next slide tests that directly.
 
 ![Where every method lands on held-out AUPR](figs_scmgrn/fig_ladder.png)
 
-## 14. A no-model baseline: counting known links
+## 13. A no-model baseline: counting known links
 
 - The official folds split links, not TFs, so every TF shows up in the training links.
 - A TF with many known links in training is likely to have many among the test links too. A method can exploit this hub effect without learning anything about regulation.
@@ -262,63 +216,63 @@ In the result tables, **bold** marks the best score in a row and *italics* the s
 | scMultiomeGRN, official code | 0.918 | 0.912 |
 | No-model baseline: product of the two TFs' training-link counts | 0.924 | 0.912 |
 | No-model baseline: logistic regression on the two counts | *0.929* | *0.917* |
-| MeVD-GRN, full model | **0.935** | **0.924** |
+| MeVD-GRN | **0.935** | **0.924** |
 
 - The counting baseline beats scMultiomeGRN on AUPR and matches or beats it on AUROC. On this split, scMultiomeGRN does no better than a rule that counts known links.
 - Of the 0.017 AUPR that MeVD-GRN gains over scMultiomeGRN, about 0.011 can be had from counting alone.
-- What MeVD-GRN adds beyond the hub effect is about 0.006 AUPR and 0.007 AUROC. That is small but real: a fold-paired test over 120 pairs gives p = 1e-8 for AUPR and 7e-9 for AUROC.
+- What MeVD-GRN adds beyond the hub effect is about 0.006 AUPR and 0.007 AUROC. That is small but real: a fold-paired test over 120 pairs gives p = 6e-9 for AUPR and 1e-8 for AUROC.
 - This matches what we saw with BEAR-GRN, where simple in-degree rankers matched or beat published methods and reviewers expected splits that hold out whole TFs.
 - A stricter version of this benchmark would hold out all the links of some TFs, which removes the counting shortcut. We have not run it yet, and it is the obvious next experiment.
 
-## 15. The paper's own evaluation (for reference only)
+## 14. The paper's own evaluation (for reference only)
 
 - The paper scores the full matrix of all TF pairs, including the links each model was trained on. We show it only so the numbers can be compared with the published ones, and we draw no conclusions from it.
 - The last column holds the published figures for scMultiomeGRN and is not ranked.
 
-| Cell type | MeVD-GRN, full model | Old directed model | scMultiomeGRN (official code) | Paper (published, not ranked) |
-|---|---|---|---|---|
-| Bronchiolar and alveolar | **0.940** / *0.849* | *0.938* / **0.855** | 0.913 / 0.760 | 0.91 / 0.76 |
-| Ciliated epithelial | *0.938* / *0.828* | **0.939** / **0.833** | 0.918 / 0.730 | 0.93 / 0.75 |
-| Vascular endothelial | **0.935** / *0.800* | **0.935** / **0.802** | *0.899* / 0.668 | 0.90 / 0.67 |
-| Stromal | *0.952* / *0.886* | **0.953** / **0.890** | 0.927 / 0.800 | 0.93 / 0.80 |
-| Lymphatic endothelial | *0.939* / *0.850* | **0.942** / **0.862** | 0.915 / 0.781 | 0.93 / 0.81 |
-| Megakaryocytes | **0.938** / *0.846* | *0.937* / **0.855** | 0.917 / 0.788 | 0.92 / 0.78 |
-| Myeloid | *0.956* / *0.877* | **0.958** / **0.892** | 0.943 / 0.849 | 0.95 / 0.85 |
-| Neuroendocrine | *0.951* / *0.893* | **0.952** / **0.900** | 0.920 / 0.820 | 0.92 / 0.82 |
-| Lymphoid | **0.951** / **0.902** | *0.950* / *0.898* | 0.929 / 0.861 | 0.93 / 0.86 |
-| Average of the nine | **0.945** / *0.859* | **0.945** / **0.865** | *0.920* / 0.784 | 0.924 / 0.79 |
+| Cell type | MeVD-GRN | scMultiomeGRN (official code) | Paper (published, not ranked) |
+|---|---|---|---|
+| Bronchiolar and alveolar | **0.940** / **0.850** | *0.913* / *0.760* | 0.91 / 0.76 |
+| Ciliated epithelial | **0.939** / **0.829** | *0.918* / *0.730* | 0.93 / 0.75 |
+| Vascular endothelial | **0.935** / **0.801** | *0.899* / *0.668* | 0.90 / 0.67 |
+| Stromal | **0.951** / **0.883** | *0.927* / *0.800* | 0.93 / 0.80 |
+| Lymphatic endothelial | **0.940** / **0.850** | *0.915* / *0.781* | 0.93 / 0.81 |
+| Megakaryocytes | **0.938** / **0.849** | *0.917* / *0.788* | 0.92 / 0.78 |
+| Myeloid | **0.957** / **0.879** | *0.943* / *0.849* | 0.95 / 0.85 |
+| Neuroendocrine | **0.951** / **0.894** | *0.920* / *0.820* | 0.92 / 0.82 |
+| Lymphoid | **0.951** / **0.905** | *0.929* / *0.861* | 0.93 / 0.86 |
+| Average of the nine | **0.945** / **0.860** | *0.920* / *0.784* | 0.924 / 0.79 |
 
 ![The paper's evaluation](figs_scmgrn/fig_paper.png)
 
-- On this evaluation MeVD-GRN's lead looks much bigger, about 0.075 AUPR pooled over the 90 fold pairs, against 0.017 on the held-out links.
+- On this evaluation MeVD-GRN's lead looks much bigger, about 0.076 AUPR pooled over the 90 fold pairs, against 0.017 on the held-out links.
 - The difference comes from the training links. A larger model rebuilds the links it was trained on more completely, and this evaluation rewards that, so it should not be read as better generalisation.
-- For the blood cell types, on the same evaluation: HSC scores 0.945 / 0.790 for MeVD-GRN, 0.927 / 0.696 for the official code and 0.92 / 0.67 in the paper. CMP scores 0.945 / 0.800, 0.927 / 0.692 and 0.92 / 0.66, and GMP scores 0.943 / 0.784, 0.928 / 0.681 and 0.93 / 0.71.
+- For the blood cell types, on the same evaluation: HSC scores 0.946 / 0.793 for MeVD-GRN, 0.927 / 0.696 for the official code and 0.92 / 0.67 in the paper. CMP scores 0.946 / 0.805, 0.927 / 0.692 and 0.92 / 0.66, and GMP scores 0.943 / 0.784, 0.928 / 0.681 and 0.93 / 0.71.
 
-## 16. Limitations
+## 15. Limitations
 
 - The answer key is computed from the same ATAC data the models read. A model can score well by learning how the key was built, without learning anything about regulation, and the same holds for scMultiomeGRN.
 - The folds split links, not TFs. A TF's identity and its number of training links carry over to the test links, which is why counting links works so well.
 - The graphs are small. The lung cell types have 41 to 271 TFs and 266 to 5,026 links, so each test fold holds only 27 to 503 true links.
 - In the lung data, the "RNA" is gene-body accessibility rather than expression, so both modalities come from ATAC.
-- The Seurat object has no list of variable genes, so the GRNBoost2 step uses genes seen in more than 10% of cells plus all TFs, following the paper's own filter. This applies to both methods.
+- The Seurat object has no list of variable genes, so when we prepared scMultiomeGRN's GRNBoost2 features we used genes seen in more than 10% of cells plus all TFs, following the paper's own filter.
 - The official code ran with six seeds on five cell types and two on the rest. It gives nearly the same result for every seed (six seeds on Myeloid agree to within 0.001), and it takes about five minutes per fold on the large cell types.
 - For the blood data, the ATAC counts come from the GEO matrix rather than per-cell sequence files, and the CMP RNA is our reading of three labels.
 - None of this tells us how the two methods compare on experimentally measured answer keys, which is what a benchmark like BEAR-GRN offers.
 
-## 17. What we conclude and what comes next
+## 16. What we conclude and what comes next
 
 - On scMultiomeGRN's own benchmark, with the same data, splits and scoring, and a faithful copy of the published method as the baseline, MeVD-GRN scores consistently higher on held-out links: 0.935 against 0.918 AUPR. This is a fair claim and we can make it.
-- What matters more is what that lead is made of. Counting known links reproduces about two thirds of it, no single part of MeVD-GRN is responsible for it, and a fixed per-gene embedding with no cell data comes close to the full model.
+- What matters more is what that lead is made of. Counting known links reproduces about two thirds of it, and a fixed per-gene embedding with no cell data comes close to the full model.
 - What MeVD-GRN adds beyond the hub effect is about 0.6 points of AUPR.
 - Our reading is that this benchmark mostly measures how well a method learns which TFs tend to have links. MeVD-GRN does that slightly better than scMultiomeGRN, but the benchmark says little about whether either method infers regulation.
 - The next step is to repeat the comparison with a split by TF, holding out every link of some TFs. That removes the counting shortcut and forces both methods to use the cell data.
 - Running that on scMultiomeGRN's datasets would show whether MeVD-GRN's small lead survives, and how scMultiomeGRN fares once the hub effect is gone. The same idea applies to benchmarks with experimental answer keys.
 
-## 18. Run record and where things are
+## 17. Run record and where things are
 
-- Everything in this document is finished: all nine lung and three blood cell types for both methods, the thirteen ablation versions on all twelve cell types, and the no-model baselines.
+- Everything in this document is finished: all nine lung and three blood cell types for both methods, the floor-model experiments on all twelve cell types, and the no-model baselines.
 - Ada's outbound internet turned out to manage only 10 to 140 KB/s per connection, so we streamed the big input files from the laptop over the VPN, which took about three and a half hours.
 - Along the way we found that the GEO lung file is compressed twice, that the Seurat object has no variable-gene list, and that the official code runs out of memory on the largest cell types unless each worker gets 30 GB. We also fixed a bug that made one of our workers stop early. All of this is written up in `docs/experiments/scmultiomegrn_generalization.md`, section 11.8.
-- The code is on branch `scmgrn-tftf`. The model lives in `src/models/mevd_grn.py` and `src/models/decoder.py`, the benchmark features in `src/benchmarks/scmgrn_features.py`, the scripts in `scripts/14b`, `16` to `21`, the cluster jobs in `slurm/scmgrn_*.sh` and the tests in `tests/`.
+- The code is on branch `scmgrn-tftf`. The model lives in `src/models/mevd_grn.py` and `src/models/decoder.py`, the scripts in `scripts/14b`, `16` to `21`, the cluster jobs in `slurm/scmgrn_*.sh` and the tests in `tests/`.
 - The compiled results are in `docs/experiments/scmgrn_results/`. The fold-level files are on Ada under `~/scmgrn/results/`.
 - The figures are made by `docs/presentation/make_scmgrn_figs.py`, `docs/presentation/make_scmgrn_ladder_fig.py` and `docs/figures/make_architecture_undirected.py`, and this document by `docs/presentation/build_deck_11_17.py`.
