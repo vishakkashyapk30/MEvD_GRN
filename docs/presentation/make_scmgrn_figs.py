@@ -23,11 +23,9 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 from src.utils.io import load_config  # noqa: E402
 
-OFF, HEAD = "official_scmultiomegrn", "mevd_fm_h384_obs_smg"
-LAB = {HEAD: "MeVD-GRN (H)", OFF: "scMultiomeGRN (official code, re-run)", "mevd_fm_h384_obs": "A1: no smg inputs",
-       "mevd_fm_h384_noobs": "A2: label-free graphs only", "mevd_fm_h384_directed_obs": "A3: old directed model"}
-COL = {HEAD: "#1b6ca8", OFF: "#c8602b", "mevd_fm_h384_obs": "#7fb3d5", "mevd_fm_h384_noobs": "#a9cce3",
-       "mevd_fm_h384_directed_obs": "#999999"}
+OFF, HEAD = "official_scmultiomegrn", "mevd_fm_h384_obs"
+LAB = {HEAD: "MeVD-GRN", OFF: "scMultiomeGRN (official code, re-run)"}
+COL = {HEAD: "#1b6ca8", OFF: "#c8602b"}
 
 
 def short(ct):

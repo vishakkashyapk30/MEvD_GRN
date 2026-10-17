@@ -13,10 +13,6 @@
 <rect x="60" y="330" width="260" height="110" rx="18" fill="#FFFFFF" stroke="#CC79A7" stroke-width="3"/>
 <text x="190.0" y="383.0" text-anchor="middle" font-size="22" font-weight="700" fill="#1F2937">Geneformer</text>
 <text x="190.0" y="409.0" text-anchor="middle" font-size="15" fill="#8A94A0">pretrained gene identity</text>
-<rect x="60" y="470" width="260" height="110" rx="18" fill="#FFFFFF" stroke="#8A94A0" stroke-width="3" stroke-dasharray="8 6"/>
-<text x="190.0" y="523.0" text-anchor="middle" font-size="22" font-weight="700" fill="#1F2937">Matched features</text>
-<text x="190.0" y="549.0" text-anchor="middle" font-size="15" fill="#8A94A0">scMultiomeGRN's own, optional</text>
-<path d="M322,385 L350,385 L350,525 L322,525" fill="none" stroke="#CC79A7" stroke-width="3"/>
 <rect x="450" y="195" width="220" height="180" rx="18" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
 <line x1="500" y1="241" x2="548" y2="223" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
 <line x1="548" y1="223" x2="606" y2="245" stroke="#0072B2" stroke-width="2.5" opacity="0.65"/>
@@ -68,8 +64,8 @@
 <text transform="translate(1106,360) rotate(-90)" text-anchor="middle" font-size="17" font-weight="700" fill="#1F2937">one embedding per TF</text>
 <line x1="1032" y1="265" x2="1073" y2="285" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
 <line x1="1032" y1="455" x2="1073" y2="435" stroke="#6B7280" stroke-width="3" marker-end="url(#arr)"/>
-<path d="M350,455 L350,690 L1098,690 L1098,508" fill="none" stroke="#CC79A7" stroke-width="3" stroke-dasharray="7 6" marker-end="url(#arr)"/>
-<text x="880" y="680" text-anchor="middle" font-size="14" fill="#CC79A7">also feed the networks</text>
+<path d="M190,442 L190,690 L1098,690 L1098,508" fill="none" stroke="#CC79A7" stroke-width="3" stroke-dasharray="7 6" marker-end="url(#arr)"/>
+<text x="880" y="680" text-anchor="middle" font-size="14" fill="#CC79A7">also feeds the networks</text>
 <rect x="1230" y="190" width="300" height="420" rx="18" fill="#FFFFFF" stroke="#1F2937" stroke-width="3"/>
 <circle cx="1305" cy="290" r="30" fill="#1F2937"/><text x="1305" y="298" text-anchor="middle" font-size="22" font-weight="700" fill="#FFFFFF">u</text>
 <circle cx="1455" cy="290" r="30" fill="#1F2937"/><text x="1455" y="298" text-anchor="middle" font-size="22" font-weight="700" fill="#FFFFFF">v</text>
