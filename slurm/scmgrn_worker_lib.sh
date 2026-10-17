@@ -17,7 +17,11 @@ VARIANTS=(${VARIANTS:-mevd_fm_h384:obs:smg mevd_fm_h384:obs:nosmg mevd_fm_h384:n
 KINDS=${KINDS:-official mevd}
 # ABLATION=1: component ablations of the headline variant H (one change each; variant = <config>:<obs|noobs>:<smg|smgnode|smgpair|nosmg>)
 # on top of the same folds and seeds. MeVD-GRN only; the official code is not re-run.
-if [ -n "${ABLATION:-}" ]; then
+if [ "${ABLATION:-}" = 2 ]; then
+  # single-component ablations on top of the model WITHOUT scMultiomeGRN inputs (mevd_fm_h384:obs:nosmg)
+  VARIANTS=(mevd_abl_nofm:obs:nosmg mevd_abl_noatac:obs:nosmg mevd_abl_nognn:obs:nosmg mevd_abl_coexpr:obs:nosmg mevd_abl_tfcand:obs:nosmg mevd_abl_base:obs:nosmg)
+  KINDS=mevd
+elif [ -n "${ABLATION:-}" ]; then
   VARIANTS=(mevd_abl_nofm:obs:smg mevd_abl_noatac:obs:smg mevd_abl_nognn:obs:smg mevd_abl_coexpr:obs:smg mevd_abl_tfcand:obs:smg mevd_abl_base:obs:smg mevd_fm_h384:obs:smgnode mevd_fm_h384:obs:smgpair mevd_abl_min:noobs:nosmg mevd_abl_fl_atac:noobs:nosmg mevd_abl_fl_fm:noobs:nosmg mevd_abl_fl_gnn:noobs:nosmg mevd_abl_min:noobs:smgnode)
   KINDS=mevd
 fi                         # the laptop worker sets KINDS=mevd
