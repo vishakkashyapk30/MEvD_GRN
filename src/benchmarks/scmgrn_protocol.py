@@ -152,19 +152,17 @@ def evaluate_score_matrix(S: np.ndarray, adj: np.ndarray, test_eval: dict) -> Di
     return {"test": test, "all": all_, "all_offdiag": all_off}
 
 
-def degree_matched_test(adj: np.ndarray, fold: dict, seed: int = 0, n_bins: int = 5) -> Dict[str, np.ndarray]:
+def degree_matched_test(adj: np.ndarray, fold: dict, seed: int = 0, n_near: int = 3) -> Dict[str, np.ndarray]:
     """Second, degree-controlled test set ("Hidden sampling biases inflate performance in GRN inference", 2025).
 
     Positives = the fold's test positives (unordered, u < v). Negatives = true non-links (adj == 0) that are not
-    in the fold's train/val files, one per positive, drawn so that the endpoints' TRAINING-degree quantile bins
-    match those of the positive. A pure degree rule is near chance here by construction. Deterministic for a given
-    (fold, seed), so every method is scored on the same pairs. Returns {"u", "v", "label"}.
+    in the fold's train/val files, one per positive: drawn at random among the n_near candidate pairs closest to
+    the positive in (lower, higher) log1p TRAINING degree of the two TFs. A pure degree rule is then near chance.
+    Deterministic for a given (fold, seed), so every method is scored on the same pairs. Returns {"u", "v", "label"}.
     """
     n = adj.shape[0]
     tr = fold["train"]["pos"]
-    deg = np.bincount(tr[:, 0], minlength=n).astype(float)
-    edges = np.unique(np.quantile(deg, np.linspace(0, 1, n_bins + 1)))
-    b = np.clip(np.searchsorted(edges, deg, side="right") - 1, 0, max(len(edges) - 2, 0))
+    ld = np.log1p(np.bincount(tr[:, 0], minlength=n).astype(float))
     seen = np.zeros((n, n), dtype=bool)
     for part in ("train", "val"):
         for k in ("pos", "neg"):
@@ -175,15 +173,13 @@ def degree_matched_test(adj: np.ndarray, fold: dict, seed: int = 0, n_bins: int 
     iu, ju = np.triu_indices(n, 1)
     ok = (adj[iu, ju] == 0) & ~seen[iu, ju] & ~seen[ju, iu]
     cu, cv = iu[ok], ju[ok]
-    key = np.minimum(b[cu], b[cv]) * 100 + np.maximum(b[cu], b[cv])
-    pools = {k: np.where(key == k)[0] for k in np.unique(key)}
+    c_lo, c_hi = np.minimum(ld[cu], ld[cv]), np.maximum(ld[cu], ld[cv])
     rng = np.random.default_rng(seed)
     neg = []
     for u, v in tp:
-        pool = pools.get(min(b[u], b[v]) * 100 + max(b[u], b[v]))
-        if pool is None or len(pool) == 0:
-            pool = np.arange(len(cu))
-        j = pool[rng.integers(len(pool))]
+        d = np.abs(c_lo - min(ld[u], ld[v])) + np.abs(c_hi - max(ld[u], ld[v]))
+        near = np.argpartition(d, min(n_near, len(d) - 1))[:n_near]
+        j = near[rng.integers(len(near))]
         neg.append((cu[j], cv[j]))
     neg = np.array(neg, dtype=int).reshape(-1, 2)
     return {"u": np.concatenate([tp[:, 0], neg[:, 0]]), "v": np.concatenate([tp[:, 1], neg[:, 1]]),
