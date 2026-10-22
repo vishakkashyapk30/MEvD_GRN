@@ -1,6 +1,7 @@
 #!/bin/bash
 # Statistical / simple baselines on the scMultiomeGRN benchmark (scripts/22_scmgrn_simple_baselines.py). CPU only.
-# One array task per (dataset, cell type, family A1..A4) = 12 x 4 = 48 tasks; small cell types first, Stromal last.
+# One array task per (dataset, cell type), all families A1..A4 = 12 tasks (Ada's 20-submitted-jobs cap counts
+# every array element); small cell types first, Stromal last.
 # Reads and writes $SHARE (~/scmgrn, visible on the nodes) directly; existing fold JSONs are skipped, so a
 # resubmission resumes. SMOKE=1 runs fold 1 only (the full run later skips those identical files).
 #SBATCH --job-name=smg-base
@@ -10,8 +11,8 @@
 #SBATCH -n 1
 #SBATCH --cpus-per-task=5
 #SBATCH --mem=12G
-#SBATCH --time=04:00:00
-#SBATCH --array=0-47%2
+#SBATCH --time=12:00:00
+#SBATCH --array=0-11%2
 #SBATCH --output=logs/smg_base_%A_%a.out
 set -uo pipefail
 source "${SLURM_SUBMIT_DIR:-$PWD}/slurm/scmgrn_common.sh"
@@ -21,9 +22,8 @@ UNITS=()
 for ct in Myeloid_cells Lymphoid_cells Megakaryocytes Neuroendocrine_cells Lymphatic_endothelial_cells; do UNITS+=("lung $ct"); done
 for ct in HSC CMP GMP; do UNITS+=("hema $ct"); done
 for ct in Bronchiolar_and_alveolar_epithelial_cells Ciliated_epithelial_cells Vascular_endothelial_cells Stromal_cells; do UNITS+=("lung $ct"); done
-FAMS=(A1 A2 A3 A4)
 i=${SLURM_ARRAY_TASK_ID:-0}
-read -r ds ct <<< "${UNITS[$((i / 4))]}"; fam=${FAMS[$((i % 4))]}
+read -r ds ct <<< "${UNITS[$i]}"; fam=${FAM:-A1,A2,A3,A4}
 extra=(); [ "${SMOKE:-0}" = 1 ] && extra=(--folds 1)
 echo "[base] task $i: $ds/$ct family $fam ${extra[*]}"
 python -u scripts/22_scmgrn_simple_baselines.py --root "$SHARE" --ds "$ds" --ct "$ct" --family "$fam" \
