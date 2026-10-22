@@ -150,3 +150,46 @@ def evaluate_score_matrix(S: np.ndarray, adj: np.ndarray, test_eval: dict) -> Di
     off = ~np.eye(adj.shape[0], dtype=bool)
     all_off = metric_fn(S[off], adj[off], threshold=test["threshold"])
     return {"test": test, "all": all_, "all_offdiag": all_off}
+
+
+def degree_matched_test(adj: np.ndarray, fold: dict, seed: int = 0, n_bins: int = 5) -> Dict[str, np.ndarray]:
+    """Second, degree-controlled test set ("Hidden sampling biases inflate performance in GRN inference", 2025).
+
+    Positives = the fold's test positives (unordered, u < v). Negatives = true non-links (adj == 0) that are not
+    in the fold's train/val files, one per positive, drawn so that the endpoints' TRAINING-degree quantile bins
+    match those of the positive. A pure degree rule is near chance here by construction. Deterministic for a given
+    (fold, seed), so every method is scored on the same pairs. Returns {"u", "v", "label"}.
+    """
+    n = adj.shape[0]
+    tr = fold["train"]["pos"]
+    deg = np.bincount(tr[:, 0], minlength=n).astype(float)
+    edges = np.unique(np.quantile(deg, np.linspace(0, 1, n_bins + 1)))
+    b = np.clip(np.searchsorted(edges, deg, side="right") - 1, 0, max(len(edges) - 2, 0))
+    seen = np.zeros((n, n), dtype=bool)
+    for part in ("train", "val"):
+        for k in ("pos", "neg"):
+            e = fold[part][k]
+            seen[e[:, 0], e[:, 1]] = True
+    tp = fold["test"]["pos"]
+    tp = tp[tp[:, 0] < tp[:, 1]]
+    iu, ju = np.triu_indices(n, 1)
+    ok = (adj[iu, ju] == 0) & ~seen[iu, ju] & ~seen[ju, iu]
+    cu, cv = iu[ok], ju[ok]
+    key = np.minimum(b[cu], b[cv]) * 100 + np.maximum(b[cu], b[cv])
+    pools = {k: np.where(key == k)[0] for k in np.unique(key)}
+    rng = np.random.default_rng(seed)
+    neg = []
+    for u, v in tp:
+        pool = pools.get(min(b[u], b[v]) * 100 + max(b[u], b[v]))
+        if pool is None or len(pool) == 0:
+            pool = np.arange(len(cu))
+        j = pool[rng.integers(len(pool))]
+        neg.append((cu[j], cv[j]))
+    neg = np.array(neg, dtype=int).reshape(-1, 2)
+    return {"u": np.concatenate([tp[:, 0], neg[:, 0]]), "v": np.concatenate([tp[:, 1], neg[:, 1]]),
+            "label": np.concatenate([np.ones(len(tp), int), np.zeros(len(neg), int)])}
+
+
+def evaluate_degree_matched(S: np.ndarray, dm: Dict[str, np.ndarray]) -> Dict[str, float]:
+    S = np.asarray(S, dtype=np.float64)
+    return metric_fn((S[dm["u"], dm["v"]] + S[dm["v"], dm["u"]]) / 2.0, dm["label"])
