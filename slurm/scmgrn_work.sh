@@ -23,7 +23,7 @@ activate
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1     # Geneformer cached by scmgrn_setup.sh
 mkdir -p "$SHARE/claims/$DS" "$SHARE/done/$DS" "$SHARE/failed/$DS"
 q_exec() { "$@"; }
-stage_ct() { pull official/ScmultiomeGRN-main; local CT=$1
+stage_ct() { pull official/ScmultiomeGRN-main; pull official_ablation/ScmultiomeGRN-main; local CT=$1
   pull "graph/$DS/$CT"; pull "splits/$DS/$CT"; pull "processed/$DS/$CT"; pull "results/$DS/$CT"
   rm -rf "$SCMGRN_ROOT_LOCAL/graph/$DS/$CT/work"; }
 publish_ct() { push "results/$DS/$1"; }

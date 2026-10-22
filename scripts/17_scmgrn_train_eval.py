@@ -155,6 +155,9 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
     secs = time.time() - t0
     S = score_matrix(trainer, n)
     m = proto.evaluate_score_matrix(S, adj, f["test_eval"])
+    m["test_degmatched"] = proto.evaluate_degree_matched(S, proto.degree_matched_test(adj, f, seed=fold))
+    if args.save_scores:
+        np.save(out_path.parent / f"scores_fold{fold:02d}.npy", S.astype(np.float32))
     shutil.rmtree(ckpt, ignore_errors=True)
     rec = {"method": "MeVD-GRN", "variant": args.variant, "cell_type": args.cell_type,
            "dataset": dcfg["dataset"], "fold": fold, "seed": seed, "obs_graph": bool(args.obs_graph),
@@ -188,6 +191,7 @@ def main():
     ap.add_argument("--max_epochs", type=int, default=None, help="smoke tests only")
     ap.add_argument("--tmp_dir", default=None)
     ap.add_argument("--skip_existing", action="store_true")
+    ap.add_argument("--save_scores", action="store_true", help="keep the N x N score matrix (scores_foldNN.npy)")
     args = ap.parse_args()
     if args.device.startswith("cuda") and not torch.cuda.is_available():
         print("[warn] CUDA unavailable -> CPU", flush=True)

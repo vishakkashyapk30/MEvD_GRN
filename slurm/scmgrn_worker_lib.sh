@@ -25,6 +25,24 @@ elif [ -n "${ABLATION:-}" ]; then
   VARIANTS=(mevd_abl_nofm:obs:smg mevd_abl_noatac:obs:smg mevd_abl_nognn:obs:smg mevd_abl_coexpr:obs:smg mevd_abl_tfcand:obs:smg mevd_abl_base:obs:smg mevd_fm_h384:obs:smgnode mevd_fm_h384:obs:smgpair mevd_abl_min:noobs:nosmg mevd_abl_fl_atac:noobs:nosmg mevd_abl_fl_fm:noobs:nosmg mevd_abl_fl_gnn:noobs:nosmg mevd_abl_min:noobs:smgnode)
   KINDS=mevd
 fi                         # the laptop worker sets KINDS=mevd
+# KINDS=offabl : ablations of the OFFICIAL scMultiomeGRN code (patched copy, scripts/23), seed 666, one unit per
+#   (cell type, tag). "full" = no switch (the patched copy's default = the original code; it also re-runs the
+#   reference with saved score matrices for the degree-matched test). Tags -> extra kwargs in offabl_kw().
+# KINDS=mevddm : re-run of the presented MeVD-GRN (mevd_fm_h384:obs:nosmg) into mevd_fm_h384_obs_dm with saved
+#   score matrices and the degree-matched test (the original fold JSONs predate that metric).
+OFFABL_TAGS=(${OFFABL_TAGS:-full no_prior string_prior no_edge atac_only scrna_only plus_geneformer})
+DM_SEEDS=(${DM_SEEDS:-42 43 44 45 46})
+offabl_kw() {
+  case "$1" in
+    full) echo '{}';;
+    no_prior) echo '{"mp_graph": "none"}';;
+    string_prior) echo '{"mp_graph": "external", "mp_adj_file": "{graph_dir}/x_string_graph.txt"}';;
+    no_edge) echo '{"use_edge_attr": false}';;
+    atac_only) echo '{"modalities": ["atac"]}';;
+    scrna_only) echo '{"modalities": ["scrna"]}';;
+    plus_geneformer) echo '{"gf_from_processed": true}';;
+  esac
+}
 if [ "$DS" = hema ]; then WORK_CTS=(HSC GMP CMP)
 else WORK_CTS=(Myeloid_cells Lymphoid_cells Megakaryocytes Neuroendocrine_cells Lymphatic_endothelial_cells
                Bronchiolar_and_alveolar_epithelial_cells Ciliated_epithelial_cells Vascular_endothelial_cells Stromal_cells)
@@ -34,6 +52,8 @@ gen_units() {   # "kind ct variant seed" per line; official runs first within a 
   local CT S V
   for CT in "${WORK_CTS[@]}"; do
     for S in "${OFFICIAL_SEEDS[@]}"; do echo "official $CT x $S"; done
+    for V in "${OFFABL_TAGS[@]}"; do echo "offabl $CT $V 666"; done
+    for S in "${DM_SEEDS[@]}"; do echo "mevddm $CT mevd_fm_h384:obs:nosmg $S"; done
     for V in "${VARIANTS[@]}"; do for S in "${SEEDS[@]}"; do echo "mevd $CT $V $S"; done; done
   done
 }
@@ -49,7 +69,17 @@ ct_ready() { q_exec test -e "$SHARE/processed/$DS/$1/READY"; }      # written la
 
 run_unit() {   # run_unit <kind> <ct> <variant> <seed>   (data for <ct> already staged under $SCMGRN_ROOT_LOCAL)
   local KIND=$1 CT=$2 V=$3 S=$4 MC OBS SMG FLAG=""
-  if [ "$KIND" = official ]; then
+  if [ "$KIND" = offabl ]; then
+    python -u scripts/18_scmgrn_official_repro.py --config configs/scmgrn/$DS.yaml \
+      --root "$SCMGRN_ROOT_LOCAL" --official_repo official_ablation/ScmultiomeGRN-main --cell_type "$CT" \
+      --folds 1-10 --skip_existing --model_seed "$S" --ablation "$V" --extra_kw "$(offabl_kw "$V")" --save_scores \
+      --work_dir "$SCR/official_work/${CT}_$V"
+  elif [ "$KIND" = mevddm ]; then
+    python -u scripts/17_scmgrn_train_eval.py --config configs/scmgrn/$DS.yaml \
+      --model_config configs/scmgrn/mevd_fm_h384.yaml --obs_graph --variant fm_h384_obs_dm --save_scores \
+      --root "$SCMGRN_ROOT_LOCAL" --cell_type "$CT" --seed "$S" --folds 1-10 --device "${DEVICE:-cuda:0}" \
+      --skip_existing --tmp_dir "$SCR"
+  elif [ "$KIND" = official ]; then
     python -u scripts/18_scmgrn_official_repro.py --config configs/scmgrn/$DS.yaml \
       --root "$SCMGRN_ROOT_LOCAL" --cell_type "$CT" --folds 1-10 --skip_existing --model_seed "$S" \
       --work_dir "$SCR/official_work/$CT"
