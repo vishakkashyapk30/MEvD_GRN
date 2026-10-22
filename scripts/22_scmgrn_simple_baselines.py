@@ -103,6 +103,9 @@ class CellType:
             E = np.load(self.pdir / "fm_gene_embeddings.npy")
             order = [gi[n.upper()] for n in self.nodes]
             v = E[order].astype(np.float64)
+        elif key == "openness":      # TF x 4 promoter-accessibility summaries (scripts/16 step processed)
+            gi = json.load(open(self.pdir / "gene_index.json"))
+            v = np.load(self.pdir / "openness.npy")[[gi[n.upper()] for n in self.nodes]].astype(np.float64)
         elif key == "histogram":     # N x N x 136 symmetric pair histograms (scripts/16 --steps smg)
             v = np.load(self.pdir / "smg_pair_feats.npy").astype(np.float32)
         else:
@@ -374,11 +377,13 @@ def run_cell_type(ct: CellType, families, n_jobs, skip_existing, folds=None):
         if "A3" in families:
             M, Gf, Fm = ct.reduced("maestro"), ct.reduced("grnboost"), ct.reduced("geneformer")
             Hst = ct.get("histogram")
+            Op = ct.get("openness")
             blocks = {
                 "lr_maestro": lambda i, j: pair_block(M, i, j),
                 "lr_grnboost": lambda i, j: pair_block(Gf, i, j),
                 "lr_geneformer": lambda i, j: pair_block(Fm, i, j),
                 "lr_histogram": lambda i, j: Hst[i, j].astype(np.float64),
+                "lr_promoter_openness": lambda i, j: np.concatenate([pair_block(Op, i, j), Op[i] + Op[j]], 1),
                 "lr_maestro_grnboost_concat": lambda i, j: np.concatenate([pair_block(M, i, j), pair_block(Gf, i, j)], 1),
                 "lr_maestro_x_grnboost": lambda i, j: pair_block(M * Gf, i, j),
                 "lr_within_pair_product": lambda i, j: np.concatenate([pair_block(M, i, j, True), pair_block(Gf, i, j, True)], 1),

@@ -54,6 +54,7 @@ SECTIONS = [
         ("lr_grnboost", "GRNBoost2 profiles only"),
         ("lr_geneformer", "Geneformer embeddings only"),
         ("lr_histogram", "Joint expression histograms only"),
+        ("lr_promoter_openness", "Promoter openness of the two TFs only"),
         ("lr_maestro_grnboost_concat", "MAESTRO and GRNBoost2 side by side"),
         ("lr_maestro_x_grnboost", "MAESTRO multiplied by GRNBoost2 (per TF)"),
         ("lr_within_pair_product", "Product of the two TFs' features only"),
