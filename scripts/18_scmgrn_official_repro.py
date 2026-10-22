@@ -76,12 +76,19 @@ def main():
     ap.add_argument("--patience", type=int, default=100)
     ap.add_argument("--work_dir", default=None, help="scratch for lightning logs")
     ap.add_argument("--skip_existing", action="store_true")
+    ap.add_argument("--official_repo", default=None, help="code dir relative to --root (default: config official_repo); "
+                    "ablations use the patched copy from scripts/23_patch_official_ablation.py")
+    ap.add_argument("--ablation", default=None, help="tag: results go to official_scmultiomegrn_<tag>/")
+    ap.add_argument("--extra_kw", default="{}", help="JSON of extra official kwargs (scripts/23 switches); "
+                    "'{graph_dir}' in strings -> this cell type's graph dir; gf_from_processed=true writes the "
+                    "Geneformer TSV (x_node.txt order) and sets gf_feature_file")
+    ap.add_argument("--save_scores", action="store_true", help="keep the best_all score matrix (scores_foldNN.npy)")
     args = ap.parse_args()
 
     dcfg = load_config(args.config)
     root = Path(args.root)
     ct = args.cell_type
-    official = str(root / dcfg["official_repo"])
+    official = str(root / (args.official_repo or dcfg["official_repo"]))
     gdir = root / dcfg["graph_dir"] / ct
     s = dcfg["split"]
     sdir = proto.split_dir(str(root / dcfg["splits_dir"] / ct), int(s["seed"]), int(s["n_splits"]),
@@ -89,9 +96,24 @@ def main():
     adj, _ = proto.load_adj(str(gdir / "x_graph.txt"))
     folds = (list(range(int(args.folds.split("-")[0]), int(args.folds.split("-")[1]) + 1))
              if "-" in args.folds else [int(x) for x in args.folds.split(",")])
-    out_dir = root / dcfg["results_dir"] / ct / "official_scmultiomegrn" / f"seed{args.model_seed}"
+    import json
+    method = "official_scmultiomegrn" + (f"_{args.ablation}" if args.ablation else "")
+    out_dir = root / dcfg["results_dir"] / ct / method / f"seed{args.model_seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     work = Path(args.work_dir or (out_dir / "work"))
+    extra = {k: (v.replace("{graph_dir}", str(gdir)) if isinstance(v, str) else v)
+             for k, v in json.loads(args.extra_kw).items()}
+    if extra.pop("gf_from_processed", False):
+        pdir = root / dcfg["processed_dir"] / ct
+        gi = json.load(open(pdir / "gene_index.json"))
+        names = pd.read_csv(gdir / "x_node.txt", names=["name"])["name"].tolist()
+        E = np.load(pdir / "fm_gene_embeddings.npy")
+        work.mkdir(parents=True, exist_ok=True)
+        gf = work / "gf_feature.tsv"
+        pd.DataFrame(E[[gi[n.upper()] for n in names]], index=names).to_csv(gf, sep="\t")
+        extra["gf_feature_file"] = str(gf)
+    if extra:
+        print(f"[official {ct}] ablation={args.ablation} extra kwargs: {extra}", flush=True)
 
     for fold in folds:
         out = out_dir / f"fold{fold:02d}.json"
@@ -101,14 +123,13 @@ def main():
         wd = work / f"fold{fold:02d}"
         wd.mkdir(parents=True, exist_ok=True)
         kw = dict(name=ct, adj_file=str(gdir / "x_graph.txt"), node_file=str(gdir / "x_node.txt"),
-                  scrna_file=str(gdir / "tmp" / "scrna.csv"), comment="mevd_repro",
+                  scrna_file=str(gdir / "tmp" / "scrna.csv"), comment="mevd_repro" + (f"_{args.ablation}" if args.ablation else ""),
                   atac_feature_file=str(gdir / "x_atac_rp_score_feature.txt"),
                   scrna_feature_file=str(gdir / "x_scRNA_grnboost2_feature.txt"),
                   model_cls="scMultiomeGRN", mask_rate=0.0, data_dir=str(wd / "data"),
                   train_edge_file=files["train"], val_edge_file=files["val"],
                   test_edge_file=files["test"], split_id=fold, max_epochs=args.max_epochs,
-                  patience=args.patience, model_seed=args.model_seed)
-        import json
+                  patience=args.patience, model_seed=args.model_seed, **extra)
         t0 = time.time()
         r = subprocess.run([sys.executable, "-u", "-c", DRIVER, json.dumps(kw)], cwd=str(wd),
                            env={**os.environ, "PYTHONPATH": os.pathsep.join(filter(None, [official, os.environ.get("PYTHONPATH")]))}, capture_output=True, text=True)
@@ -123,9 +144,12 @@ def main():
         S = np.loadtxt(os.path.join(log_dir, "best_all_score_matrix.txt"))
         f = proto.load_fold(sdir, fold, adj.shape[0])
         m = proto.evaluate_score_matrix(S, adj, f["test_eval"])
+        m["test_degmatched"] = proto.evaluate_degree_matched(S, proto.degree_matched_test(adj, f, seed=fold))
+        if args.save_scores:
+            np.save(out_dir / f"scores_fold{fold:02d}.npy", S.astype(np.float32))
         for ck in glob.glob(os.path.join(log_dir, "checkpoints")):
             shutil.rmtree(ck, ignore_errors=True)
-        rec = {"method": "scMultiomeGRN (official code)", "cell_type": ct, "dataset": dcfg["dataset"],
+        rec = {"method": "scMultiomeGRN (official code)", "ablation": args.ablation, "extra_kw": extra, "cell_type": ct, "dataset": dcfg["dataset"],
                "fold": fold, "seed": args.model_seed, "train_seconds": secs, "log_dir": log_dir,
                "metrics": m, "official_logged_metrics": logged}
         save_json(rec, out)

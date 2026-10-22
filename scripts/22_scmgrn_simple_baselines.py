@@ -6,7 +6,7 @@ Four families, all scored per official fold on the held-out test pairs with the 
 
   A1  graph-topology heuristics on the training links (link-prediction literature): degree sum, common
       neighbours, Jaccard, Adamic-Adar, resource allocation, Katz (beta 0.05, paths <= 4), random walk with
-      restart (alpha 0.15), truncated-SVD reconstruction (k 16), spectral embedding (k 16) + logistic regression.
+      restart (alpha 0.15), truncated-SVD reconstruction (k 16), normalised-adjacency spectral reconstruction (k 16).
       (Degree product = preferential attachment is scripts/21's degree_product.)
   A2  unsupervised GRN-inference scores from the cell data (BEELINE / geneRNIB family; no labels at all):
       |Pearson|, |Spearman|, |partial correlation| (Ledoit-Wolf precision), mutual information and CLR,
@@ -17,7 +17,10 @@ Four families, all scored per official fold on the held-out test pairs with the 
       modalities (m_u * g_u per TF) and within the pair (x_u * x_v only); linear (ridge) regression on the 0/1
       label and a random forest on the concatenated features.
   A4  topology + features: logistic regression on degree / heuristic pair features alone, with MAESTRO +
-      GRNBoost2, and with Geneformer.
+      GRNBoost2, and with Geneformer. Graph-derived features of TRAINING pairs are computed edge-held-out
+      (edge_heldout_feats): a test link is never in the training graph, so its own link must not inform its
+      training counterpart's features either.
+  Every logistic regression picks its L2 strength by 3-fold CV on the training pairs (LogisticRegressionCV).
 
 Pair features are symmetric: [x_u * x_v, |x_u - x_v|] on per-TF vectors compressed to k = 32 dimensions with a
 label-free SVD (src/benchmarks/scmgrn_features.svd_reduce). Every score matrix is symmetrised.
@@ -42,7 +45,7 @@ import pandas as pd
 from scipy import stats
 from sklearn.covariance import LedoitWolf
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.linear_model import Lasso, LogisticRegression, Ridge
+from sklearn.linear_model import Lasso, LogisticRegression, LogisticRegressionCV, Ridge
 from sklearn.preprocessing import StandardScaler
 
 REPO = Path(__file__).resolve().parents[1]
@@ -52,6 +55,8 @@ from src.benchmarks.scmgrn_features import svd_reduce          # noqa: E402
 from src.utils.io import load_config, save_json                # noqa: E402
 
 K_SVD = 32
+VERSION = 2                      # bumped when a method changes; fold files of other versions are recomputed
+CHUNKS = 5                       # edge-held-out chunks for features computed from the training graph
 MAX_CELLS_REGRESSION = 3000      # GENIE3 / lasso / ridge: cells subsampled (seeded) to keep runtime bounded
 
 
@@ -141,9 +146,40 @@ def pair_block(X, i, j, products_only=False):
     return a * b if products_only else np.concatenate([a * b, np.abs(a - b)], axis=1)
 
 
-def fit_predict(make_model, feats_fn, n, tr_pairs, tr_lab):
+def LR():
+    """L2 logistic regression; strength picked by 3-fold CV (average precision) on the training pairs only."""
+    return LogisticRegressionCV(Cs=[1e-3, 1e-2, 1e-1, 1.0, 10.0], cv=3, scoring="average_precision", max_iter=3000)
+
+
+def edge_heldout_feats(build, A, tr_pos, tr_pairs, seed):
+    """Training-pair features from graph-derived quantities without the pair's own link.
+
+    A training positive is a link of the training graph, a test positive never is, so features computed on the
+    full training graph (degree, embeddings, paths) differ between the two and a classifier learns the wrong
+    pattern. Standard fix in link prediction: split the training positives into CHUNKS parts and compute the
+    features of each part's pairs (negatives assigned to parts at random) on the graph without that part's
+    links. build(A_sub) -> feats_fn(i, j). Test/all pairs use build(A) on the full training graph."""
+    rng = np.random.default_rng(seed)
+    pos_set = {(u, v): k for k, (u, v) in enumerate(tr_pos)}
+    part_pos = rng.integers(CHUNKS, size=len(tr_pos))
+    part = np.array([part_pos[pos_set[(u, v)]] if (u, v) in pos_set else rng.integers(CHUNKS) for u, v in tr_pairs])
+    X = None
+    for c in range(CHUNKS):
+        Asub = A.copy()
+        e = tr_pos[part_pos == c]
+        Asub[e[:, 0], e[:, 1]] = 0
+        Asub[e[:, 1], e[:, 0]] = 0
+        idx = np.where(part == c)[0]
+        Xc = build(Asub)(tr_pairs[idx, 0], tr_pairs[idx, 1])
+        if X is None:
+            X = np.zeros((len(tr_pairs), Xc.shape[1]))
+        X[idx] = Xc
+    return X
+
+
+def fit_predict(make_model, feats_fn, n, tr_pairs, tr_lab, train_feats=None):
     """Fit on training pairs; return an N x N score matrix for all u<v pairs (diagonal 0)."""
-    Xtr = feats_fn(tr_pairs[:, 0], tr_pairs[:, 1])
+    Xtr = feats_fn(tr_pairs[:, 0], tr_pairs[:, 1]) if train_feats is None else train_feats
     sc = StandardScaler().fit(Xtr)
     model = make_model().fit(sc.transform(Xtr), tr_lab)
     iu, ju = np.triu_indices(n, 1)
@@ -186,13 +222,13 @@ def heuristics(A):
             "rwr": R + R.T, "svd_lowrank": svd}
 
 
-def spectral_embedding(A, k=16):
+def spectral_lowrank(A, k=16):
+    """Low-rank reconstruction of the normalised training adjacency D^-1/2 A D^-1/2 (top-k eigenpairs)."""
     deg = A.sum(1)
     d = np.where(deg > 0, 1.0 / np.sqrt(np.maximum(deg, 1e-12)), 0.0)
-    L = np.eye(A.shape[0]) - d[:, None] * A * d[None, :]
-    w, V = np.linalg.eigh(L)
-    k = min(k, A.shape[0] - 2)
-    return V[:, 1:k + 1]
+    w, V = np.linalg.eigh(d[:, None] * A * d[None, :])
+    top = np.argsort(-w)[:min(k, A.shape[0])]
+    return (V[:, top] * w[top]) @ V[:, top].T
 
 
 def topo_pair_feats(H, deg):
@@ -296,12 +332,13 @@ def run_cell_type(ct: CellType, families, n_jobs, skip_existing, folds=None):
     n = ct.n
 
     def done(name, fold):
-        return skip_existing and (rdir / name / "seed0" / f"fold{fold:02d}.json").exists()
+        fp = rdir / name / "seed0" / f"fold{fold:02d}.json"
+        return skip_existing and fp.exists() and json.load(open(fp)).get("version") == VERSION
 
     def save(name, fam, fold, m):
         out = rdir / name / "seed0"
         out.mkdir(parents=True, exist_ok=True)
-        save_json({"method": name, "family": fam, "cell_type": ct.ct, "dataset": ct.cfg["dataset"],
+        save_json({"method": name, "family": fam, "version": VERSION, "cell_type": ct.ct, "dataset": ct.cfg["dataset"],
                    "fold": fold, "seed": 0, "note": "fit/count on the fold's training part only",
                    "metrics": m}, out / f"fold{fold:02d}.json")
 
@@ -328,9 +365,7 @@ def run_cell_type(ct: CellType, families, n_jobs, skip_existing, folds=None):
             for k in ("degree_product", "degree_sum", "common_neighbours", "jaccard", "adamic_adar", "resource_allocation", "katz",
                       "rwr", "svd_lowrank"):
                 results[("A1", f"heur_{k}")] = lambda H=H, k=k: H[k]
-            E = spectral_embedding(A)
-            results[("A1", "spectral_embedding_lr")] = lambda E=E: fit_predict(
-                lambda: LogisticRegression(max_iter=2000), lambda i, j: E[i] * E[j], n, tr_pairs, tr_lab)
+            results[("A1", "heur_spectral_lowrank")] = lambda: spectral_lowrank(A)
 
         if "A2" in families:
             for k, S in unsup.items():
@@ -339,7 +374,6 @@ def run_cell_type(ct: CellType, families, n_jobs, skip_existing, folds=None):
         if "A3" in families:
             M, Gf, Fm = ct.reduced("maestro"), ct.reduced("grnboost"), ct.reduced("geneformer")
             Hst = ct.get("histogram")
-            LR = lambda: LogisticRegression(max_iter=3000, C=1.0)
             blocks = {
                 "lr_maestro": lambda i, j: pair_block(M, i, j),
                 "lr_grnboost": lambda i, j: pair_block(Gf, i, j),
@@ -358,21 +392,31 @@ def run_cell_type(ct: CellType, families, n_jobs, skip_existing, folds=None):
                 cat, n, tr_pairs, tr_lab)
 
         if "A4" in families:
-            H = heuristics(A)
-            topo = topo_pair_feats(H, deg)
             M, Gf, Fm = ct.reduced("maestro"), ct.reduced("grnboost"), ct.reduced("geneformer")
-            LR = lambda: LogisticRegression(max_iter=3000, C=1.0)
-            ld = np.log1p(deg)
-            dg = lambda i, j: np.stack([ld[i] + ld[j], np.abs(ld[i] - ld[j]), ld[i] * ld[j]], axis=1)
+
+            def degf(Asub):
+                ld = np.log1p(Asub.sum(1))
+                return lambda i, j: np.stack([ld[i] + ld[j], np.abs(ld[i] - ld[j]), ld[i] * ld[j]], axis=1)
+
+            def topof(Asub):
+                return topo_pair_feats(heuristics(Asub), Asub.sum(1))
+
+            def with_feats(graph_build, blocks):
+                def build(Asub):
+                    g = graph_build(Asub)
+                    return lambda i, j: np.concatenate([g(i, j)] + [pair_block(B, i, j) for B in blocks], 1)
+                return build
             combos = {
-                "lr_degree_maestro_grnboost": lambda i, j: np.concatenate([dg(i, j), pair_block(M, i, j), pair_block(Gf, i, j)], 1),
-                "lr_degree_geneformer": lambda i, j: np.concatenate([dg(i, j), pair_block(Fm, i, j)], 1),
-                "lr_topology_only": topo,
-                "lr_topology_maestro_grnboost": lambda i, j: np.concatenate([topo(i, j), pair_block(M, i, j), pair_block(Gf, i, j)], 1),
-                "lr_topology_geneformer": lambda i, j: np.concatenate([topo(i, j), pair_block(Fm, i, j)], 1),
+                "lr_degree_only": degf,
+                "lr_degree_maestro_grnboost": with_feats(degf, [M, Gf]),
+                "lr_degree_geneformer": with_feats(degf, [Fm]),
+                "lr_topology_only": topof,
+                "lr_topology_maestro_grnboost": with_feats(topof, [M, Gf]),
+                "lr_topology_geneformer": with_feats(topof, [Fm]),
             }
-            for name, fn in combos.items():
-                results[("A4", name)] = lambda fn=fn: fit_predict(LR, fn, n, tr_pairs, tr_lab)
+            for name, build in combos.items():
+                results[("A4", name)] = lambda build=build: fit_predict(
+                    LR, build(A), n, tr_pairs, tr_lab, edge_heldout_feats(build, A, tr_pos, tr_pairs, fold))
 
         for (fam, name), make in results.items():
             if done(name, fold):
