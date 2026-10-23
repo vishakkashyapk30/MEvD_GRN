@@ -285,3 +285,92 @@ Done locally: model/task change with unit tests; smg features; script 16/17/19 c
 - **The GEO file `GSM4508936_lung_filtered.seurat.RDS.gz` is gzipped twice** (the authors' `saveRDS` output is already gzip-compressed, then wrapped in another `.gz`); `readRDS(gzfile(...))` fails with "unknown input format". `slurm/scmgrn_prep.sh` strips the outer layer. The object has 1,050,819 peaks x 72,662 cells and 34,051 genes in the `RNA` (gene-body accessibility) assay.
 - **The Seurat object stores no variable-feature list** (`var.features: 0`), so the official `var_features.tsv` path (used by the demo) is unavailable. Fallback in `scripts/16` (`load_their_scrna`): keep genes detected in >10% of the cell type's cells, plus every TF node. This follows the paper's stated preprocessing ("genes detected in <10% of cells were removed") and keeps GRNBoost2 tractable; it is a deviation from the official code path and applies to both methods (the official re-run reads the same GRNBoost2 features).
 - **Pipeline smoke test on Ada** (official demo, chr19+22): fold files IDENTICAL to the official split code, 72,420 TFBS / 13 nodes / 16 edges as in the local smoke test, all four MeVD-GRN variants and the unmodified official code run.
+
+## 12. 2026-10-22/23: statistical baselines and scMultiomeGRN ablations
+
+Motivation: the advisor asked (17 Oct meeting) for simple statistical baselines before graph models, for logistic
+regression on scMultiomeGRN's features given independently and multiplied, for Geneformer-only models, for
+scMultiomeGRN with Geneformer added, and for scMultiomeGRN without its initial TF-TF network. Literature behind the
+baseline choice: geneRNIB (bioRxiv 2025), Ahlmann-Eltze et al. (Nat Methods 2025), "Hidden sampling biases inflate
+performance in GRN inference" (bioRxiv 2025), link-prediction heuristics (Mara et al. 2020; arXiv 2411.14711;
+PROXI, arXiv 2410.01802), BEELINE (Pratapa et al. 2020).
+
+Same benchmark as section 11: 9 lung + 3 hematopoiesis cell types, the 10 official folds, the official metric_fn,
+held-out test fold. Everything ran as Ada batch jobs (CPU array for the baselines, 2080 Ti workers for the rest).
+
+### 12.1 What was run
+- `scripts/22_scmgrn_simple_baselines.py` (`slurm/scmgrn_baselines.sh`), four families, all fitted/counted on the
+  fold's training part only:
+  - counting rules on the training links: degree product / sum, common neighbours, Jaccard, Adamic-Adar, resource
+    allocation, Katz (beta 0.05, paths <= 4), random walk with restart (alpha 0.15), low-rank SVD and spectral
+    reconstructions (k 16). Verified against networkx on a toy graph.
+  - label-free scores from the cell data: |Pearson|, |Spearman|, |partial correlation| (Ledoit-Wolf), mutual
+    information and CLR, GRNBoost2 between the two TFs, GENIE3, per-target ridge and lasso, |Pearson| of MAESTRO,
+    cosine of GRNBoost2 profiles and of Geneformer embeddings.
+  - logistic regression (L2 strength by 3-fold CV on the training pairs) on symmetric pair features
+    [x_u * x_v, |x_u - x_v|] of SVD-32 node vectors: MAESTRO, GRNBoost2, Geneformer, pair histograms, promoter
+    openness, MAESTRO + GRNBoost2 concatenated ("given independently"), m_u * g_u per TF ("multiplied across
+    modalities"), x_u * x_v only ("multiplied within the pair"); plus linear (ridge) regression on the 0/1 label and
+    a random forest on the concatenation.
+  - logistic regression on degree / neighbourhood scores, alone and with the feature blocks. Graph-derived features
+    of training pairs are computed edge-held-out (5 chunks): without it a training positive's features contain its
+    own link and the classifier learns the wrong pattern (spectral embedding + LR gave AUROC 0.06 in the smoke test).
+- scMultiomeGRN ablations on a patched copy of the official code (`scripts/23_patch_official_ablation.py`, seed
+  666). With no switch the patched copy reproduces the original exactly (identical metrics on Myeloid fold 1, and
+  the `full` re-run gives 0.918 AUPR as before). Switches: `mp_graph=none` (self-loops only), `mp_graph=external`
+  with STRING v12 (combined score >= 700, `scripts/24_build_string_tf_graph.py`), `use_edge_attr=False` (pair
+  histograms removed completely), `modalities=[atac]` / `[scrna]` (GraFrank kept, unlike the paper's variant class),
+  Geneformer as a third modality. Training labels are unchanged in every ablation.
+- MeVD-GRN (the presented model, `mevd_fm_h384:obs:nosmg`, 5 seeds) was re-run as `mevd_fm_h384_obs_dm` to store
+  score matrices for the degree-matched test; its official-test numbers equal the earlier run (0.935 / 0.924).
+- STRING coverage: 50-70% of TFs have at least one STRING edge; STRING contains only 2-6% of the answer-key links
+  (`graph/string_report.json`).
+
+### 12.2 Degree-matched test (second column)
+Following the "hidden sampling biases" paper: the same test positives, each paired with one of the three official
+test negatives closest to it in (lower, higher) training degree of the two TFs, drawn with replacement
+(`scmgrn_protocol.degree_matched_test`, seed = fold). Because the split files cover every TF pair
+(`rest_all_train`), the official test negatives are the only non-links never used in training, so this test is a
+degree-aware re-weighting of the official test set and cannot leak. In these dense graphs (14-37% of all pairs
+are links) hub-hub non-links are rare, so the degree rule falls to 0.72 AUPR rather than to chance.
+
+### 12.3 Results (12 cell types, mean over cell types; test AUPR / AUROC, degree-matched AUPR / AUROC)
+Full tables: `docs/experiments/scmgrn_results/baselines/vs_smg_*.md` (differences and Wilcoxon p against
+scMultiomeGRN) and `vs_mevd_*.md` (against MeVD-GRN).
+
+| Method | Test AUPR | Test AUROC | Degree-matched AUPR | Degree-matched AUROC |
+|---|---|---|---|---|
+| MeVD-GRN | 0.935 | 0.924 | 0.878 | 0.857 |
+| scMultiomeGRN (official code) | 0.918 | 0.912 | 0.705 | 0.649 |
+| Degree product | 0.924 | 0.912 | 0.724 | 0.653 |
+| Logistic regression, degree only | 0.931 | 0.919 | 0.745 | 0.672 |
+| Logistic regression, degree and neighbourhood scores | 0.932 | 0.919 | 0.759 | 0.683 |
+| Random walk with restart | 0.924 | 0.913 | 0.737 | 0.671 |
+| Best label-free expression score (Geneformer cosine / MAESTRO Pearson) | 0.529 | 0.529 | 0.561 | 0.524 |
+| GRNBoost2 / GENIE3 between the two TFs | 0.508 / 0.504 | 0.511 / 0.520 | 0.539 / 0.533 | 0.503 / 0.506 |
+| Logistic regression, MAESTRO + GRNBoost2 side by side | 0.788 | 0.765 | 0.642 | 0.593 |
+| Logistic regression, MAESTRO multiplied by GRNBoost2 | 0.721 | 0.695 | 0.605 | 0.545 |
+| Logistic regression, Geneformer only | 0.695 | 0.695 | 0.564 | 0.526 |
+| Random forest, MAESTRO + GRNBoost2 | 0.836 | 0.814 | 0.650 | 0.606 |
+| scMultiomeGRN without the TF-TF graph | 0.826 | 0.815 | 0.667 | 0.600 |
+| scMultiomeGRN with STRING instead of the training links | 0.781 | 0.770 | 0.624 | 0.580 |
+| scMultiomeGRN without the pair histograms | 0.920 | 0.914 | 0.709 | 0.651 |
+| scMultiomeGRN, ATAC only / scRNA only | 0.916 / 0.916 | 0.912 / 0.910 | 0.695 / 0.705 | 0.649 / 0.650 |
+| scMultiomeGRN + Geneformer | 0.917 | 0.912 | 0.705 | 0.649 |
+
+### 12.4 Findings
+- No label-free statistic recovers the answer key: every expression or accessibility score (correlations, MI/CLR,
+  GRNBoost2, GENIE3, ridge/lasso) sits at 0.50-0.53 AUPR on a balanced test, i.e. chance. The motif-in-open-promoter
+  answer key is not a co-expression network.
+- Everything above 0.92 uses the fold's training links. Logistic regression on the two TFs' training degrees (0.931)
+  beats scMultiomeGRN (0.918, p = 2e-13) and is within 0.004 of MeVD-GRN; adding neighbourhood scores or features
+  barely moves it. The literature's claim holds here: simple models match or beat the published deep model.
+- Features alone reach at most 0.84 AUPR (random forest). Giving MAESTRO and GRNBoost2 side by side (0.788) beats
+  multiplying them per TF (0.721) or keeping only the within-pair product (0.523).
+- scMultiomeGRN depends on its training-link graph: without it AUPR falls by 0.092 overall (lung -0.012, but
+  hematopoiesis -0.334, to 0.585), and replacing it with STRING is worse still (0.781). Its pair histograms,
+  either single modality and an added Geneformer embedding change nothing measurable (|diff| <= 0.002, p >= 0.29).
+- On the degree-matched test MeVD-GRN keeps 0.878 AUPR while scMultiomeGRN (0.705) and the best simple model (0.759)
+  fall to near the degree rule (0.724). This is the clearest evidence so far that MeVD-GRN uses information beyond
+  hubness; it is from one re-weighting of 10 test negatives per positive bucket, so it should be confirmed with a
+  benchmark that has more negatives per hub (e.g. a held-out-TF split).
