@@ -19,7 +19,9 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 - **Supervised models on pair features.** These are logistic regressions on scMultiomeGRN's own inputs, MAESTRO accessibility and GRNBoost2 profiles, plus the Geneformer embedding. The inputs are given one at a time, side by side, and multiplied together.
 - **Link-prediction heuristics on the training graph.** These are the classic heuristics: degree, common neighbours, Adamic-Adar, Katz and random walks. All of them use only the fold's training links.
 - **scMultiomeGRN ablations.** One part of the authors' code is changed at a time, and with no change the patched code gives exactly their numbers.
-- **Degree-matched test.** This follows a December 2025 preprint, which showed that hub TFs inflate scores in this kind of benchmark. Each test link is paired with the test non-link closest to it in how many training links its two TFs have, so knowing the hubs no longer helps much.
+- **Degree-matched test.** This follows a December 2025 preprint, which showed that hub TFs inflate scores in this kind of benchmark. Every table reports it as a second pair of columns, next to the official test.
+- On the official test, a non-link is a random pair, so it usually involves TFs with few links, and a model can score well just by knowing the hubs.
+- On the degree-matched test, each test link is paired with one of the three test non-links closest to it in the two TFs' training-link counts. The pairs come from the official test set, so nothing new is revealed to any model.
 - Nothing from the test fold is used for fitting, and the regularisation of every logistic regression is chosen on the training pairs only.
 
 ## 3. Label-free statistical scores
@@ -114,31 +116,14 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 | RNA features only | 0.916 | 0.910 | 0.705 | 0.650 |
 | With Geneformer added | 0.917 | 0.911 | 0.705 | 0.649 |
 
-## 7. Degree-matched test
-
-- On the official test, a non-link is any random pair, so it usually involves TFs with few links. A model can do well just by knowing the hubs.
-- On the degree-matched test, each test link is paired with one of the three test non-links closest to it in the two TFs' training-link counts. The pairs come from the official test set, so nothing new is revealed to any model.
-- The counting rule falls from 0.924 to 0.724. In these dense graphs non-links between two hubs are rare, so it cannot reach exactly 0.5.
-- scMultiomeGRN falls to 0.705 and the best simple model to 0.759. Both end up close to the counting rule.
-- MeVD-GRN keeps 0.878. This is the clearest sign so far that it uses something beyond hubness.
-- The test can only reuse the official test non-links, so hard non-links are scarce, and the next step is a split with more hard non-links, such as holding out whole TFs.
-
-| Method | AUPR | AUROC | AUPR, degree-matched | AUROC, degree-matched |
-|---|---|---|---|---|
-| MeVD-GRN | **0.935** | **0.924** | **0.878** | **0.857** |
-| scMultiomeGRN (unchanged) | 0.918 | 0.912 | 0.705 | 0.649 |
-| Product of the two link counts | 0.924 | 0.912 | 0.724 | 0.653 |
-| Logistic regression on the link counts | 0.931 | *0.919* | 0.745 | 0.672 |
-| Logistic regression on counts and neighbour scores | *0.932* | *0.919* | *0.759* | *0.683* |
-| Random walk with restart | 0.924 | 0.913 | 0.737 | 0.671 |
-| Random forest on MAESTRO and GRNBoost2 | 0.836 | 0.814 | 0.650 | 0.606 |
-| scMultiomeGRN without the TF-TF graph | 0.826 | 0.815 | 0.667 | 0.600 |
-
-## 8. Conclusions and next steps: held-out-TF split
+## 7. Conclusions and next steps: held-out-TF split
 
 - On the official test, this benchmark mostly rewards knowing the hub TFs. A two-number logistic regression beats the published model, as recent papers found in other GRN benchmarks.
 - Label-free statistical scores cannot recover a motif-based ground-truth network, so they are not a useful baseline for this task.
 - scMultiomeGRN's features add almost nothing on top of its known-link graph, and Geneformer does not help it.
-- MeVD-GRN is the only model that keeps most of its score once hubs are controlled for, at 0.878 against 0.705 for scMultiomeGRN.
+- On the degree-matched test the counting rule falls from 0.924 to 0.724. It does not reach exactly 0.5, because in these dense graphs non-links between two hubs are rare.
+- scMultiomeGRN falls to 0.705 and the best link-prediction heuristic to 0.759, both close to the counting rule.
+- MeVD-GRN keeps 0.878, the only model that stays far above that level. This is the clearest sign so far that it uses something beyond hubness.
+- The degree-matched test can only reuse the official test non-links, so hard non-links are scarce.
 - Next step: confirm that gap on a split that holds out whole TFs, where no model can count a TF's links.
 - After that: identify which part of MeVD-GRN carries the gap, by scoring the existing ablations under the degree-matched test.
