@@ -61,7 +61,7 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 add(f"""## 1. Summary: label-free and supervised baselines, scMultiomeGRN ablations, degree-controlled evaluation
 
 - 38 simple and statistical models were evaluated on scMultiomeGRN's datasets and splits, and six ablations of scMultiomeGRN itself were run with the authors' code.
-- None of the classic network-inference scores from the cell data finds the answer key. Correlation, mutual information, GRNBoost2, GENIE3 and regression all score between 0.50 and 0.53 AUPR, which is chance on this test.
+- None of the classic network-inference scores from the cell data recovers the ground-truth network. Correlation, mutual information, GRNBoost2, GENIE3 and regression all score between 0.50 and 0.53 AUPR, which is chance on this test.
 - Counting each TF's known training links is enough to beat scMultiomeGRN. A logistic regression on the two counts scores {v('lr_degree_only')} against {v('official_scmultiomegrn_full')}, and MeVD-GRN scores {v('mevd_fm_h384_obs_dm')}.
 - scMultiomeGRN depends on the known links it passes messages over. Without them it drops to {v('official_scmultiomegrn_no_prior')}, and with a STRING network in their place to {v('official_scmultiomegrn_string_prior')}. Adding Geneformer to it changes nothing.
 - Every model was also scored on a harder test where each true link is paired with a non-link whose TFs have similar numbers of links.
@@ -80,7 +80,7 @@ add("""## 3. Label-free co-expression, mutual-information and regression scores 
 
 - None of these methods sees a label. They ask whether two TFs behave alike across cells.
 - All of them land near 0.5, which is what a random guess gets on a test with as many links as non-links.
-- The reason is the answer key itself. A link means that one TF's motif sits in the other TF's open promoter, and that says little about whether the two TFs are co-expressed.
+- The reason is how the ground-truth network is defined. A link means that one TF's motif sits in the other TF's open promoter, and that says little about whether the two TFs are co-expressed.
 - GRNBoost2 and GENIE3, the standard tools for gene networks, do no better than plain correlation here.
 - This matches the scMultiomeGRN paper, where GENIE3 also came last among its baselines.
 
@@ -147,7 +147,7 @@ add(f"""## 6. Ablations of scMultiomeGRN: message-passing graph, modalities and 
 
 - The authors' code was patched so that each part can be switched off. With every switch at its default, the patched code gives exactly the published code's numbers.
 - The known-link graph is what matters. Passing messages over no links at all drops AUPR from {v('official_scmultiomegrn_full')} to {v('official_scmultiomegrn_no_prior')}. The drop is small on lung but large on blood, where it falls to 0.585.
-- A STRING protein network in place of the known links is worse still, at {v('official_scmultiomegrn_string_prior')}. STRING contains only 2 to 6% of the answer-key links.
+- A STRING protein network in place of the known links is worse still, at {v('official_scmultiomegrn_string_prior')}. STRING contains only 2 to 6% of the ground-truth links.
 - The pair histograms, the ATAC view and the RNA view can each be removed without a measurable change.
 - Adding the Geneformer embedding as a third view also changes nothing, at {v('official_scmultiomegrn_plus_geneformer')}. On blood almost all of scMultiomeGRN's score comes from the known links, and none of its extra inputs adds anything measurable.
 
@@ -181,7 +181,7 @@ add(f"""## 7. Degree-matched negative sampling as a hub-controlled evaluation
 add(f"""## 8. Conclusions and next steps: held-out-TF split
 
 - On the official test, this benchmark mostly rewards knowing the hub TFs. A two-number logistic regression beats the published model, as recent papers found in other GRN benchmarks.
-- Label-free network-inference methods cannot recover a motif-based answer key, so they are not a useful baseline for this task.
+- Label-free network-inference methods cannot recover a motif-based ground-truth network, so they are not a useful baseline for this task.
 - scMultiomeGRN's features add almost nothing on top of its known-link graph, and Geneformer does not help it.
 - MeVD-GRN is the only model that keeps most of its score once hubs are controlled for, at {v('mevd_fm_h384_obs_dm', 'test_degmatched_aupr')} against {v('official_scmultiomegrn_full', 'test_degmatched_aupr')} for scMultiomeGRN.
 - Next step: confirm that gap on a split that holds out whole TFs, where no model can count a TF's links.
