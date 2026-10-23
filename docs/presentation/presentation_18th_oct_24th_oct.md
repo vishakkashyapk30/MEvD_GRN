@@ -6,19 +6,19 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 
 ## 1. Summary: label-free and supervised baselines, scMultiomeGRN ablations, degree-controlled evaluation
 
-- We tried 38 simple and statistical models on scMultiomeGRN's datasets and splits, and ran six ablations of scMultiomeGRN itself with the authors' code.
+- 38 simple and statistical models were evaluated on scMultiomeGRN's datasets and splits, and six ablations of scMultiomeGRN itself were run with the authors' code.
 - None of the classic network-inference scores from the cell data finds the answer key. Correlation, mutual information, GRNBoost2, GENIE3 and regression all score between 0.50 and 0.53 AUPR, which is chance on this test.
 - Counting each TF's known training links is enough to beat scMultiomeGRN. A logistic regression on the two counts scores 0.931 against 0.918, and MeVD-GRN scores 0.935.
 - scMultiomeGRN depends on the known links it passes messages over. Without them it drops to 0.826, and with a STRING network in their place to 0.781. Adding Geneformer to it changes nothing.
-- We also scored every model on a harder test where each true link is paired with a non-link whose TFs have similar numbers of links.
+- Every model was also scored on a harder test where each true link is paired with a non-link whose TFs have similar numbers of links.
 - On that test, scMultiomeGRN and every simple model that counts links fall to between 0.70 and 0.76 AUPR, close to the counting rule at 0.724. MeVD-GRN keeps 0.878.
 
 ## 2. Baseline families and evaluation protocol
 
 - **Statistical scores from the cell data.** These use no labels at all. They are the methods from the BEELINE and geneRNIB benchmarks: correlations, mutual information, GRNBoost2, GENIE3, and ridge and lasso regression.
-- **Simple supervised models on features.** These are logistic regressions on scMultiomeGRN's own inputs, MAESTRO accessibility and GRNBoost2 profiles, plus the Geneformer embedding. We give the inputs one at a time, side by side, and multiplied together.
+- **Simple supervised models on features.** These are logistic regressions on scMultiomeGRN's own inputs, MAESTRO accessibility and GRNBoost2 profiles, plus the Geneformer embedding. The inputs are given one at a time, side by side, and multiplied together.
 - **Counting rules on the known links.** These are the classic link-prediction heuristics: degree, common neighbours, Adamic-Adar, Katz and random walks. All of them use only the fold's training links.
-- **scMultiomeGRN ablations.** We changed one part of the authors' code at a time and checked that with no change it gives exactly their numbers.
+- **scMultiomeGRN ablations.** One part of the authors' code is changed at a time, and with no change the patched code gives exactly their numbers.
 - **A degree-matched test.** This follows a December 2025 preprint, which showed that hub TFs inflate scores in this kind of benchmark. Each test link is paired with the test non-link closest to it in how many training links its two TFs have, so knowing the hubs no longer helps much.
 - Nothing from the test fold is used for fitting, and the regularisation of every logistic regression is chosen on the training pairs only.
 
@@ -97,7 +97,7 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 
 ## 6. Ablations of scMultiomeGRN: message-passing graph, modalities and edge features
 
-- We patched the authors' code so that each part can be switched off. With every switch at its default, the patched code gives exactly the published code's numbers.
+- The authors' code was patched so that each part can be switched off. With every switch at its default, the patched code gives exactly the published code's numbers.
 - The known-link graph is what matters. Passing messages over no links at all drops AUPR from 0.918 to 0.826. The drop is small on lung but large on blood, where it falls to 0.585.
 - A STRING protein network in place of the known links is worse still, at 0.781. STRING contains only 2 to 6% of the answer-key links.
 - The pair histograms, the ATAC view and the RNA view can each be removed without a measurable change.
@@ -140,5 +140,5 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 - Label-free network-inference methods cannot recover a motif-based answer key, so they are not a useful baseline for this task.
 - scMultiomeGRN's features add almost nothing on top of its known-link graph, and Geneformer does not help it.
 - MeVD-GRN is the only model that keeps most of its score once hubs are controlled for, at 0.878 against 0.705 for scMultiomeGRN.
-- Next, we want to confirm that gap on a split that holds out whole TFs, where no model can count a TF's links.
-- After that, we want to check which part of MeVD-GRN carries the gap, using the ablations we already have under the degree-matched test.
+- Next step: confirm that gap on a split that holds out whole TFs, where no model can count a TF's links.
+- After that: identify which part of MeVD-GRN carries the gap, by scoring the existing ablations under the degree-matched test.
