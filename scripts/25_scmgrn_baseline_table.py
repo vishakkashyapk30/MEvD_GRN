@@ -34,6 +34,9 @@ SECTIONS = [
         ("heur_rwr", "Random walk with restart"),
         ("heur_svd_lowrank", "Low-rank SVD of the training links"),
         ("heur_spectral_lowrank", "Low-rank spectral reconstruction"),
+        ("cf_lookalike", "Look-alike TFs (matrix completion of the training links)"),
+        ("cf_lookalike_norm", "Look-alike TFs, normalised"),
+        ("gf_family_top5", "Geneformer look-alikes of u linked to v (training links)"),
     ]),
     ("Scores from the cell data, no labels", [
         ("unsup_pearson_abs", "Pearson correlation of expression"),

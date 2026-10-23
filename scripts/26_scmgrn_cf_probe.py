@@ -9,13 +9,26 @@ is family-structured (TFs with similar motifs have near-identical link rows). It
 Writes results/<ds>/<ct>/<method>/seed0/foldNN.json (official test + degree-matched test), like scripts/22.
 """
 from __future__ import annotations
-import argparse, sys
+import argparse, json, sys
 from pathlib import Path
 import numpy as np
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 from src.benchmarks import scmgrn_protocol as proto   # noqa: E402
 from src.utils.io import load_config, save_json       # noqa: E402
+
+
+def family_scores(A, F, k=5):
+    """F: TF x 768 Geneformer embeddings. 'Is v already linked (in training) to TFs that look like u in Geneformer?'"""
+    Z = F - F.mean(0, keepdims=True)
+    Z = Z / (np.linalg.norm(Z, axis=1, keepdims=True) + 1e-12)
+    G = Z @ Z.T
+    np.fill_diagonal(G, -np.inf)
+    K = np.zeros_like(G)
+    top = np.argsort(-G, axis=1)[:, :k]
+    np.put_along_axis(K, top, 1.0 / k, axis=1)
+    S = K @ A                                         # fraction of u's k Geneformer look-alikes linked to v
+    return {"gf_family_top5": S + S.T}
 
 
 def scores(A):
@@ -33,15 +46,18 @@ def main():
     for ds in ("lung", "hema"):
         cfg = load_config(str(REPO / f"configs/scmgrn/{ds}.yaml")); s = cfg["split"]
         for ct in cfg["cell_types"]:
-            adj, _ = proto.load_adj(str(root / cfg["graph_dir"] / ct / "x_graph.txt")); n = adj.shape[0]
+            adj, nodes = proto.load_adj(str(root / cfg["graph_dir"] / ct / "x_graph.txt")); n = adj.shape[0]
             sdir = proto.split_dir(str(root / cfg["splits_dir"] / ct), int(s["seed"]), int(s["n_splits"]),
                                    float(s["train_split_rate"]), bool(s["rest_all_train"]))
+            pdir = root / cfg["processed_dir"] / ct
+            gi = json.load(open(pdir / "gene_index.json"))
+            F = np.load(pdir / "fm_gene_embeddings.npy")[[gi[x.upper()] for x in nodes]].astype(np.float64)
             for fold in range(1, int(s["n_splits"]) + 1):
                 f = proto.load_fold(sdir, fold, n)
                 A = np.zeros((n, n)); e = f["train"]["pos"]; A[e[:, 0], e[:, 1]] = 1; A = np.maximum(A, A.T)
                 np.fill_diagonal(A, 0)
                 dm = proto.degree_matched_test(adj, f, seed=fold)
-                for name, S in scores(A).items():
+                for name, S in {**scores(A), **family_scores(A, F)}.items():
                     m = proto.evaluate_score_matrix(S, adj, f["test_eval"])
                     m["test_degmatched"] = proto.evaluate_degree_matched(S, dm)
                     out = root / cfg["results_dir"] / ct / name / "seed0"; out.mkdir(parents=True, exist_ok=True)
