@@ -4,7 +4,7 @@ Advisor meeting, week of 18 to 24 October 2026.
 
 Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 official folds, scored on the held-out test links with scMultiomeGRN's own metric code. In each table, **bold** marks the best value in a column and *italics* the second best.
 
-## 1. This week in one slide
+## 1. Summary: label-free and supervised baselines, scMultiomeGRN ablations, degree-controlled evaluation
 
 - We tried 38 simple and statistical models on scMultiomeGRN's datasets and splits, and ran six ablations of scMultiomeGRN itself with the authors' code.
 - None of the classic network-inference scores from the cell data finds the answer key. Correlation, mutual information, GRNBoost2, GENIE3 and regression all score between 0.50 and 0.53 AUPR, which is chance on this test.
@@ -13,7 +13,7 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 - We also scored every model on a harder test where each true link is paired with a non-link whose TFs have similar numbers of links.
 - On that test, scMultiomeGRN and every simple model that counts links fall to between 0.70 and 0.76 AUPR, close to the counting rule at 0.724. MeVD-GRN keeps 0.878.
 
-## 2. What we tried and how we scored it
+## 2. Baseline families and evaluation protocol
 
 - **Statistical scores from the cell data.** These use no labels at all. They are the methods from the BEELINE and geneRNIB benchmarks: correlations, mutual information, GRNBoost2, GENIE3, and ridge and lasso regression.
 - **Simple supervised models on features.** These are logistic regressions on scMultiomeGRN's own inputs, MAESTRO accessibility and GRNBoost2 profiles, plus the Geneformer embedding. We give the inputs one at a time, side by side, and multiplied together.
@@ -22,7 +22,7 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 - **A degree-matched test.** This follows a December 2025 preprint, which showed that hub TFs inflate scores in this kind of benchmark. Each test link is paired with the test non-link closest to it in how many training links its two TFs have, so knowing the hubs no longer helps much.
 - Nothing from the test fold is used for fitting, and the regularisation of every logistic regression is chosen on the training pairs only.
 
-## 3. Statistical scores from the cell data
+## 3. Label-free co-expression, mutual-information and regression scores (BEELINE family)
 
 - None of these methods sees a label. They ask whether two TFs behave alike across cells.
 - All of them land near 0.5, which is what a random guess gets on a test with as many links as non-links.
@@ -46,7 +46,7 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 | Correlation of MAESTRO accessibility | 0.528 | 0.520 | 0.561 | 0.519 |
 | Similarity of Geneformer embeddings | 0.529 | 0.529 | 0.561 | 0.524 |
 
-## 4. Simple models on scMultiomeGRN's inputs
+## 4. Supervised logistic regression, linear regression and random forest on symmetric pair features
 
 - Once a logistic regression can learn from the training links, the same inputs become useful. MAESTRO alone reaches 0.699 AUPR and GRNBoost2 alone 0.729.
 - Giving the two inputs side by side works better than multiplying them. Side by side reaches 0.788, the per-TF product 0.721, and the product of the two TFs' features only 0.523.
@@ -69,7 +69,7 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 | Linear regression, side by side | 0.788 | 0.763 | 0.644 | 0.596 |
 | Random forest, side by side | 0.836 | 0.814 | 0.650 | 0.606 |
 
-## 5. Counting the known links
+## 5. Topological link-prediction heuristics on the training graph
 
 - These rules use only the links in the fold's training part, never the cell data.
 - The simplest one wins. The product of the two TFs' link counts scores 0.924, and a logistic regression on the two counts 0.931. Both beat scMultiomeGRN.
@@ -95,7 +95,7 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 | Link counts + Geneformer | 0.927 | 0.917 | 0.730 | 0.665 |
 | Counts and neighbour scores + Geneformer | 0.931 | *0.919* | 0.754 | 0.681 |
 
-## 6. Taking scMultiomeGRN apart
+## 6. Ablations of scMultiomeGRN: message-passing graph, modalities and edge features
 
 - We patched the authors' code so that each part can be switched off. With every switch at its default, the patched code gives exactly the published code's numbers.
 - The known-link graph is what matters. Passing messages over no links at all drops AUPR from 0.918 to 0.826. The drop is small on lung but large on blood, where it falls to 0.585.
@@ -114,7 +114,7 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 | RNA features only | 0.916 | 0.910 | 0.705 | 0.650 |
 | With Geneformer added | 0.917 | 0.911 | 0.705 | 0.649 |
 
-## 7. The degree-matched test
+## 7. Degree-matched negative sampling as a hub-controlled evaluation
 
 - On the official test, a non-link is any random pair, so it usually involves TFs with few links. A model can do well just by knowing the hubs.
 - On the degree-matched test, each test link is paired with one of the three test non-links closest to it in the two TFs' training-link counts. The pairs come from the official test set, so nothing new is revealed to any model.
@@ -134,7 +134,7 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 | Random forest on MAESTRO and GRNBoost2 | 0.836 | 0.814 | 0.650 | 0.606 |
 | scMultiomeGRN without the TF-TF graph | 0.826 | 0.815 | 0.667 | 0.600 |
 
-## 8. What we take from this and what comes next
+## 8. Conclusions and next steps: held-out-TF split
 
 - On the official test, this benchmark mostly rewards knowing the hub TFs. A two-number logistic regression beats the published model, as recent papers found in other GRN benchmarks.
 - Label-free network-inference methods cannot recover a motif-based answer key, so they are not a useful baseline for this task.
