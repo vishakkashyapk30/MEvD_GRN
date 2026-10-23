@@ -58,25 +58,25 @@ Advisor meeting, week of 18 to 24 October 2026.
 
 Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 official folds, scored on the held-out test links with scMultiomeGRN's own metric code. In each table, **bold** marks the best value in a column and *italics* the second best.""")
 
-add(f"""## 1. Summary: label-free and supervised baselines, scMultiomeGRN ablations, degree-controlled evaluation
+add(f"""## 1. Summary of results across the five families
 
 - 38 simple and statistical models were evaluated on scMultiomeGRN's datasets and splits, and six ablations of scMultiomeGRN itself were run with the authors' code.
-- None of the classic network-inference scores from the cell data recovers the ground-truth network. Correlation, mutual information, GRNBoost2, GENIE3 and regression all score between 0.50 and 0.53 AUPR, which is chance on this test.
-- Counting each TF's known training links is enough to beat scMultiomeGRN. A logistic regression on the two counts scores {v('lr_degree_only')} against {v('official_scmultiomegrn_full')}, and MeVD-GRN scores {v('mevd_fm_h384_obs_dm')}.
+- None of the label-free statistical scores recovers the ground-truth network. Correlation, mutual information, GRNBoost2, GENIE3 and regression all score between 0.50 and 0.53 AUPR, which is chance on this test.
+- A link-prediction heuristic that only counts each TF's known training links is enough to beat scMultiomeGRN. A logistic regression on the two counts scores {v('lr_degree_only')} against {v('official_scmultiomegrn_full')}, and MeVD-GRN scores {v('mevd_fm_h384_obs_dm')}.
 - scMultiomeGRN depends on the known links it passes messages over. Without them it drops to {v('official_scmultiomegrn_no_prior')}, and with a STRING network in their place to {v('official_scmultiomegrn_string_prior')}. Adding Geneformer to it changes nothing.
 - Every model was also scored on a harder test where each true link is paired with a non-link whose TFs have similar numbers of links.
 - On that test, scMultiomeGRN and every simple model that counts links fall to between 0.70 and 0.76 AUPR, close to the counting rule at {v('heur_degree_product', 'test_degmatched_aupr')}. MeVD-GRN keeps {v('mevd_fm_h384_obs_dm', 'test_degmatched_aupr')}.""")
 
 add("""## 2. Baseline families and evaluation protocol
 
-- **Statistical scores from the cell data.** These use no labels at all. They are the methods from the BEELINE and geneRNIB benchmarks: correlations, mutual information, GRNBoost2, GENIE3, and ridge and lasso regression.
-- **Simple supervised models on features.** These are logistic regressions on scMultiomeGRN's own inputs, MAESTRO accessibility and GRNBoost2 profiles, plus the Geneformer embedding. The inputs are given one at a time, side by side, and multiplied together.
-- **Counting rules on the known links.** These are the classic link-prediction heuristics: degree, common neighbours, Adamic-Adar, Katz and random walks. All of them use only the fold's training links.
+- **Label-free statistical scores.** These use no labels at all. They are the methods from the BEELINE and geneRNIB benchmarks: correlations, mutual information, GRNBoost2, GENIE3, and ridge and lasso regression.
+- **Supervised models on pair features.** These are logistic regressions on scMultiomeGRN's own inputs, MAESTRO accessibility and GRNBoost2 profiles, plus the Geneformer embedding. The inputs are given one at a time, side by side, and multiplied together.
+- **Link-prediction heuristics on the training graph.** These are the classic heuristics: degree, common neighbours, Adamic-Adar, Katz and random walks. All of them use only the fold's training links.
 - **scMultiomeGRN ablations.** One part of the authors' code is changed at a time, and with no change the patched code gives exactly their numbers.
-- **A degree-matched test.** This follows a December 2025 preprint, which showed that hub TFs inflate scores in this kind of benchmark. Each test link is paired with the test non-link closest to it in how many training links its two TFs have, so knowing the hubs no longer helps much.
+- **Degree-matched test.** This follows a December 2025 preprint, which showed that hub TFs inflate scores in this kind of benchmark. Each test link is paired with the test non-link closest to it in how many training links its two TFs have, so knowing the hubs no longer helps much.
 - Nothing from the test fold is used for fitting, and the regularisation of every logistic regression is chosen on the training pairs only.""")
 
-add("""## 3. Label-free co-expression, mutual-information and regression scores (BEELINE family)
+add("""## 3. Label-free statistical scores
 
 - None of these methods sees a label. They ask whether two TFs behave alike across cells.
 - All of them land near 0.5, which is what a random guess gets on a test with as many links as non-links.
@@ -98,7 +98,7 @@ add("""## 3. Label-free co-expression, mutual-information and regression scores 
     ("unsup_geneformer_cosine", "Similarity of Geneformer embeddings"),
 ]))
 
-add(f"""## 4. Supervised logistic regression, linear regression and random forest on symmetric pair features
+add(f"""## 4. Supervised models on pair features
 
 - Once a logistic regression can learn from the training links, the same inputs become useful. MAESTRO alone reaches {v('lr_maestro')} AUPR and GRNBoost2 alone {v('lr_grnboost')}.
 - Giving the two inputs side by side works better than multiplying them. Side by side reaches {v('lr_maestro_grnboost_concat')}, the per-TF product {v('lr_maestro_x_grnboost')}, and the product of the two TFs' features only {v('lr_within_pair_product')}.
@@ -119,7 +119,7 @@ add(f"""## 4. Supervised logistic regression, linear regression and random fores
     ("rf_maestro_grnboost_concat", "Random forest, side by side"),
 ]))
 
-add(f"""## 5. Topological link-prediction heuristics on the training graph
+add(f"""## 5. Link-prediction heuristics on the training graph
 
 - These rules use only the links in the fold's training part, never the cell data.
 - The simplest one wins. The product of the two TFs' link counts scores {v('heur_degree_product')}, and a logistic regression on the two counts {v('lr_degree_only')}. Both beat scMultiomeGRN.
@@ -143,7 +143,7 @@ add(f"""## 5. Topological link-prediction heuristics on the training graph
     ("lr_topology_geneformer", "Counts and neighbour scores + Geneformer"),
 ]))
 
-add(f"""## 6. Ablations of scMultiomeGRN: message-passing graph, modalities and edge features
+add(f"""## 6. scMultiomeGRN ablations
 
 - The authors' code was patched so that each part can be switched off. With every switch at its default, the patched code gives exactly the published code's numbers.
 - The known-link graph is what matters. Passing messages over no links at all drops AUPR from {v('official_scmultiomegrn_full')} to {v('official_scmultiomegrn_no_prior')}. The drop is small on lung but large on blood, where it falls to 0.585.
@@ -160,7 +160,7 @@ add(f"""## 6. Ablations of scMultiomeGRN: message-passing graph, modalities and 
     ("official_scmultiomegrn_plus_geneformer", "With Geneformer added"),
 ]))
 
-add(f"""## 7. Degree-matched negative sampling as a hub-controlled evaluation
+add(f"""## 7. Degree-matched test
 
 - On the official test, a non-link is any random pair, so it usually involves TFs with few links. A model can do well just by knowing the hubs.
 - On the degree-matched test, each test link is paired with one of the three test non-links closest to it in the two TFs' training-link counts. The pairs come from the official test set, so nothing new is revealed to any model.
@@ -181,7 +181,7 @@ add(f"""## 7. Degree-matched negative sampling as a hub-controlled evaluation
 add(f"""## 8. Conclusions and next steps: held-out-TF split
 
 - On the official test, this benchmark mostly rewards knowing the hub TFs. A two-number logistic regression beats the published model, as recent papers found in other GRN benchmarks.
-- Label-free network-inference methods cannot recover a motif-based ground-truth network, so they are not a useful baseline for this task.
+- Label-free statistical scores cannot recover a motif-based ground-truth network, so they are not a useful baseline for this task.
 - scMultiomeGRN's features add almost nothing on top of its known-link graph, and Geneformer does not help it.
 - MeVD-GRN is the only model that keeps most of its score once hubs are controlled for, at {v('mevd_fm_h384_obs_dm', 'test_degmatched_aupr')} against {v('official_scmultiomegrn_full', 'test_degmatched_aupr')} for scMultiomeGRN.
 - Next step: confirm that gap on a split that holds out whole TFs, where no model can count a TF's links.
