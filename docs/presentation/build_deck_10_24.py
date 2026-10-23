@@ -65,7 +65,7 @@ add(f"""## 1. This week in one slide
 - Counting each TF's known training links is enough to beat scMultiomeGRN. A logistic regression on the two counts scores {v('lr_degree_only')} against {v('official_scmultiomegrn_full')}, and MeVD-GRN scores {v('mevd_fm_h384_obs_dm')}.
 - scMultiomeGRN depends on the known links it passes messages over. Without them it drops to {v('official_scmultiomegrn_no_prior')}, and with a STRING network in their place to {v('official_scmultiomegrn_string_prior')}. Adding Geneformer to it changes nothing.
 - We also scored every model on a harder test where each true link is paired with a non-link whose TFs have similar numbers of links.
-- On that test, scMultiomeGRN and every simple model fall to between 0.70 and 0.76 AUPR, close to the counting rule at {v('heur_degree_product', 'test_degmatched_aupr')}. MeVD-GRN keeps {v('mevd_fm_h384_obs_dm', 'test_degmatched_aupr')}.""")
+- On that test, scMultiomeGRN and every simple model that counts links fall to between 0.70 and 0.76 AUPR, close to the counting rule at {v('heur_degree_product', 'test_degmatched_aupr')}. MeVD-GRN keeps {v('mevd_fm_h384_obs_dm', 'test_degmatched_aupr')}.""")
 
 add("""## 2. What we tried and how we scored it
 
