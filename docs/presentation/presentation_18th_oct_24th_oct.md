@@ -11,7 +11,7 @@ Every number is an average over the 12 cell types (9 lung, 3 blood) and the 10 o
 - Counting each TF's known training links is enough to beat scMultiomeGRN. A logistic regression on the two counts scores 0.931 against 0.918, and MeVD-GRN scores 0.935.
 - scMultiomeGRN depends on the known links it passes messages over. Without them it drops to 0.826, and with a STRING network in their place to 0.781. Adding Geneformer to it changes nothing.
 - We also scored every model on a harder test where each true link is paired with a non-link whose TFs have similar numbers of links.
-- On that test, scMultiomeGRN and every simple model fall to between 0.70 and 0.76 AUPR, close to the counting rule at 0.724. MeVD-GRN keeps 0.878.
+- On that test, scMultiomeGRN and every simple model that counts links fall to between 0.70 and 0.76 AUPR, close to the counting rule at 0.724. MeVD-GRN keeps 0.878.
 
 ## 2. What we tried and how we scored it
 
