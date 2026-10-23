@@ -363,7 +363,7 @@ scMultiomeGRN) and `vs_mevd_*.md` (against MeVD-GRN).
   GRNBoost2, GENIE3, ridge/lasso) sits at 0.50-0.53 AUPR on a balanced test, i.e. chance. The motif-in-open-promoter
   answer key is not a co-expression network.
 - Everything above 0.92 uses the fold's training links. Logistic regression on the two TFs' training degrees (0.931)
-  beats scMultiomeGRN (0.918, p = 2e-13) and is within 0.004 of MeVD-GRN; adding neighbourhood scores or features
+  beats scMultiomeGRN (0.918, p = 2e-13) and is within 0.003 of MeVD-GRN; adding neighbourhood scores or features
   barely moves it. The literature's claim holds here: simple models match or beat the published deep model.
 - Features alone reach at most 0.84 AUPR (random forest). Giving MAESTRO and GRNBoost2 side by side (0.788) beats
   multiplying them per TF (0.721) or keeping only the within-pair product (0.523).
@@ -372,5 +372,5 @@ scMultiomeGRN) and `vs_mevd_*.md` (against MeVD-GRN).
   either single modality and an added Geneformer embedding change nothing measurable (|diff| <= 0.002, p >= 0.29).
 - On the degree-matched test MeVD-GRN keeps 0.878 AUPR while scMultiomeGRN (0.705) and the best simple model (0.759)
   fall to near the degree rule (0.724). This is the clearest evidence so far that MeVD-GRN uses information beyond
-  hubness; it is from one re-weighting of 10 test negatives per positive bucket, so it should be confirmed with a
-  benchmark that has more negatives per hub (e.g. a held-out-TF split).
+  hubness. The negatives come only from each fold's official test negatives (27 in a Myeloid fold), so it should
+  be confirmed on a split with more negatives per hub (for example, holding out whole TFs).
