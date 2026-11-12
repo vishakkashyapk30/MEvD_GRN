@@ -1,13 +1,13 @@
 """Label-free preprocessing of BEAR-GRN's INPUT.DATA into MeVD-GRN's processed
 layout (the files src/data/dataset.py:load_celltype_data reads).
 
-Leak-safety (docs/experiments/bear_grn_benchmark.md s6.5):
+Leak-safety (docs/benchmarks/bear_grn.md s6.5):
   * gene universe = the post-QC RNA gene list of INPUT.DATA (no network filter)
   * TF nodes = RNA genes that are a source in any label/GT file of the dataset
     (which genes are TFs -- not which edges exist)
   * co-expression kNN and TF-candidate graphs are built WITHOUT any edge label
     (`build_prior_graph(..., evidence=None, exclude_positives=False)`), so the
-    second leak of scripts/02_preprocess.py (candidate graph excluding all
+    second leak of scripts/sc_mo_grn_db/02_preprocess.py (candidate graph excluding all
     positives, val/test included) cannot occur
   * the motif relation is empty
 Label edges are saved separately (labels/<tier>.pt, gts/<name>.pt, in universe

@@ -1,4 +1,4 @@
-"""Real TF motif scanning (plan.md Section 2, "still open" item).
+"""Real TF motif scanning (archive/plan_2026-07.md Section 2, "still open" item).
 
 Builds a genuinely motif-informed TF -> target-gene relation, replacing the
 accessibility-only heuristic in `graph_builder.build_prior_graph` (which

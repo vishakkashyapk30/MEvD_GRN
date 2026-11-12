@@ -27,7 +27,7 @@ without a LaTeX toolchain.
   forgetting literature)
 - `figures/` — the 8 figures `main.tex` includes, copied from
   `results/figures/` (regenerate the sources with
-  `scripts/07_compile_results.py` and `scripts/10_presentation_figures.py`,
+  `scripts/sc_mo_grn_db/07_compile_results.py` and `scripts/sc_mo_grn_db/10_presentation_figures.py`,
   then re-copy). `architecture_diagram_v3_1.png` is a copy of
   `docs/figures/architecture_diagram_v3_1.png`, and its HTML source lives
   there.
@@ -38,8 +38,8 @@ without a LaTeX toolchain.
 The slide-deck walkthroughs of the project are in `docs/weekly_updates/`
 (PDF decks, some with markdown slide text). The old root-level
 `presentation.md` that this section used to describe is now
-`docs/weekly_updates/2026-08-02_to_2026-08-22_update_06.md`, and its numbers
+`archive/weekly_updates/2026-08-02_to_2026-08-22_update_06.md`, and its numbers
 are pre-bugfix. `paper/main.tex` is the peer-review-style write-up of the
-current results in the root `results.md`. It is aimed at a reader who wants
+current results in the root `archive/results_sc_mo_grn_db.md`. It is aimed at a reader who wants
 the full methodological rigor (formal split-consistency guarantee, related
 work, ablation discussion) rather than a slide-by-slide narrative.

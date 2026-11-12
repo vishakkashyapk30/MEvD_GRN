@@ -176,7 +176,7 @@ def build_prior_graph(gene_index: Dict[str, int], tf_indices: List[int],
     For each TF, candidate targets are the top_k genes that are BOTH (a) PROXIMALLY
     accessible (`openness[:, 1]` -- max regulatory-potential weight among a gene's
     top peaks -- above 0.1, i.e. the nearest peak is within roughly
-    decay_bp*ln(10) of the TSS; see plan.md Section 2 for why a mere
+    decay_bp*ln(10) of the TSS; see archive/plan_2026-07.md Section 2 for why a mere
     "any peak within the +/-window" gate passes ~90% of genes and barely
     filters anything) AND (b) most co-expressed with that TF (signature dot
     product). This yields a DIFFERENT neighbourhood per TF, unlike the old

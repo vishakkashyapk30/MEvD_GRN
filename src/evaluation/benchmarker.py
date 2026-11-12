@@ -19,7 +19,7 @@ def eval_edges_for_tier(sp: dict, tier: str, held_out_tiers: Optional[Iterable[s
     perturbation) use the standard TEST split only. Tiers held out of
     training entirely (default: dual_evidence, since it is nested inside the
     other tiers and is treated as zero-shot inference -- see
-    `configs/default.yaml: curriculum.main_curriculum_tiers`) use VAL+TEST
+    `configs/sc_mo_grn_db/default.yaml: curriculum.main_curriculum_tiers`) use VAL+TEST
     combined: since nothing in this tier was ever trained on, both partitions
     are equally "unseen" and combining them gives a larger, less noisy
     evaluation set.

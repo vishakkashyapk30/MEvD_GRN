@@ -1,6 +1,6 @@
 """Training labels, splits and negatives for the PBMC10k / LINGER-Cistrome benchmark.
 
-Pre-registered design (docs/experiments/pbmc10k_linger_benchmark.md, section 4):
+Pre-registered design (docs/benchmarks/pbmc10k_linger.md, section 4):
 
 * Label sources (none is the evaluation ChIP set, none is motif-derived):
     collectri   CollecTRI (OmniPath `datasets=collectri`), literature-curated.

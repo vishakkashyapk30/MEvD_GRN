@@ -30,10 +30,10 @@ class FMEncoder(nn.Module):
 
     Projects a frozen, pretrained foundation-model gene embedding (e.g.
     Geneformer's input token embedding, in_dim=768 -- see
-    scripts/11_extract_fm_embeddings.py) down to the model's hidden size.
+    scripts/sc_mo_grn_db/11_extract_fm_embeddings.py) down to the model's hidden size.
     Unlike RNAEncoder's input, this embedding is CELL-TYPE-INVARIANT: the
     same gene gets the same vector regardless of which cell type is being
-    modeled (plan.md Section 5). Same shape as RNAEncoder/ATACEncoder.
+    modeled (archive/plan_2026-07.md Section 5). Same shape as RNAEncoder/ATACEncoder.
     """
 
     def __init__(self, in_dim: int = 768, hidden_dim: int = 128,
@@ -56,7 +56,7 @@ class ATACEncoder(nn.Module):
     """2-layer MLP: (N_G, in_dim) -> (N_G, out_dim). LayerNorm + GELU + dropout.
 
     Previously a single Linear+LayerNorm+GELU with no hidden layer -- fine
-    when the input was a near-rank-1, 2-dim signal (see plan.md Section 2),
+    when the input was a near-rank-1, 2-dim signal (see archive/plan_2026-07.md Section 2),
     but a real bottleneck now that the input is the richer RP-weighted
     [mean, var, detection] gene activity. Matches RNAEncoder's shape.
     """

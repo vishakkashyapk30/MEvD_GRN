@@ -386,7 +386,7 @@ def run_scmultiomegrn(
     localization, perturbation) -- matching MEvD-GRN's own protocol of
     treating tiers outside that set (default: dual_evidence) as held-out
     zero-shot inference rather than a fine-tuning target, since dual_evidence
-    is heavily nested inside the other tiers (see configs/default.yaml). The
+    is heavily nested inside the other tiers (see configs/sc_mo_grn_db/default.yaml). The
     returned TieredScorer falls back to the LAST main-tier model (the most
     "refined" one, e.g. perturbation) for any tier it never explicitly trained.
     """
@@ -396,7 +396,7 @@ def run_scmultiomegrn(
         signature = data.rna_features.float()
     rna_x = _standardize(torch.cat([signature, data.rna_features.float()], dim=1))
     # openness is now a (n_genes, 4) regulatory-potential descriptor (see
-    # plan.md Section 2), not a single scalar -- no reshape needed.
+    # archive/plan_2026-07.md Section 2), not a single scalar -- no reshape needed.
     atac_x = _standardize(torch.cat([
         data.atac_features.float(),
         data.openness.float(),

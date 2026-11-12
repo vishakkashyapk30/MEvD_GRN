@@ -1,182 +1,55 @@
-# MEvD-GRN — Multi-Evidence Distillation for Gene Regulatory Network Inference
+# MeVD-GRN
 
-A compact dual-modality GNN that predicts TF→target regulatory edges from
-scRNA-seq + scATAC-seq, trained via a **three-stage evidence-aware curriculum**
-over SC-MO-GRN-DB's tiered reference networks
-(localization → perturbation → dual-evidence). That was the original design.
-The current protocol trains on localization and perturbation and holds
-dual-evidence out as a zero-shot test. The recommended configuration is in
-`results.md` Sections 3 and 7.
+MeVD-GRN infers gene regulatory networks from paired single-cell RNA and ATAC data. It combines per-gene RNA and
+ATAC summaries, a pretrained Geneformer gene embedding and label-free gene graphs in a two-tower graph network,
+and scores regulator pairs with a symmetric or role-aware decoder. Every evaluation is zero-leak: held-out pairs never
+enter training, the message-passing graph or negative sampling.
 
-**Documentation map:**
-- `results.md`: the latest numbers, and the source of truth when documents disagree.
-- `plan.md`: the living roadmap, meaning why each change was made and what is still open (Section 10).
-- `docs/README.md`: index of all supporting docs (design rationale and
-  citations, architecture diagrams, the independent critical review, weekly
-  updates, and the archive, which includes the original full theory spec
-  `docs/archive/2026-07-20_mevd_grn_plan_v2_original_spec.md`).
-- `paper/`: the LaTeX manuscript. Build instructions are in `paper/README.md`.
+## Benchmarks
 
----
+| Benchmark | Task | Ground truth | Doc |
+|---|---|---|---|
+| scMultiomeGRN (Xu et al., NAR 2025): 9 fetal-lung + 3 blood cell types | undirected TF-TF link prediction | motif in an open promoter | `docs/benchmarks/scmultiomegrn.md` |
+| BEAR-GRN (Nat Commun 2026) | TF -> target | ChIP-seq, knockouts | `docs/benchmarks/bear_grn.md` |
+| PBMC10k Multiome | TF -> target | Cistrome blood ChIP (LINGER style) | `docs/benchmarks/pbmc10k_linger.md` |
+| SC-MO-GRN-DB (original pipeline) | TF -> target | tiered evidence | `docs/sc_mo_grn_db_pipeline.md` |
 
-## 1. Which data to download (and why)
+On scMultiomeGRN the repo also provides two evaluations beyond the official folds: a degree-matched test (negatives
+matched to the positives' training degrees) and a held-out-TF split (whole TFs hidden; pairs classed C2/C3 as in
+Park & Marcotte 2012), both in `src/benchmarks/scmgrn_protocol.py`.
 
-The full SC-MO-GRN-DB single-cell collection is **~24.7 GB** (17.5 GB human +
-7.2 GB mouse). You do **not** need it. The curriculum requires a cell type with
-**all three evidence tiers**, and only **two** cell types in the entire database
-have that complete triple:
+## Branches
 
-| Cell type | Localization | Perturbation | Dual-evidence | Notes |
-|-----------|-------------|--------------|---------------|-------|
-| **K562** (human) | RN117 ChIPseq | RN118 KO | RN119 ChIPseq&KO | dual is from a *different* study → nesting is verified, not assumed |
-| **ESC** (mouse)  | RN114 ChIP-chip | RN115 LOGOF | RN116 ChIPchip&LOGOF | **self-consistent** triple (one study, dual = loc ∩ pert) |
+| Branch | Contents |
+|---|---|
+| `main` | The model (`src/`), data building and evaluation for every benchmark, MeVD-GRN training and evaluation, docs, paper |
+| `scmgrn-reproduction` | `main` + end-to-end reproduction of scMultiomeGRN with its official code (`scripts/scmgrn/18_scmgrn_official_repro.py`, worker kind `official`) |
+| `ablations` | `scmgrn-reproduction` + MeVD-GRN ablation configs and tables, scMultiomeGRN ablations (patched official code, STRING prior), run plans |
+| `baselines` | `scmgrn-reproduction` + statistical and simple baselines, link-prediction heuristics, the look-alike probe, DeepTFni and GENELink |
+| `archive/*` (branches and tags) | The pre-restructure branches, unchanged |
 
-Every other cell type (HepG2, BJ, GM12878, H1, Macrophage, MCF7, HSC, DC) has
-**localization only** → cannot exercise the curriculum.
+## Layout
 
-**Single-cell datasets** (paired RNA+ATAC, kept deliberately small):
+```
+src/                 model, data processing, training, evaluation, benchmark protocols (scmgrn_*, bear_*, pbmc_*)
+configs/             sc_mo_grn_db/ (original pipeline + sweeps), scmgrn/, bear/, pbmc/
+scripts/             sc_mo_grn_db/ (00-13), scmgrn/ (14-32), bear/ (20-24), pbmc/ (25-29), common/
+slurm/               Ada batch jobs per benchmark; slurm/scmgrn/kinds/ = unit kinds of the shared GPU work queue
+tests/               unit tests (pytest)
+docs/                benchmark records, compiled results, references, figures (index: docs/README.md)
+paper/               LaTeX manuscript (September 2026 draft; its numbers predate the leak fixes)
+archive/             superseded docs, meeting decks, weekly updates, old SC-MO-GRN-DB results
+```
 
-| Cell type | Dataset | Modalities | Cells | Size | Role |
-|-----------|---------|-----------|-------|------|------|
-| K562 | **DS025** | scRNA + scATAC (joint) | 434 | ~522 MB | primary (both modalities) |
-| K562 | DS019 | scRNA | 953 | ~17 MB | optional extra RNA cells |
-| ESC  | **DS010** | scRNA + scATAC (+scHiC) | 9021 | ~37 MB | primary (small + many cells) |
-| ESC  | DS012 | scRNA + scATAC | 930 | ~12 MB | lightweight fallback |
+## Running
 
-Total for the two-cell-type experiment: **≈575 MB** instead of 24.7 GB.
-
-`scripts/01_download_data.sh` fetches exactly these (per-file URLs:
-`RN_TSV/RN###.tsv`, `DS_ZIP/DS###.zip`).
-
-> Note: gene-level features are per-gene mean/variance, so RNA and ATAC are
-> aggregated **independently** — paired barcodes are not required, which is why
-> RNA-only and ATAC-only datasets can be combined freely.
-
----
-
-## 2. Environment (Ada / SLURM)
-
-Custom envs must live in `$HOME` (Ada policy); `/home` quota is 25 GB.
+Environment: `pip install -r requirements.txt && pip install -e .` (Python 3.10+, PyTorch, PyTorch Geometric).
+Everything heavy runs as Slurm batch jobs on Ada (`docs/reference/ada.md`). For the scMultiomeGRN benchmark:
 
 ```bash
-conda create -y -n mevd-grn python=3.10
-conda activate mevd-grn
-# torch matched to the cluster CUDA (driver permitting):
-pip install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118
-pip install torch_geometric torch_scatter torch_sparse \
-    -f https://data.pyg.org/whl/torch-2.1.0+cu118.html
-pip install -r requirements.txt
-pip install -e .
-```
-
-We use **1 GPU** (model is ~125K params, trains in minutes; that was the
-original prototype, and the current sizes are 315,015 params for the base
-model and 3.26M for the recommended h384/l2 configuration, per `results.md`); request 10 CPUs to
-respect Ada's 1:10 GPU:CPU rule, `research` account, `medium` QoS.
-
-> Local dev note: this machine has multiple Python interpreters; the one with
-> torch+PyG is `/home/vishak/miniforge3/bin/python` (base env). If `python3`
-> resolves to linuxbrew and can't import `torch_geometric`, call that interpreter
-> explicitly or `conda activate base` first. On Ada, use the `mevd-grn` env above.
-
-### scATAC needs TSS coordinates (offline)
-Ada compute nodes have **no internet**, so peak→gene mapping needs an offline
-GTF. On a **login node**, download GENCODE and point the config at it:
-```bash
-# human (K562): gencode.v38.annotation.gtf.gz   mouse (ESC): gencode.vM27.annotation.gtf.gz
-# then set in configs/{k562,esc}.yaml:  atac: { gtf_path: /path/to/....gtf.gz }
-```
-Without a GTF the pipeline still runs with **ATAC features = 0** (RNA-only); the
-gated fusion learns to ignore the empty modality.
-
----
-
-## 3. Run
-
-```bash
-# (login node) fetch data
-bash scripts/01_download_data.sh
-
-# validate the code with no data / no GPU
-python scripts/00_sanity_check.py
-
-# preprocess -> train -> evaluate (or just: sbatch slurm/train.sh)
-python scripts/02_preprocess.py --config configs/k562.yaml
-python scripts/03_train.py      --config configs/k562.yaml --device cuda:0
-python scripts/04_evaluate.py   --config configs/k562.yaml \
-    --checkpoint results/checkpoints/K562/final_model.pt --transfer_config configs/esc.yaml
-
-# baselines, evaluated on the same frozen test splits
-pip install arboreto regdiffusion        # optional external baselines
-python scripts/05_run_baselines.py --config configs/k562.yaml \
-    --baselines grnboost2,regdiffusion,gmf_gae --device cuda:0
-
-# supervised multiomic baseline (paper default: 2000 epochs)
-python scripts/05_run_baselines.py --config configs/k562.yaml \
-    --baselines scmultiomegrn --device cuda:0 \
-    --scmultiomegrn-epochs 2000
-
-# ablations (paper claims)
-sbatch slurm/ablation.sh
-```
-
-**Baselines** (`src/baselines/`, plan Part 9), all evaluated on the *identical*
-test splits via `evaluate_scorer_on_splits`:
-- **GRNBoost2** (arboreto) — tree-ensemble co-expression, RNA-only.
-- **RegDiffusion** — diffusion GRN, RNA-only, GPU; fastest DL baseline.
-- **GMF-GAE** — self-contained graph auto-encoder over a co-expression kNN graph
-  (the "GNN + matrix factorization" family GMFGRN belongs to). Always runnable;
-  the official GMFGRN repo can be wired in via `run_gmfgrn()` after cloning.
-- **scMultiomeGRN** (Xu et al., NAR 2025, gkaf138) — supervised RNA+ATAC
-  edge-aware modality-specific aggregation and cross-modal attention. The
-  published method is limited to undirected TF–TF links; this repository's
-  adapter generalizes its node set to TF→gene candidates, decodes edges
-  sparsely, and trains a separate model on each tier's training split to avoid
-  cross-tier leakage. Those adaptations are reported with its results.
-  Uninstalled external baselines fail gracefully (error saved to JSON, run continues).
-
----
-
-## 4. Repo layout
-
-```
-configs/      default + per-cell-type YAML (k562, esc, macrophage, mcf7, *_fm);
-              *_localtest/*_fast* are smoke tests or short schedules;
-              sweep/ = model-size sweep
-src/data/     preprocessing (real text-matrix loaders), graph_builder, dataset,
-              motif_scan
-src/models/   encoders, fusion, GraphSAGE backbone, decoder, MEvDGRN
-src/training/ curriculum, sampler (random + hard negatives), losses, trainer
-src/evaluation/ metrics (AUPR/AUROC/EP/EPR), benchmarker
-src/baselines/ GRNBoost2, RegDiffusion, GMF-GAE, scMultiomeGRN wrappers
-scripts/      00_sanity_check … 13_scmultiomegrn_full_ddp (preprocess, train,
-              evaluate, baselines, ablations, transfer, FM embeddings,
-              joint training, figures)
-slurm/        train.sh, ablation.sh, baselines.sh
-results/      numeric-results JSONs are tracked; checkpoints/logs are not
-paper/        LaTeX manuscript (main.tex, main.pdf, figures/)
-docs/         supporting docs, see docs/README.md
-plan.md       living roadmap        results.md   current numbers
-```
-
----
-
-## 5. Design notes / deviations from the original plan
-
-These were forced by the **real** data format (verified against the live DB):
-
-1. **Single-cell files are tab-delimited text, oriented features×cells** (not
-   `.h5ad`, not cells×genes). Loaders transpose and parse accordingly.
-2. **Gene-symbol case mismatch**: networks are UPPERCASE, RNA is mixed-case → all
-   symbols canonicalised to UPPERCASE for matching.
-3. **Nesting is verified, not assumed.** Measured on ESC: `dual ⊆ loc` and
-   `dual ⊆ pert` = 100% (RN116 = RN114∩RN115), but `pert ⊆ loc` ≈ 12%
-   (knockouts hit indirectly-regulated genes). `dual_evidence_mode: reconstruct`
-   can force dual = loc∩pert when a self-consistent triple isn't available.
-4. **Negatives = random TF×gene non-positives** (field standard), **not** the
-   accessibility-ranked prior — restricting negatives to the prior inflates AUPR
-   via an expression-level artifact.
-5. **Prior graph excludes known positives** — it is a pure message-passing
-   structure, so val/test edges cannot leak into node embeddings. The bilinear
-   decoder scores any (TF, gene) pair, so positives need not lie in the prior.
+sbatch slurm/scmgrn/scmgrn_setup.sh          # environments, official code, Geneformer cache
+bash slurm/scmgrn/scmgrn_submit_all.sh       # raw data -> benchmark build -> GPU work queue
+sbatch slurm/scmgrn/scmgrn_cpu_job.sh scripts/scmgrn/30_scmgrn_make_tfholdout_splits.py --root '$SHARE'
+sbatch --export=ALL,PLAN=slurm/scmgrn/plans/<plan>.plan slurm/scmgrn/scmgrn_work_plan.sh   # 4 GPU workers
+python scripts/scmgrn/25_scmgrn_baseline_table.py --root ~/scmgrn --ref mevd_fm_h384_obs_dm --out tables
 ```

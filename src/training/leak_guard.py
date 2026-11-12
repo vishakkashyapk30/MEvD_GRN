@@ -1,10 +1,10 @@
-"""Zero-leak guard (2026-10-08, docs/experiments/labelfree_graph_rerun.md s6).
+"""Zero-leak guard (2026-10-08, archive/experiments/labelfree_graph_rerun.md s6).
 
 Every MeVD-GRN training run must have both test->train leak fixes on:
 
 1. Label-free message-passing graphs. The processed dir's summary.json must
    record that its TF-candidate graph was built without labels:
-   `prior_exclude_positives: false` (scripts/02_preprocess.py), or the
+   `prior_exclude_positives: false` (scripts/sc_mo_grn_db/02_preprocess.py), or the
    equivalent records written by the benchmark builders, `label_free: true`
    (PBMC, src/benchmarks/pbmc_data.py) and `label_free_graphs: true` (BEAR,
    src/benchmarks/bear_data.py). A missing record counts as leaky: every
@@ -60,7 +60,7 @@ def enforce(cfg: dict, data) -> dict:
     if not st["graph_label_free"]:
         problems.append(f"the TF-candidate graph of {st['processed_dir'] or 'this data'} is not recorded "
                         "as label-free (summary.json needs prior_exclude_positives: false; build it with "
-                        "scripts/02_preprocess.py and a *_labelfree config)")
+                        "scripts/sc_mo_grn_db/02_preprocess.py and a *_labelfree config)")
     if not st["eval_negatives_excluded"]:
         problems.append("training.exclude_eval_negatives is false (val/test negatives stay in the "
                         "training negative pool)")

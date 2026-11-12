@@ -1,7 +1,7 @@
 # scMultiomeGRN benchmark: human fetal lung (Domcke et al. 2020, GEO GSM4508936).
 # All paths are relative to the benchmark root (--root / $SCMGRN_ROOT; on Ada
 # /share1/$USER/mevd_grn/scmgrn, staged to /scratch inside jobs).
-# Protocol + targets: docs/experiments/scmultiomegrn_generalization.md
+# Protocol + targets: docs/benchmarks/scmultiomegrn.md
 dataset: lung
 genome: hg19
 genome_fasta: raw/genome/hg19.fa

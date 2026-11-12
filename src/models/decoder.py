@@ -51,7 +51,7 @@ class RoleAwareDecoder(nn.Module):
     coexpr(i,j) is the signature dot product (~ Pearson correlation) supplied by the
     caller; openness_j is the target locus's regulatory-potential descriptor (a
     small vector -- mean/max RP weight, mean peak distance, peak count -- see
-    plan.md Section 2), not a single collapsed scalar.
+    archive/plan_2026-07.md Section 2), not a single collapsed scalar.
     """
 
     def __init__(self, dim: int = 128, use_edge_mlp: bool = False,

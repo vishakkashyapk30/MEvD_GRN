@@ -1,0 +1,182 @@
+# MEvD-GRN — Multi-Evidence Distillation for Gene Regulatory Network Inference
+
+A compact dual-modality GNN that predicts TF→target regulatory edges from
+scRNA-seq + scATAC-seq, trained via a **three-stage evidence-aware curriculum**
+over SC-MO-GRN-DB's tiered reference networks
+(localization → perturbation → dual-evidence). That was the original design.
+The current protocol trains on localization and perturbation and holds
+dual-evidence out as a zero-shot test. The recommended configuration is in
+`archive/results_sc_mo_grn_db.md` Sections 3 and 7.
+
+**Documentation map:**
+- `archive/results_sc_mo_grn_db.md`: the latest numbers, and the source of truth when documents disagree.
+- `archive/plan_2026-07.md`: the living roadmap, meaning why each change was made and what is still open (Section 10).
+- `docs/README.md`: index of all supporting docs (design rationale and
+  citations, architecture diagrams, the independent critical review, weekly
+  updates, and the archive, which includes the original full theory spec
+  `archive/docs_2026-07_to_09/2026-07-20_mevd_grn_plan_v2_original_spec.md`).
+- `paper/`: the LaTeX manuscript. Build instructions are in `paper/README.md`.
+
+---
+
+## 1. Which data to download (and why)
+
+The full SC-MO-GRN-DB single-cell collection is **~24.7 GB** (17.5 GB human +
+7.2 GB mouse). You do **not** need it. The curriculum requires a cell type with
+**all three evidence tiers**, and only **two** cell types in the entire database
+have that complete triple:
+
+| Cell type | Localization | Perturbation | Dual-evidence | Notes |
+|-----------|-------------|--------------|---------------|-------|
+| **K562** (human) | RN117 ChIPseq | RN118 KO | RN119 ChIPseq&KO | dual is from a *different* study → nesting is verified, not assumed |
+| **ESC** (mouse)  | RN114 ChIP-chip | RN115 LOGOF | RN116 ChIPchip&LOGOF | **self-consistent** triple (one study, dual = loc ∩ pert) |
+
+Every other cell type (HepG2, BJ, GM12878, H1, Macrophage, MCF7, HSC, DC) has
+**localization only** → cannot exercise the curriculum.
+
+**Single-cell datasets** (paired RNA+ATAC, kept deliberately small):
+
+| Cell type | Dataset | Modalities | Cells | Size | Role |
+|-----------|---------|-----------|-------|------|------|
+| K562 | **DS025** | scRNA + scATAC (joint) | 434 | ~522 MB | primary (both modalities) |
+| K562 | DS019 | scRNA | 953 | ~17 MB | optional extra RNA cells |
+| ESC  | **DS010** | scRNA + scATAC (+scHiC) | 9021 | ~37 MB | primary (small + many cells) |
+| ESC  | DS012 | scRNA + scATAC | 930 | ~12 MB | lightweight fallback |
+
+Total for the two-cell-type experiment: **≈575 MB** instead of 24.7 GB.
+
+`scripts/sc_mo_grn_db/01_download_data.sh` fetches exactly these (per-file URLs:
+`RN_TSV/RN###.tsv`, `DS_ZIP/DS###.zip`).
+
+> Note: gene-level features are per-gene mean/variance, so RNA and ATAC are
+> aggregated **independently** — paired barcodes are not required, which is why
+> RNA-only and ATAC-only datasets can be combined freely.
+
+---
+
+## 2. Environment (Ada / SLURM)
+
+Custom envs must live in `$HOME` (Ada policy); `/home` quota is 25 GB.
+
+```bash
+conda create -y -n mevd-grn python=3.10
+conda activate mevd-grn
+# torch matched to the cluster CUDA (driver permitting):
+pip install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118
+pip install torch_geometric torch_scatter torch_sparse \
+    -f https://data.pyg.org/whl/torch-2.1.0+cu118.html
+pip install -r requirements.txt
+pip install -e .
+```
+
+We use **1 GPU** (model is ~125K params, trains in minutes; that was the
+original prototype, and the current sizes are 315,015 params for the base
+model and 3.26M for the recommended h384/l2 configuration, per `archive/results_sc_mo_grn_db.md`); request 10 CPUs to
+respect Ada's 1:10 GPU:CPU rule, `research` account, `medium` QoS.
+
+> Local dev note: this machine has multiple Python interpreters; the one with
+> torch+PyG is `/home/vishak/miniforge3/bin/python` (base env). If `python3`
+> resolves to linuxbrew and can't import `torch_geometric`, call that interpreter
+> explicitly or `conda activate base` first. On Ada, use the `mevd-grn` env above.
+
+### scATAC needs TSS coordinates (offline)
+Ada compute nodes have **no internet**, so peak→gene mapping needs an offline
+GTF. On a **login node**, download GENCODE and point the config at it:
+```bash
+# human (K562): gencode.v38.annotation.gtf.gz   mouse (ESC): gencode.vM27.annotation.gtf.gz
+# then set in configs/{k562,esc}.yaml:  atac: { gtf_path: /path/to/....gtf.gz }
+```
+Without a GTF the pipeline still runs with **ATAC features = 0** (RNA-only); the
+gated fusion learns to ignore the empty modality.
+
+---
+
+## 3. Run
+
+```bash
+# (login node) fetch data
+bash scripts/sc_mo_grn_db/01_download_data.sh
+
+# validate the code with no data / no GPU
+python scripts/sc_mo_grn_db/00_sanity_check.py
+
+# preprocess -> train -> evaluate (or just: sbatch slurm/sc_mo_grn_db/train.sh)
+python scripts/sc_mo_grn_db/02_preprocess.py --config configs/sc_mo_grn_db/k562.yaml
+python scripts/sc_mo_grn_db/03_train.py      --config configs/sc_mo_grn_db/k562.yaml --device cuda:0
+python scripts/sc_mo_grn_db/04_evaluate.py   --config configs/sc_mo_grn_db/k562.yaml \
+    --checkpoint results/checkpoints/K562/final_model.pt --transfer_config configs/sc_mo_grn_db/esc.yaml
+
+# baselines, evaluated on the same frozen test splits
+pip install arboreto regdiffusion        # optional external baselines
+python scripts/sc_mo_grn_db/05_run_baselines.py --config configs/sc_mo_grn_db/k562.yaml \
+    --baselines grnboost2,regdiffusion,gmf_gae --device cuda:0
+
+# supervised multiomic baseline (paper default: 2000 epochs)
+python scripts/sc_mo_grn_db/05_run_baselines.py --config configs/sc_mo_grn_db/k562.yaml \
+    --baselines scmultiomegrn --device cuda:0 \
+    --scmultiomegrn-epochs 2000
+
+# ablations (paper claims)
+sbatch slurm/sc_mo_grn_db/ablation.sh
+```
+
+**Baselines** (`src/baselines/`, plan Part 9), all evaluated on the *identical*
+test splits via `evaluate_scorer_on_splits`:
+- **GRNBoost2** (arboreto) — tree-ensemble co-expression, RNA-only.
+- **RegDiffusion** — diffusion GRN, RNA-only, GPU; fastest DL baseline.
+- **GMF-GAE** — self-contained graph auto-encoder over a co-expression kNN graph
+  (the "GNN + matrix factorization" family GMFGRN belongs to). Always runnable;
+  the official GMFGRN repo can be wired in via `run_gmfgrn()` after cloning.
+- **scMultiomeGRN** (Xu et al., NAR 2025, gkaf138) — supervised RNA+ATAC
+  edge-aware modality-specific aggregation and cross-modal attention. The
+  published method is limited to undirected TF–TF links; this repository's
+  adapter generalizes its node set to TF→gene candidates, decodes edges
+  sparsely, and trains a separate model on each tier's training split to avoid
+  cross-tier leakage. Those adaptations are reported with its results.
+  Uninstalled external baselines fail gracefully (error saved to JSON, run continues).
+
+---
+
+## 4. Repo layout
+
+```
+configs/      default + per-cell-type YAML (k562, esc, macrophage, mcf7, *_fm);
+              *_localtest/*_fast* are smoke tests or short schedules;
+              sweep/ = model-size sweep
+src/data/     preprocessing (real text-matrix loaders), graph_builder, dataset,
+              motif_scan
+src/models/   encoders, fusion, GraphSAGE backbone, decoder, MEvDGRN
+src/training/ curriculum, sampler (random + hard negatives), losses, trainer
+src/evaluation/ metrics (AUPR/AUROC/EP/EPR), benchmarker
+src/baselines/ GRNBoost2, RegDiffusion, GMF-GAE, scMultiomeGRN wrappers
+scripts/      00_sanity_check … 13_scmultiomegrn_full_ddp (preprocess, train,
+              evaluate, baselines, ablations, transfer, FM embeddings,
+              joint training, figures)
+slurm/        train.sh, ablation.sh, baselines.sh
+results/      numeric-results JSONs are tracked; checkpoints/logs are not
+paper/        LaTeX manuscript (main.tex, main.pdf, figures/)
+docs/         supporting docs, see docs/README.md
+archive/plan_2026-07.md       living roadmap        archive/results_sc_mo_grn_db.md   current numbers
+```
+
+---
+
+## 5. Design notes / deviations from the original plan
+
+These were forced by the **real** data format (verified against the live DB):
+
+1. **Single-cell files are tab-delimited text, oriented features×cells** (not
+   `.h5ad`, not cells×genes). Loaders transpose and parse accordingly.
+2. **Gene-symbol case mismatch**: networks are UPPERCASE, RNA is mixed-case → all
+   symbols canonicalised to UPPERCASE for matching.
+3. **Nesting is verified, not assumed.** Measured on ESC: `dual ⊆ loc` and
+   `dual ⊆ pert` = 100% (RN116 = RN114∩RN115), but `pert ⊆ loc` ≈ 12%
+   (knockouts hit indirectly-regulated genes). `dual_evidence_mode: reconstruct`
+   can force dual = loc∩pert when a self-consistent triple isn't available.
+4. **Negatives = random TF×gene non-positives** (field standard), **not** the
+   accessibility-ranked prior — restricting negatives to the prior inflates AUPR
+   via an expression-level artifact.
+5. **Prior graph excludes known positives** — it is a pure message-passing
+   structure, so val/test edges cannot leak into node embeddings. The bilinear
+   decoder scores any (TF, gene) pair, so positives need not lie in the prior.
+```

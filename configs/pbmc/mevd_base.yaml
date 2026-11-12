@@ -1,6 +1,6 @@
 # MeVD-GRN on PBMC10k / LINGER-Cistrome: base model (h128/l2, no FM).
 # Every value was fixed a priori (2026-10-01), before any PBMC result existed.
-# See docs/experiments/pbmc10k_linger_benchmark.md s4.
+# See docs/benchmarks/pbmc10k_linger.md s4.
 inherit: ../default.yaml
 
 data:

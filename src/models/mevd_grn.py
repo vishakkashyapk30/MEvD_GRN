@@ -64,13 +64,13 @@ class MEvDGRN(nn.Module):
         self.use_fm = use_fm
         self.use_motif = use_motif
         # 2 relations (coexpr, TF-candidate) by default; 3 once a real motif
-        # graph is available (plan.md Section 2's "still open" item, now closed
+        # graph is available (archive/plan_2026-07.md Section 2's "still open" item, now closed
         # behind this opt-in flag -- off by default so existing checkpoints/
         # configs are unaffected).
         self.n_relations = 3 if use_motif else 2
         self.rna_encoder = RNAEncoder(rna_in_dim, hidden_dim // 2, hidden_dim, dropout)
         self.atac_encoder = ATACEncoder(atac_in_dim, hidden_dim // 2, hidden_dim, dropout)
-        # Pretrained foundation-model gene embedding (plan.md Section 5), fused
+        # Pretrained foundation-model gene embedding (archive/plan_2026-07.md Section 5), fused
         # additively into the RNA channel -- cell-type-invariant, unlike the
         # hand-built co-expression signature used at decode time.
         self.fm_encoder = FMEncoder(fm_in_dim, hidden_dim, hidden_dim, dropout) if use_fm else None

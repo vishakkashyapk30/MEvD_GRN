@@ -85,7 +85,7 @@ class TieredScorer:
 
     `fallback_tier`: tiers that were never trained on at all (e.g. dual_evidence,
     treated as a held-out zero-shot inference benchmark -- see
-    `configs/default.yaml: curriculum.main_curriculum_tiers`) have no entry in
+    `configs/sc_mo_grn_db/default.yaml: curriculum.main_curriculum_tiers`) have no entry in
     `scorers`; score_tier falls back to the model trained on `fallback_tier`
     (by default the last/most-refined trained tier) for those.
     """

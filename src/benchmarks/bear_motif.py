@@ -1,5 +1,5 @@
 """TF-motif x target-accessibility pair features for MeVD-GRN under BEAR-GRN
-(pre-registered model M3, docs/experiments/bear_grn_benchmark.md s12.6).
+(pre-registered model M3, docs/benchmarks/bear_grn.md s12.6).
 
 For each (TF node, gene): the best JASPAR 2024 PWM log-odds score of the TF,
 relative to the PWM's maximum, over the gene's top-5 RP-weighted accessible

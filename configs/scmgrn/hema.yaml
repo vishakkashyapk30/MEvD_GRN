@@ -1,8 +1,8 @@
 # scMultiomeGRN SECONDARY benchmark: human adult hematopoiesis (Buenrostro et al. 2018, hg19; Supp. Fig. S1).
-# Inputs are built by scripts/14b_scmgrn_hema_prepare.py (scRNA: mmc4 Data S2; scATAC: single-cell BAMs).
+# Inputs are built by scripts/scmgrn/14b_scmgrn_hema_prepare.py (scRNA: mmc4 Data S2; scATAC: single-cell BAMs).
 # All paths are relative to the benchmark root (--root / $SCMGRN_ROOT; on Ada
 # /share1/$USER/mevd_grn/scmgrn, staged to /scratch inside jobs).
-# Protocol + targets: docs/experiments/scmultiomegrn_generalization.md
+# Protocol + targets: docs/benchmarks/scmultiomegrn.md
 dataset: hema
 genome: hg19
 genome_fasta: raw/genome/hg19.fa

@@ -1,5 +1,5 @@
 # MeVD-GRN under the BEAR-GRN protocol: base model (h128/l2, no FM).
-# Pre-registered (docs/experiments/bear_grn_benchmark.md s6) before any result.
+# Pre-registered (docs/benchmarks/bear_grn.md s6) before any result.
 inherit: ../default.yaml
 
 data:
@@ -18,7 +18,7 @@ model:
   use_motif: false
 
 curriculum:
-  protocol: all_at_once            # recommended config (results.md s3/s7)
+  protocol: all_at_once            # recommended config (archive/results_sc_mo_grn_db.md s3/s7)
   main_curriculum_tiers: [localization, perturbation]
   use_hard_negatives: false        # undefined once tiers are merged
   use_memory_replay: false

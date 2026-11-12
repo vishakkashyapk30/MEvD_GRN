@@ -1,6 +1,6 @@
 # PBMC10k Multiome / LINGER-Cistrome benchmark: dataset + protocol.
 # Protocol source: LINGER Benchmk.bm_trans + Supp. Tables S1/S7
-# (docs/experiments/pbmc10k_linger_benchmark.md s1-s3).
+# (docs/benchmarks/pbmc10k_linger.md s1-s3).
 dataset: pbmc10k_multiome
 h5: raw/pbmc_granulocyte_sorted_10k_filtered_feature_bc_matrix.h5
 cell_labels: raw/PBMC_label.txt          # LINGER's label file (9,543 barcodes)

@@ -3,7 +3,7 @@
 Everything here is LABEL-FREE: node features, the co-expression kNN and the
 TF-candidate graph are built from the cell type's own cells only, never from
 any label set (the 02_preprocess.py label-dependent candidate graph is not
-reproduced; see docs/experiments/scmultiomegrn_generalization.md s10).
+reproduced; see docs/benchmarks/scmultiomegrn.md s10).
 
 Layout of a processed dir (read by src.data.dataset.load_celltype_data):
   rna_features_aligned.npy  atac_features_aligned.npy  rna_signature.npy

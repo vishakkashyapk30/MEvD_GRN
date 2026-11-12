@@ -12,7 +12,7 @@ Reality check vs. the original plan (which assumed .h5ad, cells x genes):
 
 The model operates on GENE NODES, so every modality is reduced to per-gene
 summary statistics across cells (mean/variance/detection-rate for RNA and,
-since the ATAC rewrite in plan.md Section 2, RP-weighted ATAC activity, plus
+since the ATAC rewrite in archive/plan_2026-07.md Section 2, RP-weighted ATAC activity, plus
 a separate 4-dim regulatory-potential locus-shape descriptor -- see
 `preprocess_scatac`).
 """
@@ -441,7 +441,7 @@ def _regulatory_potential_descriptor(per_gene: Dict[int, Tuple[np.ndarray, np.nd
                                      n_genes: int, top_k: int) -> np.ndarray:
     """Per-gene locus-SHAPE descriptor (n_genes, 4), replacing the old
     single collapsed `openness` scalar (which was 96%+ correlated with the
-    gene-activity mean/var and heavily quantized -- see plan.md Section 2).
+    gene-activity mean/var and heavily quantized -- see archive/plan_2026-07.md Section 2).
 
     For each gene's top-K peaks by RP weight:
       col 0: mean RP weight   (how strong, on average, the nearest peaks are)
@@ -495,7 +495,7 @@ def preprocess_scatac(atac_path: str, gene_names: List[str], gene_index: Dict[st
     window counted identically regardless of distance) with an exponential
     TSS-distance decay, and replaces the earlier single collapsed
     `openness` scalar (empirically ~96%+ correlated with the gene-activity
-    mean, i.e. carrying almost no independent information -- see plan.md
+    mean, i.e. carrying almost no independent information -- see archive/plan_2026-07.md
     Section 2) with a 4-dim descriptor of peak strength/proximity/count.
     Genes with no mapped peaks get all-zero features.
     """

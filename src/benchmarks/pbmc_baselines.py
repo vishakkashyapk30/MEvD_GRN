@@ -4,7 +4,7 @@ Every baseline returns a dense score matrix S (n_regulators x n_genes) for a
 list of regulator indices, over the SAME gene universe as MeVD-GRN, so the
 same evaluation code (src/benchmarks/pbmc_eval.py) scores everything.
 
-Trivial baselines (mandatory, docs/experiments/pbmc10k_linger_benchmark.md s4.7):
+Trivial baselines (mandatory, docs/benchmarks/pbmc10k_linger.md s4.7):
   degree   score(t, g) = in-degree of g among the TRAIN positives (TF-agnostic)
   geneid   InfoSEM-style logistic regression on one-hot(TF) (+) one-hot(target),
            fit on the same train positives + degree-matched negatives
