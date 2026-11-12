@@ -75,13 +75,12 @@ def load_rows(path: Path, names, sep=",", chunksize=400):
 
 
 class CellType:
-    def __init__(self, root: Path, cfg: dict, ct: str):
-        self.root, self.cfg, self.ct = root, cfg, ct
+    def __init__(self, root: Path, cfg: dict, ct: str, split_kind: str = "official"):
+        self.root, self.cfg, self.ct, self.split_kind = root, cfg, ct, split_kind
         self.gdir = root / cfg["graph_dir"] / ct
         self.pdir = root / cfg["processed_dir"] / ct
         s = cfg["split"]
-        self.sdir = proto.split_dir(str(root / cfg["splits_dir"] / ct), int(s["seed"]), int(s["n_splits"]),
-                                    float(s["train_split_rate"]), bool(s["rest_all_train"]))
+        self.sdir = proto.resolve_split_dir(str(root / cfg["splits_dir"] / ct), s, split_kind)
         self.n_folds = int(s["n_splits"])
         self.adj, self.nodes = proto.load_adj(str(self.gdir / "x_graph.txt"))
         self.n = len(self.nodes)
@@ -135,13 +134,8 @@ def train_adjacency(n, train_pos):
     return A
 
 
-def evaluate(S, ct: CellType, f, dm):
-    S = np.asarray(S, dtype=np.float64)
-    S = (S + S.T) / 2.0
-    S = np.nan_to_num(S, nan=0.0, posinf=0.0, neginf=0.0)
-    m = proto.evaluate_score_matrix(S, ct.adj, f["test_eval"])
-    m["test_degmatched"] = proto.evaluate_degree_matched(S, dm)
-    return m
+def evaluate(S, ct: CellType, f, fold):
+    return proto.evaluate_all(S, ct.adj, f, ct.sdir, fold)
 
 
 def pair_block(X, i, j, products_only=False):
@@ -331,7 +325,7 @@ def unsupervised_scores(ct: CellType, n_jobs):
 
 # ----------------------------------------------------------------------------- main loop
 def run_cell_type(ct: CellType, families, n_jobs, skip_existing, folds=None):
-    rdir = ct.root / ct.cfg["results_dir"] / ct.ct
+    rdir = ct.root / proto.results_subdir(ct.cfg["results_dir"], ct.split_kind) / ct.ct
     n = ct.n
 
     def done(name, fold):
@@ -360,7 +354,6 @@ def run_cell_type(ct: CellType, families, n_jobs, skip_existing, folds=None):
         deg = A.sum(1)
         tr_pairs = np.concatenate([tr_pos, tr_neg])
         tr_lab = np.concatenate([np.ones(len(tr_pos)), np.zeros(len(tr_neg))])
-        dm = proto.degree_matched_test(ct.adj, f, seed=fold)
         results = {}
 
         if "A1" in families:
@@ -427,7 +420,7 @@ def run_cell_type(ct: CellType, families, n_jobs, skip_existing, folds=None):
             if done(name, fold):
                 continue
             t0 = time.time()
-            m = evaluate(make(), ct, f, dm)
+            m = evaluate(make(), ct, f, fold)
             save(name, fam, fold, m)
             log(f"{ct.ct} fold {fold} {name}: test AUROC {m['test']['auroc']:.3f} AUPR {m['test']['aupr']:.3f} | "
                 f"degree-matched AUROC {m['test_degmatched']['auroc']:.3f} ({time.time() - t0:.1f}s)")
@@ -442,13 +435,14 @@ def main():
     ap.add_argument("--n_jobs", type=int, default=4)
     ap.add_argument("--skip_existing", action="store_true")
     ap.add_argument("--folds", default=None, help="comma list (smoke tests); default all")
+    ap.add_argument("--split_kind", default="official", choices=proto.SPLIT_KINDS)
     a = ap.parse_args()
     root = Path(a.root).expanduser()
     cfg = load_config(str(REPO / f"configs/scmgrn/{a.ds}.yaml"))
     families = [x.strip() for x in a.family.split(",")]
     cts = [a.ct] if a.ct else list(cfg["cell_types"])
     for c in cts:
-        run_cell_type(CellType(root, cfg, c), families, a.n_jobs, a.skip_existing,
+        run_cell_type(CellType(root, cfg, c, a.split_kind), families, a.n_jobs, a.skip_existing,
                       [int(x) for x in a.folds.split(",")] if a.folds else None)
 
 

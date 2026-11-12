@@ -104,8 +104,7 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
     pdir = root / dcfg["processed_dir"] / args.cell_type
     gdir = root / dcfg["graph_dir"] / args.cell_type
     s = dcfg["split"]
-    sdir = proto.split_dir(str(root / dcfg["splits_dir"] / args.cell_type), int(s["seed"]),
-                           int(s["n_splits"]), float(s["train_split_rate"]), bool(s["rest_all_train"]))
+    sdir = proto.resolve_split_dir(str(root / dcfg["splits_dir"] / args.cell_type), s, args.split_kind)
     adj, nodes = proto.load_adj(str(gdir / "x_graph.txt"))
     n = adj.shape[0]
 
@@ -154,15 +153,14 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
     res = trainer.train_stage(stage, splits)
     secs = time.time() - t0
     S = score_matrix(trainer, n)
-    m = proto.evaluate_score_matrix(S, adj, f["test_eval"])
-    m["test_degmatched"] = proto.evaluate_degree_matched(S, proto.degree_matched_test(adj, f, seed=fold))
+    m = proto.evaluate_all(S, adj, f, sdir, fold)
     if args.save_scores:
         np.save(out_path.parent / f"scores_fold{fold:02d}.npy", S.astype(np.float32))
     shutil.rmtree(ckpt, ignore_errors=True)
     rec = {"method": "MeVD-GRN", "variant": args.variant, "cell_type": args.cell_type,
            "dataset": dcfg["dataset"], "fold": fold, "seed": seed, "obs_graph": bool(args.obs_graph),
            "task": cfg["model"].get("task", "directed"), "smg_feats": bool(args.smg_feats), "smg_parts": args.smg_parts if args.smg_feats else None,
-           "model_config": str(args.model_config), "n_params": model.count_parameters(),
+           "model_config": str(args.model_config), "split_kind": args.split_kind, "n_params": model.count_parameters(),
            "n_nodes": n, "n_train_pos_directed": int(splits["train"]["pos"].shape[1]),
            "epochs_run": len(res["history"]), "best_val_aupr": res["best_val_aupr"],
            "train_seconds": secs, "metrics": m, "leak_status": trainer.leak_status}
@@ -192,6 +190,8 @@ def main():
     ap.add_argument("--tmp_dir", default=None)
     ap.add_argument("--skip_existing", action="store_true")
     ap.add_argument("--save_scores", action="store_true", help="keep the N x N score matrix (scores_foldNN.npy)")
+    ap.add_argument("--split_kind", default="official", choices=proto.SPLIT_KINDS)
+    ap.add_argument("--variant_suffix", default="", help="appended to the variant name (e.g. _dm for re-runs)")
     args = ap.parse_args()
     if args.device.startswith("cuda") and not torch.cuda.is_available():
         print("[warn] CUDA unavailable -> CPU", flush=True)
@@ -199,13 +199,15 @@ def main():
     if args.variant is None:
         args.variant = Path(args.model_config).stem.replace("mevd_", "") + ("_obs" if args.obs_graph else "_noobs") \
             + (("_smg" if args.smg_parts == "both" else f"_smg{args.smg_parts}") if args.smg_feats else "")
+    args.variant += args.variant_suffix
     dcfg = load_config(args.config)
     if "-" in args.folds:
         a, b = args.folds.split("-")
         folds = list(range(int(a), int(b) + 1))
     else:
         folds = [int(x) for x in args.folds.split(",")]
-    out_dir = Path(args.root) / dcfg["results_dir"] / args.cell_type / f"mevd_{args.variant}" / f"seed{args.seed}"
+    out_dir = (Path(args.root) / proto.results_subdir(dcfg["results_dir"], args.split_kind) / args.cell_type
+               / f"mevd_{args.variant}" / f"seed{args.seed}")
     out_dir.mkdir(parents=True, exist_ok=True)
     for fold in folds:
         out = out_dir / f"fold{fold:02d}.json"
