@@ -55,7 +55,7 @@ from src.benchmarks.scmgrn_features import svd_reduce          # noqa: E402
 from src.utils.io import load_config, save_json                # noqa: E402
 
 K_SVD = 32
-VERSION = 3                      # bumped when a method changes; fold files of other versions are recomputed
+VERSION = 4                      # bumped when a method changes; fold files of other versions are recomputed
 CHUNKS = 5                       # edge-held-out chunks for features computed from the training graph
 MAX_CELLS_REGRESSION = 3000      # GENIE3 / lasso / ridge: cells subsampled (seeded) to keep runtime bounded
 

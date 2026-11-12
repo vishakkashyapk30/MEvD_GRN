@@ -186,6 +186,36 @@ def degree_matched_test(adj: np.ndarray, fold: dict, seed: int = 0, n_near: int 
             "label": np.concatenate([np.ones(len(tp), int), np.zeros(len(neg), int)])}
 
 
+def degree_caliper_test(adj: np.ndarray, fold: dict, seed: int = 0, caliper: float = 0.1) -> Dict[str, np.ndarray]:
+    """Official split, strict version of degree_matched_test: a test link (u, v) is kept only if some test-pool
+    non-link (adj == 0, in no train/val file) has BOTH sorted endpoint log1p training degrees within `caliper` of
+    the link's; one such non-link is drawn at random. Unmatched links are dropped, so the degree rule is at chance."""
+    n = adj.shape[0]
+    tr = fold["train"]["pos"]
+    ld = np.log1p(np.bincount(tr[:, 0], minlength=n).astype(float))
+    seen = np.zeros((n, n), dtype=bool)
+    for part in ("train", "val"):
+        for k in ("pos", "neg"):
+            e = fold[part][k]
+            seen[e[:, 0], e[:, 1]] = True
+    tp = fold["test"]["pos"]
+    tp = tp[tp[:, 0] < tp[:, 1]]
+    iu, ju = np.triu_indices(n, 1)
+    ok = (adj[iu, ju] == 0) & ~seen[iu, ju] & ~seen[ju, iu]
+    cu, cv = iu[ok], ju[ok]
+    c_lo, c_hi = np.minimum(ld[cu], ld[cv]), np.maximum(ld[cu], ld[cv])
+    rng = np.random.default_rng(seed)
+    us, vs, labs = [], [], []
+    for u, v in tp:
+        lo, hi = min(ld[u], ld[v]), max(ld[u], ld[v])
+        cand = np.where((np.abs(c_lo - lo) <= caliper) & (np.abs(c_hi - hi) <= caliper))[0]
+        if len(cand) == 0:
+            continue
+        j = cand[rng.integers(len(cand))]
+        us += [u, cu[j]]; vs += [v, cv[j]]; labs += [1, 0]
+    return {"u": np.array(us, int), "v": np.array(vs, int), "label": np.array(labs, int)}
+
+
 def evaluate_degree_matched(S: np.ndarray, dm: Dict[str, np.ndarray]) -> Dict[str, float]:
     S = np.asarray(S, dtype=np.float64)
     return metric_fn((S[dm["u"], dm["v"]] + S[dm["v"], dm["u"]]) / 2.0, dm["label"])
@@ -277,10 +307,13 @@ def _tfholdout_meta(sdir: str, fold: int):
     return json.load(open(p)) if os.path.exists(p) else None
 
 
-def tfholdout_degree_matched_test(adj: np.ndarray, fold: dict, test_tfs, val_tfs, seed: int = 0, n_near: int = 3):
-    """Hub-controlled C2 test. For each C2 link (hidden t, training TF r), the negative is a non-link (t, w) of the
-    SAME hidden TF, with w a training TF whose training degree is among the n_near closest to r's. The hidden
-    TF has no training links, and these pairs are never in any training file, so the pool is every C2 non-link."""
+def tfholdout_degree_matched_test(adj: np.ndarray, fold: dict, test_tfs, val_tfs, seed: int = 0,
+                                  caliper: float = 0.1):
+    """Hub-controlled C2 test with caliper matching. For each C2 link (hidden t, training TF r), the negative is a
+    non-link (t, w) of the SAME hidden TF whose training-TF partner w has |log1p deg(w) - log1p deg(r)| <= caliper
+    (drawn at random among those). Links with no such partner are dropped, so the degree of both endpoints is
+    matched on every kept pair. The hidden TF has no training links and C2 pairs are in no training file, so the
+    pool is every C2 non-link of that TF."""
     n = adj.shape[0]
     tr = fold["train"]["pos"]
     ld = np.log1p(np.bincount(tr[:, 0], minlength=n).astype(float))
@@ -288,27 +321,27 @@ def tfholdout_degree_matched_test(adj: np.ndarray, fold: dict, test_tfs, val_tfs
     hidden[list(test_tfs)] = True
     val = np.zeros(n, bool)
     val[list(val_tfs)] = True
-    train_tf = ~hidden & ~val
+    partners = np.where(~hidden & ~val)[0]
     rng = np.random.default_rng(seed)
     us, vs, labs = [], [], []
     for t in np.where(hidden)[0]:
-        partners = np.where(train_tf)[0]
         links = partners[adj[t, partners] == 1]
         nonlinks = partners[adj[t, partners] == 0]
-        if len(links) == 0 or len(nonlinks) == 0:
-            continue
         for r in links:
-            d = np.abs(ld[nonlinks] - ld[r])
-            near = np.argsort(d, kind="stable")[:n_near]
-            w = nonlinks[near[rng.integers(len(near))]]
+            ok = nonlinks[np.abs(ld[nonlinks] - ld[r]) <= caliper]
+            if len(ok) == 0:
+                continue
+            w = ok[rng.integers(len(ok))]
             us += [t, t]; vs += [r, w]; labs += [1, 0]
     return {"u": np.array(us, int), "v": np.array(vs, int), "label": np.array(labs, int)}
 
 
 def evaluate_all(S: np.ndarray, adj: np.ndarray, f: dict, sdir: str, fold: int) -> Dict[str, dict]:
     """Every metric set for one fold, for either split kind.
-      official : test, all, all_offdiag, test_degmatched (degree_matched_test)
-      tfholdout: test (C2 + C3), all, all_offdiag, test_c2, test_c3, test_degmatched (= hub-controlled C2)
+      official : test, all, all_offdiag, test_degmatched (degree_matched_test, nearest-3),
+                 test_degcaliper (degree_caliper_test: unmatched links dropped, degree rule at chance)
+      tfholdout: test (C2 + C3), all, all_offdiag, test_c2, test_c3,
+                 test_degmatched = test_degcaliper = caliper-matched C2 (same hidden TF, matched partner degree)
     """
     S = np.asarray(S, dtype=np.float64)
     S = np.nan_to_num((S + S.T) / 2.0, nan=0.0, posinf=0.0, neginf=0.0)
@@ -316,6 +349,9 @@ def evaluate_all(S: np.ndarray, adj: np.ndarray, f: dict, sdir: str, fold: int) 
     meta = _tfholdout_meta(sdir, fold)
     if meta is None:
         m["test_degmatched"] = evaluate_degree_matched(S, degree_matched_test(adj, f, seed=fold))
+        dc = degree_caliper_test(adj, f, seed=fold)
+        if 0 < dc["label"].sum() < len(dc["label"]):
+            m["test_degcaliper"] = evaluate_degree_matched(S, dc)
         return m
     hidden = np.zeros(adj.shape[0], bool)
     hidden[meta["test_tfs"]] = True
@@ -329,4 +365,5 @@ def evaluate_all(S: np.ndarray, adj: np.ndarray, f: dict, sdir: str, fold: int) 
     dm = tfholdout_degree_matched_test(adj, f, meta["test_tfs"], meta["val_tfs"], seed=fold)
     if len(dm["label"]):
         m["test_degmatched"] = evaluate_degree_matched(S, dm)
+        m["test_degcaliper"] = m["test_degmatched"]
     return m
