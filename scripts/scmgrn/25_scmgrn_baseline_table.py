@@ -90,10 +90,35 @@ SECTIONS = [
         ("official_scmultiomegrn_scrna_only", "scMultiomeGRN with scRNA features only"),
         ("official_scmultiomegrn_plus_geneformer", "scMultiomeGRN + Geneformer embeddings"),
     ]),
+    ("MeVD-GRN ablations", [
+        ("mevd_abl_nofm_obs_dm", "MeVD-GRN without Geneformer"),
+        ("mevd_abl_noatac_obs_dm", "MeVD-GRN without the ATAC tower"),
+        ("mevd_abl_nognn_obs_dm", "MeVD-GRN without the graph network"),
+        ("mevd_abl_coexpr_obs_dm", "MeVD-GRN, co-expression graph only"),
+        ("mevd_abl_tfcand_obs_dm", "MeVD-GRN, TF-candidate graph only"),
+        ("mevd_abl_base_obs_dm", "MeVD-GRN, base size"),
+        ("mevd_fm_h384_noobs_dm", "MeVD-GRN without the training-link relation"),
+        ("mevd_abl_min_noobs_dm", "Floor model (no Geneformer, ATAC tower, graph network or training links)"),
+        ("mevd_abl_fl_atac_noobs_dm", "Floor model + ATAC tower"),
+        ("mevd_abl_fl_fm_noobs_dm", "Floor model + Geneformer"),
+        ("mevd_abl_fl_gnn_noobs_dm", "Floor model + graph network"),
+        ("mevd_abl_nofm_obs", "MeVD-GRN without Geneformer"),
+        ("mevd_abl_noatac_obs", "MeVD-GRN without the ATAC tower"),
+        ("mevd_abl_nognn_obs", "MeVD-GRN without the graph network"),
+        ("mevd_abl_coexpr_obs", "MeVD-GRN, co-expression graph only"),
+        ("mevd_abl_tfcand_obs", "MeVD-GRN, TF-candidate graph only"),
+        ("mevd_abl_base_obs", "MeVD-GRN, base size"),
+        ("mevd_fm_h384_noobs", "MeVD-GRN without the training-link relation"),
+        ("mevd_abl_min_noobs", "Floor model (no Geneformer, ATAC tower, graph network or training links)"),
+        ("mevd_abl_fl_atac_noobs", "Floor model + ATAC tower"),
+        ("mevd_abl_fl_fm_noobs", "Floor model + Geneformer"),
+        ("mevd_abl_fl_gnn_noobs", "Floor model + graph network"),
+    ]),
 ]
 EVALS = (("test", "official test"), ("test_degmatched", "degree-matched"), ("test_degcaliper", "caliper-matched"),
          ("test_c2", "held-out TF, C2"), ("test_c3", "held-out TF, C3"))
-METRICS = ("aupr", "auroc")
+METRICS = ("aupr", "ap", "auroc")   # ap = average precision; unlike the official trapezoidal AUPR it
+                                    # is not inflated for tied scores (all-tied -> share of positives)
 
 
 def collect(root: Path, keep):
@@ -172,18 +197,18 @@ def main():
     evals = [e for e in a.evals.split(",") if e]
     names = dict(EVALS)
     out = {"ref": a.ref, "datasets": a.datasets, "sections": []}
-    head = "| Method | Cell types | " + " | ".join(f"AUPR, {names[e]} [95% CI] | diff (p) | AUROC, {names[e]}" for e in evals) + " |"
+    head = "| Method | Cell types | " + " | ".join(f"AUPR, {names[e]} [95% CI] | diff (p) | AP | AUROC, {names[e]}" for e in evals) + " |"
     lines = [f"Reference for differences and p-values: {a.ref}. Datasets: {a.datasets}.", "", head,
-             "|---|---|" + "---|---|---|" * len(evals)]
+             "|---|---|" + "---|---|---|---|" * len(evals)]
 
     def cell(r, e):
         if r.get(f"{e}_aupr") is None:
-            return ["–", "–", "–"]
+            return ["–", "–", "–", "–"]
         lo, hi = r[f"{e}_aupr_ci"] or (None, None)
         ci = f" [{lo:.3f}, {hi:.3f}]" if lo is not None else ""
         p = r.get(f"{e}_aupr_p")
         d = "–" if r["method"] == a.ref else f"{r[f'{e}_aupr_diff']:+.3f}" + ("" if p is None else f" ({p:.1g})")
-        return [f"{r[f'{e}_aupr']:.3f}{ci}", d, f"{r[f'{e}_auroc']:.3f}"]
+        return [f"{r[f'{e}_aupr']:.3f}{ci}", d, f"{r[f'{e}_ap']:.3f}", f"{r[f'{e}_auroc']:.3f}"]
 
     base_row = None
     for title, items in SECTIONS:
@@ -199,39 +224,15 @@ def main():
                 if base_row is None and all(r.get(f"{e}_base") is not None for e in evals):
                     base_row = r
         if body:
-            lines.append(f"| **{title}** |" + " |" * (1 + 3 * len(evals)))
+            lines.append(f"| **{title}** |" + " |" * (1 + 4 * len(evals)))
             lines += body
         out["sections"].append(sec)
     if base_row is not None:
-        lines.append("| *Random AUPR (share of positives)* | | " + " | ".join(f"{base_row[f'{e}_base']:.3f} | | " for e in evals) + "|")
+        lines.append("| *Random AUPR (share of positives)* | | " + " | ".join(f"{base_row[f'{e}_base']:.3f} | | {base_row[f'{e}_base']:.3f} | " for e in evals) + "|")
     json.dump(out, open(a.out + ".json", "w"), indent=1)
     Path(a.out + ".md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 
 
 if __name__ == "__main__":
-    main()    ("MeVD-GRN ablations", [
-        ("mevd_abl_nofm_obs_dm", "MeVD-GRN without Geneformer"),
-        ("mevd_abl_noatac_obs_dm", "MeVD-GRN without the ATAC tower"),
-        ("mevd_abl_nognn_obs_dm", "MeVD-GRN without the graph network"),
-        ("mevd_abl_coexpr_obs_dm", "MeVD-GRN, co-expression graph only"),
-        ("mevd_abl_tfcand_obs_dm", "MeVD-GRN, TF-candidate graph only"),
-        ("mevd_abl_base_obs_dm", "MeVD-GRN, base size"),
-        ("mevd_fm_h384_noobs_dm", "MeVD-GRN without the training-link relation"),
-        ("mevd_abl_min_noobs_dm", "Floor model (no Geneformer, ATAC tower, graph network or training links)"),
-        ("mevd_abl_fl_atac_noobs_dm", "Floor model + ATAC tower"),
-        ("mevd_abl_fl_fm_noobs_dm", "Floor model + Geneformer"),
-        ("mevd_abl_fl_gnn_noobs_dm", "Floor model + graph network"),
-        ("mevd_abl_nofm_obs", "MeVD-GRN without Geneformer"),
-        ("mevd_abl_noatac_obs", "MeVD-GRN without the ATAC tower"),
-        ("mevd_abl_nognn_obs", "MeVD-GRN without the graph network"),
-        ("mevd_abl_coexpr_obs", "MeVD-GRN, co-expression graph only"),
-        ("mevd_abl_tfcand_obs", "MeVD-GRN, TF-candidate graph only"),
-        ("mevd_abl_base_obs", "MeVD-GRN, base size"),
-        ("mevd_fm_h384_noobs", "MeVD-GRN without the training-link relation"),
-        ("mevd_abl_min_noobs", "Floor model (no Geneformer, ATAC tower, graph network or training links)"),
-        ("mevd_abl_fl_atac_noobs", "Floor model + ATAC tower"),
-        ("mevd_abl_fl_fm_noobs", "Floor model + Geneformer"),
-        ("mevd_abl_fl_gnn_noobs", "Floor model + graph network"),
-    ]),
-
+    main()
