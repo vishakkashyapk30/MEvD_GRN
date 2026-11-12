@@ -2,9 +2,9 @@
 # Shared helpers for the PBMC10k / LINGER-Cistrome jobs (sourced, not submitted).
 # Storage plan (docs/reference/ada.md, post-upgrade section): code + conda env in
 # /home2/$USER (visible on nodes); data + results on /share1, which is visible on
-# the gateway ada-gw1 ONLY -> jobs rsync ada-gw1:/share1/... <-> node-local /scratch.
+# the gateway ada-gw2 ONLY -> jobs rsync ada-gw1:/share1/... <-> node-local /scratch.
 export SHARE="${PBMC_ROOT:-/share1/$USER/mevd_grn/pbmc}"
-export MASTER="${MASTER:-ada-gw1}"             # the only host that mounts /share1
+export MASTER="${MASTER:-ada-gw2}"             # the only host that mounts /share1 (ada-gw1 is down since 2026-10-16)
 export REPO="${REPO:-${SLURM_SUBMIT_DIR:-$PWD}}"
 export CONDA_SH="${CONDA_SH:-$HOME/miniforge3/etc/profile.d/conda.sh}"
 SCR_BASE="${SCR_BASE:-/scratch}"
