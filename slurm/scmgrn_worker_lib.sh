@@ -23,6 +23,10 @@ export SPLIT_KIND=${SPLIT_KIND:-official}
 UNIT_TAG=${UNIT_TAG:-}
 [ -z "$UNIT_TAG" ] && [ "$SPLIT_KIND" != official ] && UNIT_TAG=$SPLIT_KIND
 OFFABL_SEEDS=(${OFFABL_SEEDS:-666})
+# KINDS=deeptfni / genelink: the two GNN baselines shipped with the official scMultiomeGRN repo, on our folds
+# (DeepTFni through the official Trainer with model_cls=DeepTFni; GENELink through scripts/32).
+DEEPTFNI_SEEDS=(${DEEPTFNI_SEEDS:-666})
+GENELINK_SEEDS=(${GENELINK_SEEDS:-8})
 # ABLATION=1: component ablations of the headline variant H (one change each; variant = <config>:<obs|noobs>:<smg|smgnode|smgpair|nosmg>)
 # on top of the same folds and seeds. MeVD-GRN only; the official code is not re-run.
 if [ "${ABLATION:-}" = 2 ]; then
@@ -62,6 +66,8 @@ gen_units() {   # "kind ct variant seed" per line; official runs first within a 
     for S in "${OFFICIAL_SEEDS[@]}"; do echo "official $CT x $S"; done
     for V in "${OFFABL_TAGS[@]}"; do for S in "${OFFABL_SEEDS[@]}"; do echo "offabl $CT $V $S"; done; done
     for S in "${DM_SEEDS[@]}"; do echo "mevddm $CT mevd_fm_h384:obs:nosmg $S"; done
+    for S in "${DEEPTFNI_SEEDS[@]}"; do echo "deeptfni $CT x $S"; done
+    for S in "${GENELINK_SEEDS[@]}"; do echo "genelink $CT x $S"; done
     for V in "${VARIANTS[@]}"; do for S in "${SEEDS[@]}"; do echo "mevd $CT $V $S"; done; done
   done
 }
@@ -77,7 +83,17 @@ ct_ready() { q_exec test -e "$SHARE/processed/$DS/$1/READY"; }      # written la
 
 run_unit() {   # run_unit <kind> <ct> <variant> <seed>   (data for <ct> already staged under $SCMGRN_ROOT_LOCAL)
   local KIND=$1 CT=$2 V=$3 S=$4 MC OBS SMG FLAG=""
-  if [ "$KIND" = offabl ]; then
+  if [ "$KIND" = deeptfni ]; then
+    python -u scripts/18_scmgrn_official_repro.py --config configs/scmgrn/$DS.yaml \
+      --root "$SCMGRN_ROOT_LOCAL" --official_repo official_ablation/ScmultiomeGRN-main --cell_type "$CT" \
+      --folds 1-10 --skip_existing --model_seed "$S" --method_name deeptfni --save_scores \
+      --extra_kw '{"model_cls": "DeepTFni", "use_edge_attr": false}' \
+      --split_kind "$SPLIT_KIND" --work_dir "$SCR/official_work/${CT}_deeptfni_$S"
+  elif [ "$KIND" = genelink ]; then
+    python -u scripts/32_scmgrn_genelink.py --config configs/scmgrn/$DS.yaml --root "$SCMGRN_ROOT_LOCAL" \
+      --cell_type "$CT" --folds 1-10 --skip_existing --seed "$S" --save_scores --split_kind "$SPLIT_KIND" \
+      --work_dir "$SCR/genelink_work/${CT}_$S"
+  elif [ "$KIND" = offabl ]; then
     python -u scripts/18_scmgrn_official_repro.py --config configs/scmgrn/$DS.yaml \
       --root "$SCMGRN_ROOT_LOCAL" --official_repo official_ablation/ScmultiomeGRN-main --cell_type "$CT" \
       --folds 1-10 --skip_existing --model_seed "$S" --ablation "$V" --extra_kw "$(offabl_kw "$V")" --save_scores \
