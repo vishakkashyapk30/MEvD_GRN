@@ -41,14 +41,14 @@ def scores(A):
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("--root", required=True); a = ap.parse_args()
+    ap = argparse.ArgumentParser(); ap.add_argument("--root", required=True)
+    ap.add_argument("--split_kind", default="official", choices=proto.SPLIT_KINDS); a = ap.parse_args()
     root = Path(a.root).expanduser()
     for ds in ("lung", "hema"):
         cfg = load_config(str(REPO / f"configs/scmgrn/{ds}.yaml")); s = cfg["split"]
         for ct in cfg["cell_types"]:
             adj, nodes = proto.load_adj(str(root / cfg["graph_dir"] / ct / "x_graph.txt")); n = adj.shape[0]
-            sdir = proto.split_dir(str(root / cfg["splits_dir"] / ct), int(s["seed"]), int(s["n_splits"]),
-                                   float(s["train_split_rate"]), bool(s["rest_all_train"]))
+            sdir = proto.resolve_split_dir(str(root / cfg["splits_dir"] / ct), s, a.split_kind)
             pdir = root / cfg["processed_dir"] / ct
             gi = json.load(open(pdir / "gene_index.json"))
             F = np.load(pdir / "fm_gene_embeddings.npy")[[gi[x.upper()] for x in nodes]].astype(np.float64)
@@ -56,11 +56,9 @@ def main():
                 f = proto.load_fold(sdir, fold, n)
                 A = np.zeros((n, n)); e = f["train"]["pos"]; A[e[:, 0], e[:, 1]] = 1; A = np.maximum(A, A.T)
                 np.fill_diagonal(A, 0)
-                dm = proto.degree_matched_test(adj, f, seed=fold)
                 for name, S in {**scores(A), **family_scores(A, F)}.items():
-                    m = proto.evaluate_score_matrix(S, adj, f["test_eval"])
-                    m["test_degmatched"] = proto.evaluate_degree_matched(S, dm)
-                    out = root / cfg["results_dir"] / ct / name / "seed0"; out.mkdir(parents=True, exist_ok=True)
+                    m = proto.evaluate_all(S, adj, f, sdir, fold)
+                    out = root / proto.results_subdir(cfg["results_dir"], a.split_kind) / ct / name / "seed0"; out.mkdir(parents=True, exist_ok=True)
                     save_json({"method": name, "cell_type": ct, "dataset": ds, "fold": fold, "seed": 0,
                                "note": "training links only", "metrics": m}, out / f"fold{fold:02d}.json")
             print("[done]", ds, ct, flush=True)

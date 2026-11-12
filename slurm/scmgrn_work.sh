@@ -23,9 +23,10 @@ activate
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1     # Geneformer cached by scmgrn_setup.sh
 mkdir -p "$SHARE/claims/$DS" "$SHARE/done/$DS" "$SHARE/failed/$DS"
 q_exec() { "$@"; }
+res_dir() { [ "$SPLIT_KIND" = official ] && echo "results/$DS" || echo "results/${DS}_$SPLIT_KIND"; }
 stage_ct() { pull official/ScmultiomeGRN-main; pull official_ablation/ScmultiomeGRN-main; local CT=$1
-  pull "graph/$DS/$CT"; pull "splits/$DS/$CT"; pull "processed/$DS/$CT"; pull "results/$DS/$CT"
+  pull "graph/$DS/$CT"; pull "splits/$DS/$CT"; pull "processed/$DS/$CT"; pull "$(res_dir)/$CT"
   rm -rf "$SCMGRN_ROOT_LOCAL/graph/$DS/$CT/work"; }
-publish_ct() { push "results/$DS/$1"; }
+publish_ct() { push "$(res_dir)/$1"; }
 WAIT_FOR_BUILD=1 worker_loop    # start as soon as the first cell type is built; wait for the rest
 echo "[work] worker $SLURM_ARRAY_TASK_ID finished"

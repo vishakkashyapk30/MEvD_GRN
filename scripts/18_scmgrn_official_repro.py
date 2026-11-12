@@ -83,6 +83,7 @@ def main():
                     "'{graph_dir}' in strings -> this cell type's graph dir; gf_from_processed=true writes the "
                     "Geneformer TSV (x_node.txt order) and sets gf_feature_file")
     ap.add_argument("--save_scores", action="store_true", help="keep the best_all score matrix (scores_foldNN.npy)")
+    ap.add_argument("--split_kind", default="official", choices=proto.SPLIT_KINDS)
     args = ap.parse_args()
 
     dcfg = load_config(args.config)
@@ -91,14 +92,13 @@ def main():
     official = str(root / (args.official_repo or dcfg["official_repo"]))
     gdir = root / dcfg["graph_dir"] / ct
     s = dcfg["split"]
-    sdir = proto.split_dir(str(root / dcfg["splits_dir"] / ct), int(s["seed"]), int(s["n_splits"]),
-                           float(s["train_split_rate"]), bool(s["rest_all_train"]))
+    sdir = proto.resolve_split_dir(str(root / dcfg["splits_dir"] / ct), s, args.split_kind)
     adj, _ = proto.load_adj(str(gdir / "x_graph.txt"))
     folds = (list(range(int(args.folds.split("-")[0]), int(args.folds.split("-")[1]) + 1))
              if "-" in args.folds else [int(x) for x in args.folds.split(",")])
     import json
     method = "official_scmultiomegrn" + (f"_{args.ablation}" if args.ablation else "")
-    out_dir = root / dcfg["results_dir"] / ct / method / f"seed{args.model_seed}"
+    out_dir = root / proto.results_subdir(dcfg["results_dir"], args.split_kind) / ct / method / f"seed{args.model_seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     work = Path(args.work_dir or (out_dir / "work"))
     extra = {k: (v.replace("{graph_dir}", str(gdir)) if isinstance(v, str) else v)
@@ -123,7 +123,7 @@ def main():
         wd = work / f"fold{fold:02d}"
         wd.mkdir(parents=True, exist_ok=True)
         kw = dict(name=ct, adj_file=str(gdir / "x_graph.txt"), node_file=str(gdir / "x_node.txt"),
-                  scrna_file=str(gdir / "tmp" / "scrna.csv"), comment="mevd_repro" + (f"_{args.ablation}" if args.ablation else ""),
+                  scrna_file=str(gdir / "tmp" / "scrna.csv"), comment="mevd_repro" + (f"_{args.ablation}" if args.ablation else "") + ("" if args.split_kind == "official" else f"_{args.split_kind}"),
                   atac_feature_file=str(gdir / "x_atac_rp_score_feature.txt"),
                   scrna_feature_file=str(gdir / "x_scRNA_grnboost2_feature.txt"),
                   model_cls="scMultiomeGRN", mask_rate=0.0, data_dir=str(wd / "data"),
@@ -143,13 +143,12 @@ def main():
         logged = last_metrics(os.path.join(log_dir, "metrics.csv"))
         S = np.loadtxt(os.path.join(log_dir, "best_all_score_matrix.txt"))
         f = proto.load_fold(sdir, fold, adj.shape[0])
-        m = proto.evaluate_score_matrix(S, adj, f["test_eval"])
-        m["test_degmatched"] = proto.evaluate_degree_matched(S, proto.degree_matched_test(adj, f, seed=fold))
+        m = proto.evaluate_all(S, adj, f, sdir, fold)
         if args.save_scores:
             np.save(out_dir / f"scores_fold{fold:02d}.npy", S.astype(np.float32))
         for ck in glob.glob(os.path.join(log_dir, "checkpoints")):
             shutil.rmtree(ck, ignore_errors=True)
-        rec = {"method": "scMultiomeGRN (official code)", "ablation": args.ablation, "extra_kw": extra, "cell_type": ct, "dataset": dcfg["dataset"],
+        rec = {"method": "scMultiomeGRN (official code)", "ablation": args.ablation, "split_kind": args.split_kind, "extra_kw": extra, "cell_type": ct, "dataset": dcfg["dataset"],
                "fold": fold, "seed": args.model_seed, "train_seconds": secs, "log_dir": log_dir,
                "metrics": m, "official_logged_metrics": logged}
         save_json(rec, out)

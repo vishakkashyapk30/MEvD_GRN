@@ -189,3 +189,144 @@ def degree_matched_test(adj: np.ndarray, fold: dict, seed: int = 0, n_near: int 
 def evaluate_degree_matched(S: np.ndarray, dm: Dict[str, np.ndarray]) -> Dict[str, float]:
     S = np.asarray(S, dtype=np.float64)
     return metric_fn((S[dm["u"], dm["v"]] + S[dm["v"], dm["u"]]) / 2.0, dm["label"])
+
+
+# ---------------------------------------------------------------------------
+# Held-out-TF split (ours, not scMultiomeGRN's): no model can count a hidden TF's links.
+# Pair classes follow Park & Marcotte (Nat Methods 2012): C2 = one TF of the pair hidden, C3 = both hidden.
+# ---------------------------------------------------------------------------
+SPLIT_KINDS = ("official", "tfholdout")
+TFHOLDOUT_TAG = "tfholdout_seed-{seed}_fold-{n}"
+
+
+def resolve_split_dir(ct_split_root: str, split_cfg: dict, kind: str = "official") -> str:
+    """Directory of one cell type's fold files for the given split kind."""
+    if kind == "official":
+        return split_dir(ct_split_root, int(split_cfg["seed"]), int(split_cfg["n_splits"]),
+                         float(split_cfg["train_split_rate"]), bool(split_cfg["rest_all_train"]))
+    if kind == "tfholdout":
+        return os.path.join(ct_split_root, TFHOLDOUT_TAG.format(seed=int(split_cfg["seed"]),
+                                                                n=int(split_cfg["n_splits"])))
+    raise ValueError(f"unknown split kind {kind!r}")
+
+
+def results_subdir(results_dir: str, kind: str = "official") -> str:
+    """Results of non-official splits live next to the official ones: results/<ds>_<kind>/..."""
+    return results_dir if kind == "official" else f"{results_dir}_{kind}"
+
+
+def make_tf_holdout_splits(adj_file: str, save_root: str, seed: int = 666, n_splits: int = 10) -> str:
+    """TFs are shuffled (seed) into n_splits groups. Fold k: test TFs = group k, validation TFs = group k+1,
+    training TFs = the rest.
+      train: every pair of two training TFs (links label 1, non-links label 0) plus the diagonal, as the official
+             split also lists diagonal pairs among training negatives (the official loader relabels them).
+      val:   all links with >= 1 validation TF and no test TF, plus as many random non-links of the same pairs.
+      test:  all links with >= 1 test TF and no validation TF (C2: test-train, C3: test-test), plus, per class,
+             as many random non-links. Pairs of a test TF with a validation TF are used nowhere.
+    Written in the official file format (row, col, label; split-XXX_<part>-edge-<npos>_<N>xN.csv), so the official
+    scMultiomeGRN code runs on it unchanged. A sidecar split-XXX_tfs.json lists the test / validation TFs.
+    """
+    import json
+    save_dir = os.path.join(save_root, TFHOLDOUT_TAG.format(seed=seed, n=n_splits))
+    os.makedirs(save_dir, exist_ok=True)
+    adj, _ = load_adj(adj_file)
+    n = adj.shape[0]
+    rng = np.random.default_rng(seed)
+    groups = np.array_split(rng.permutation(n), n_splits)
+    iu, ju = np.triu_indices(n, 1)
+    for k in range(n_splits):
+        test_tfs, val_tfs = groups[k], groups[(k + 1) % n_splits]
+        role = np.zeros(n, dtype=int)                    # 0 train, 1 val, 2 test
+        role[val_tfs], role[test_tfs] = 1, 2
+        ru, rv = role[iu], role[ju]
+        lab = adj[iu, ju]
+        parts = {}
+        tr = (ru == 0) & (rv == 0)
+        diag = np.arange(n)
+        parts["train"] = (np.concatenate([np.stack([iu[tr], ju[tr]], 1), np.stack([diag, diag], 1)]),
+                          np.concatenate([lab[tr], np.zeros(n, int)]))
+
+        def balanced(mask_list):
+            rows, labs = [], []
+            for m in mask_list:
+                pos = np.where(m & (lab == 1))[0]
+                neg = np.where(m & (lab == 0))[0]
+                neg = rng.choice(neg, size=min(len(pos), len(neg)), replace=False) if len(neg) else neg
+                idx = np.concatenate([pos, neg])
+                rows.append(np.stack([iu[idx], ju[idx]], 1))
+                labs.append(lab[idx])
+            return np.concatenate(rows), np.concatenate(labs)
+
+        has_val = (ru == 1) | (rv == 1)
+        has_test = (ru == 2) | (rv == 2)
+        parts["val"] = balanced([has_val & ~has_test])
+        c2 = has_test & ~has_val & ((ru == 0) | (rv == 0))
+        c3 = (ru == 2) & (rv == 2)
+        parts["test"] = balanced([c2, c3])
+        for name, (e, l) in parts.items():
+            pd.DataFrame({"row": e[:, 0], "col": e[:, 1], "label": l.astype(int)}).to_csv(
+                os.path.join(save_dir, f"split-{k+1:03d}_{name}-edge-{int(l.sum())}_{n}x{n}.csv"), index=False)
+        with open(os.path.join(save_dir, f"split-{k+1:03d}_tfs.json"), "w") as fh:
+            json.dump({"test_tfs": sorted(int(x) for x in test_tfs), "val_tfs": sorted(int(x) for x in val_tfs)}, fh)
+    return save_dir
+
+
+def _tfholdout_meta(sdir: str, fold: int):
+    import json
+    p = os.path.join(sdir, f"split-{fold:03d}_tfs.json")
+    return json.load(open(p)) if os.path.exists(p) else None
+
+
+def tfholdout_degree_matched_test(adj: np.ndarray, fold: dict, test_tfs, val_tfs, seed: int = 0, n_near: int = 3):
+    """Hub-controlled C2 test. For each C2 link (hidden t, training TF r), the negative is a non-link (t, w) of the
+    SAME hidden TF, with w a training TF whose training degree is among the n_near closest to r's. The hidden
+    TF has no training links, and these pairs are never in any training file, so the pool is every C2 non-link."""
+    n = adj.shape[0]
+    tr = fold["train"]["pos"]
+    ld = np.log1p(np.bincount(tr[:, 0], minlength=n).astype(float))
+    hidden = np.zeros(n, bool)
+    hidden[list(test_tfs)] = True
+    val = np.zeros(n, bool)
+    val[list(val_tfs)] = True
+    train_tf = ~hidden & ~val
+    rng = np.random.default_rng(seed)
+    us, vs, labs = [], [], []
+    for t in np.where(hidden)[0]:
+        partners = np.where(train_tf)[0]
+        links = partners[adj[t, partners] == 1]
+        nonlinks = partners[adj[t, partners] == 0]
+        if len(links) == 0 or len(nonlinks) == 0:
+            continue
+        for r in links:
+            d = np.abs(ld[nonlinks] - ld[r])
+            near = np.argsort(d, kind="stable")[:n_near]
+            w = nonlinks[near[rng.integers(len(near))]]
+            us += [t, t]; vs += [r, w]; labs += [1, 0]
+    return {"u": np.array(us, int), "v": np.array(vs, int), "label": np.array(labs, int)}
+
+
+def evaluate_all(S: np.ndarray, adj: np.ndarray, f: dict, sdir: str, fold: int) -> Dict[str, dict]:
+    """Every metric set for one fold, for either split kind.
+      official : test, all, all_offdiag, test_degmatched (degree_matched_test)
+      tfholdout: test (C2 + C3), all, all_offdiag, test_c2, test_c3, test_degmatched (= hub-controlled C2)
+    """
+    S = np.asarray(S, dtype=np.float64)
+    S = np.nan_to_num((S + S.T) / 2.0, nan=0.0, posinf=0.0, neginf=0.0)
+    m = evaluate_score_matrix(S, adj, f["test_eval"])
+    meta = _tfholdout_meta(sdir, fold)
+    if meta is None:
+        m["test_degmatched"] = evaluate_degree_matched(S, degree_matched_test(adj, f, seed=fold))
+        return m
+    hidden = np.zeros(adj.shape[0], bool)
+    hidden[meta["test_tfs"]] = True
+    ei, lab = f["test_eval"]["edge_index"], f["test_eval"]["label"]
+    keep = ei[0] < ei[1]
+    u, v, y = ei[0][keep], ei[1][keep], lab[keep]
+    both = hidden[u] & hidden[v]
+    for name, sel in (("test_c2", ~both), ("test_c3", both)):
+        if sel.sum() and 0 < y[sel].sum() < sel.sum():
+            m[name] = metric_fn(S[u[sel], v[sel]], y[sel])
+    dm = tfholdout_degree_matched_test(adj, f, meta["test_tfs"], meta["val_tfs"], seed=fold)
+    if len(dm["label"]):
+        m["test_degmatched"] = evaluate_degree_matched(S, dm)
+    return m

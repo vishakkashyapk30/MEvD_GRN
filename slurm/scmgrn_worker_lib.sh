@@ -15,6 +15,14 @@ SEEDS=(${SEEDS:-42 43 44 45 46})
 OFFICIAL_SEEDS=(${OFFICIAL_SEEDS:-666 42})      # the official code is near-deterministic across seeds (Myeloid, 6 seeds: all within 0.001) and costs ~5 min/fold on the big cell types; MeVD-GRN keeps 5 seeds
 VARIANTS=(${VARIANTS:-mevd_fm_h384:obs:smg mevd_fm_h384:obs:nosmg mevd_fm_h384:noobs:nosmg mevd_fm_h384_directed:obs:nosmg})
 KINDS=${KINDS:-official mevd}
+# SPLIT_KIND=official (scMultiomeGRN's folds) | tfholdout (ours: whole TFs held out; scripts/30). Non-official
+# splits write to results/<ds>_<kind>/ and their units get a __<kind> tag, so done markers never collide.
+# UNIT_TAG: extra tag for re-runs of finished units under new settings (e.g. abldm = ablations re-run for the
+# degree-matched metric, with EXTRA_ARGS="--variant_suffix _dm").
+export SPLIT_KIND=${SPLIT_KIND:-official}
+UNIT_TAG=${UNIT_TAG:-}
+[ -z "$UNIT_TAG" ] && [ "$SPLIT_KIND" != official ] && UNIT_TAG=$SPLIT_KIND
+OFFABL_SEEDS=(${OFFABL_SEEDS:-666})
 # ABLATION=1: component ablations of the headline variant H (one change each; variant = <config>:<obs|noobs>:<smg|smgnode|smgpair|nosmg>)
 # on top of the same folds and seeds. MeVD-GRN only; the official code is not re-run.
 if [ "${ABLATION:-}" = 2 ]; then
@@ -52,12 +60,12 @@ gen_units() {   # "kind ct variant seed" per line; official runs first within a 
   local CT S V
   for CT in "${WORK_CTS[@]}"; do
     for S in "${OFFICIAL_SEEDS[@]}"; do echo "official $CT x $S"; done
-    for V in "${OFFABL_TAGS[@]}"; do echo "offabl $CT $V 666"; done
+    for V in "${OFFABL_TAGS[@]}"; do for S in "${OFFABL_SEEDS[@]}"; do echo "offabl $CT $V $S"; done; done
     for S in "${DM_SEEDS[@]}"; do echo "mevddm $CT mevd_fm_h384:obs:nosmg $S"; done
     for V in "${VARIANTS[@]}"; do for S in "${SEEDS[@]}"; do echo "mevd $CT $V $S"; done; done
   done
 }
-unit_name() { echo "$1__$2__${3//:/-}__$4"; }
+unit_name() { echo "$1__$2__${3//:/-}__$4${UNIT_TAG:+__$UNIT_TAG}"; }
 
 # --- backend: where the shared claim/done state and published data live. Ada: local fs ($SHARE);
 # laptop: ssh to $RAW_HOST. Defined by the driver: q_exec <cmd...>, stage_ct, publish_ct.
@@ -73,23 +81,24 @@ run_unit() {   # run_unit <kind> <ct> <variant> <seed>   (data for <ct> already 
     python -u scripts/18_scmgrn_official_repro.py --config configs/scmgrn/$DS.yaml \
       --root "$SCMGRN_ROOT_LOCAL" --official_repo official_ablation/ScmultiomeGRN-main --cell_type "$CT" \
       --folds 1-10 --skip_existing --model_seed "$S" --ablation "$V" --extra_kw "$(offabl_kw "$V")" --save_scores \
-      --work_dir "$SCR/official_work/${CT}_$V"
+      --split_kind "$SPLIT_KIND" --work_dir "$SCR/official_work/${CT}_${V}_$S"
   elif [ "$KIND" = mevddm ]; then
     python -u scripts/17_scmgrn_train_eval.py --config configs/scmgrn/$DS.yaml \
       --model_config configs/scmgrn/mevd_fm_h384.yaml --obs_graph --variant fm_h384_obs_dm --save_scores \
       --root "$SCMGRN_ROOT_LOCAL" --cell_type "$CT" --seed "$S" --folds 1-10 --device "${DEVICE:-cuda:0}" \
-      --skip_existing --tmp_dir "$SCR"
+      --skip_existing --tmp_dir "$SCR" --split_kind "$SPLIT_KIND"
   elif [ "$KIND" = official ]; then
     python -u scripts/18_scmgrn_official_repro.py --config configs/scmgrn/$DS.yaml \
-      --root "$SCMGRN_ROOT_LOCAL" --cell_type "$CT" --folds 1-10 --skip_existing --model_seed "$S" \
-      --work_dir "$SCR/official_work/$CT"
+      --root "$SCMGRN_ROOT_LOCAL" --cell_type "$CT" --folds 1-10 --skip_existing --model_seed "$S" --save_scores \
+      --split_kind "$SPLIT_KIND" --work_dir "$SCR/official_work/${CT}_$S"
   else
     IFS=: read -r MC OBS SMG <<<"$V"
     [ "$OBS" = obs ] && FLAG="--obs_graph"
     case "$SMG" in smg) FLAG="$FLAG --smg_feats";; smgnode) FLAG="$FLAG --smg_feats --smg_parts node";; smgpair) FLAG="$FLAG --smg_feats --smg_parts pair";; esac
     python -u scripts/17_scmgrn_train_eval.py --config configs/scmgrn/$DS.yaml \
       --model_config "configs/scmgrn/$MC.yaml" $FLAG --root "$SCMGRN_ROOT_LOCAL" \
-      --cell_type "$CT" --seed "$S" --folds 1-10 --device "${DEVICE:-cuda:0}" --skip_existing --tmp_dir "$SCR" ${EXTRA_ARGS:-}
+      --cell_type "$CT" --seed "$S" --folds 1-10 --device "${DEVICE:-cuda:0}" --skip_existing --tmp_dir "$SCR" \
+      --split_kind "$SPLIT_KIND" ${EXTRA_ARGS:-}
   fi
 }
 
