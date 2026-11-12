@@ -26,6 +26,8 @@ i=${SLURM_ARRAY_TASK_ID:-0}
 read -r ds ct <<< "${UNITS[$i]}"; fam=${FAM:-A1,A2,A3,A4}
 extra=(); [ "${SMOKE:-0}" = 1 ] && extra=(--folds 1)
 echo "[base] task $i: $ds/$ct family $fam ${extra[*]}"
-python -u scripts/22_scmgrn_simple_baselines.py --root "$SHARE" --ds "$ds" --ct "$ct" --family "$fam" \
-  --n_jobs 5 --skip_existing --split_kind "${SPLIT_KIND:-official}" "${extra[@]}" || { echo "[base] FAILED $ds/$ct $fam"; exit 1; }
+for sk in ${SPLIT_KINDS:-${SPLIT_KIND:-official}}; do     # e.g. SPLIT_KINDS="official tfholdout"
+  python -u scripts/22_scmgrn_simple_baselines.py --root "$SHARE" --ds "$ds" --ct "$ct" --family "$fam" \
+    --n_jobs "${SLURM_CPUS_PER_TASK:-5}" --skip_existing --split_kind "$sk" "${extra[@]}" || { echo "[base] FAILED $ds/$ct $fam $sk"; exit 1; }
+done
 echo "[base] done $ds/$ct $fam"
