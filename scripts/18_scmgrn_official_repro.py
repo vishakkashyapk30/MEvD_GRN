@@ -79,6 +79,8 @@ def main():
     ap.add_argument("--official_repo", default=None, help="code dir relative to --root (default: config official_repo); "
                     "ablations use the patched copy from scripts/23_patch_official_ablation.py")
     ap.add_argument("--ablation", default=None, help="tag: results go to official_scmultiomegrn_<tag>/")
+    ap.add_argument("--method_name", default=None, help="results directory name (overrides the ablation-based name; "
+                    "used for other models of the official repo, e.g. --extra_kw '{\"model_cls\": \"DeepTFni\"}')")
     ap.add_argument("--extra_kw", default="{}", help="JSON of extra official kwargs (scripts/23 switches); "
                     "'{graph_dir}' in strings -> this cell type's graph dir; gf_from_processed=true writes the "
                     "Geneformer TSV (x_node.txt order) and sets gf_feature_file")
@@ -97,7 +99,7 @@ def main():
     folds = (list(range(int(args.folds.split("-")[0]), int(args.folds.split("-")[1]) + 1))
              if "-" in args.folds else [int(x) for x in args.folds.split(",")])
     import json
-    method = "official_scmultiomegrn" + (f"_{args.ablation}" if args.ablation else "")
+    method = args.method_name or ("official_scmultiomegrn" + (f"_{args.ablation}" if args.ablation else ""))
     out_dir = root / proto.results_subdir(dcfg["results_dir"], args.split_kind) / ct / method / f"seed{args.model_seed}"
     out_dir.mkdir(parents=True, exist_ok=True)
     work = Path(args.work_dir or (out_dir / "work"))
@@ -129,7 +131,8 @@ def main():
                   model_cls="scMultiomeGRN", mask_rate=0.0, data_dir=str(wd / "data"),
                   train_edge_file=files["train"], val_edge_file=files["val"],
                   test_edge_file=files["test"], split_id=fold, max_epochs=args.max_epochs,
-                  patience=args.patience, model_seed=args.model_seed, **extra)
+                  patience=args.patience, model_seed=args.model_seed)
+        kw.update(extra)                       # extra kwargs may override defaults (e.g. model_cls)
         t0 = time.time()
         r = subprocess.run([sys.executable, "-u", "-c", DRIVER, json.dumps(kw)], cwd=str(wd),
                            env={**os.environ, "PYTHONPATH": os.pathsep.join(filter(None, [official, os.environ.get("PYTHONPATH")]))}, capture_output=True, text=True)
@@ -148,7 +151,7 @@ def main():
             np.save(out_dir / f"scores_fold{fold:02d}.npy", S.astype(np.float32))
         for ck in glob.glob(os.path.join(log_dir, "checkpoints")):
             shutil.rmtree(ck, ignore_errors=True)
-        rec = {"method": "scMultiomeGRN (official code)", "ablation": args.ablation, "split_kind": args.split_kind, "extra_kw": extra, "cell_type": ct, "dataset": dcfg["dataset"],
+        rec = {"method": method, "model_cls": kw["model_cls"], "ablation": args.ablation, "split_kind": args.split_kind, "extra_kw": extra, "cell_type": ct, "dataset": dcfg["dataset"],
                "fold": fold, "seed": args.model_seed, "train_seconds": secs, "log_dir": log_dir,
                "metrics": m, "official_logged_metrics": logged}
         save_json(rec, out)
