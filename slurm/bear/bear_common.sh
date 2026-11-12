@@ -1,9 +1,9 @@
 #!/bin/bash
 # Shared helpers for the BEAR-GRN jobs (sourced, not submitted).
 # Post-upgrade Ada (docs/reference/ada.md top): /share1 is visible on the gateway
-# ada-gw1 only, so jobs stage $SHARE <-> node-local /scratch with rsync over ssh.
+# ada-gw2 only (gw1 is down since 2026-10-16), so jobs stage $SHARE <-> node-local /scratch with rsync over ssh.
 export SHARE="${BEAR_SHARE:-/share1/$USER/mevd_grn/bear}"
-export GW="${GW:-ada-gw1}"
+export GW="${GW:-ada-gw2}"
 export REPO="${REPO:-${SLURM_SUBMIT_DIR:-$PWD}}"
 export CONDA_SH="${CONDA_SH:-$HOME/miniforge3/etc/profile.d/conda.sh}"
 export SCR="${SCR_BASE:-/scratch}/$USER/bear_${SLURM_JOB_ID:-local}_${SLURM_ARRAY_TASK_ID:-0}"
