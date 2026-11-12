@@ -63,3 +63,7 @@ paper/*.blg
 paper/*.synctex.gz
 paper/*.fls
 paper/*.fdb_latexmk
+
+# Local Claude Code instructions and settings (never committed)
+CLAUDE.md
+.claude/
