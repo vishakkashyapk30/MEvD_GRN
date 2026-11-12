@@ -1,5 +1,0 @@
-# Ablation (one component changed vs the headline variant H): only the accessibility-based TF-candidate graph (also drops the training-links relation).
-# Run with --obs_graph --smg_feats like H. Pre-registered before any ablation result existed.
-inherit: mevd_fm_h384.yaml
-model:
-  graph_mode: tf_candidate

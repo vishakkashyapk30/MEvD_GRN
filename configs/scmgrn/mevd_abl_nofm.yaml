@@ -1,5 +1,0 @@
-# Ablation (one component changed vs the headline variant H): no Geneformer gene embedding.
-# Run with --obs_graph --smg_feats like H. Pre-registered before any ablation result existed.
-inherit: mevd_fm_h384.yaml
-model:
-  use_fm: false

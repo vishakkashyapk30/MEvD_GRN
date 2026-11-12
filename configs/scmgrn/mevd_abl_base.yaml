@@ -1,2 +1,0 @@
-# Ablation: the project base size (hidden 128, no Geneformer), everything else as H.
-inherit: mevd_base.yaml
