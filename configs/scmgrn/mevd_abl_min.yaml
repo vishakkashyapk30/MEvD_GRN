@@ -1,0 +1,6 @@
+# Ablation floor: base size (128-wide, no Geneformer) with no ATAC channel and no graph network, run with --noobs and no scMultiomeGRN inputs
+# (variant name mevd_abl_min:noobs:nosmg): only the per-TF summary features, the co-expression term and the symmetric decoder remain.
+inherit: mevd_base.yaml
+model:
+  use_atac: false
+  use_gnn: false
