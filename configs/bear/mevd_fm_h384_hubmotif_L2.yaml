@@ -1,0 +1,11 @@
+# Headline M3 (fm_h384_hubmotif, chosen on K562 by the s12.6 rule) under regime L2 (s12.5): trained only on the
+# non-specific SC-MO-GRN-DB ChIP compendium (RN005 human / RN006 mouse) with every GT TF removed; one model scores
+# all GT TFs. The hub term uses in-degrees among the compendium's training TFs.
+inherit: mevd_fm_h384_hubmotif.yaml
+data:
+  evidence_tiers: [compendium]
+  tier_hierarchy: [compendium]
+curriculum:
+  main_curriculum_tiers: [compendium]
+bear:
+  regime: L2

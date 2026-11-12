@@ -1,6 +1,6 @@
 #!/bin/bash
 # Work-stealing worker for the BEAR runs (arrays of identical workers). Units are lines of
-# $B/units.txt:  "<dataset> <variant> <seed>"  (variant = configs/bear/mevd_<variant>.yaml).
+# $UNITS (default $B/units.txt):  "<dataset> <variant> <seed>"  (variant = configs/bear/mevd_<variant>.yaml).
 # A worker claims a unit with an atomic mkdir in $B/claims (home is NFS; mkdir is atomic),
 # trains it on scratch, publishes the result with verified copies, then writes $B/done/<unit>.
 # A unit whose worker died keeps its claim without a done marker: `bash slurm/bear/bear_ada_reset.sh`
@@ -21,6 +21,8 @@ set -uo pipefail
 source "${SLURM_SUBMIT_DIR:-$PWD}/slurm/bear/bear_ada_common.sh"
 activate
 START=$(date +%s); BUDGET=${BUDGET_SEC:-140000}     # stop claiming new units ~12 h before the walltime
+UNITS_FILE="${UNITS:-$B/units.txt}"   # e.g. UNITS=$REPO/slurm/bear/plans/units_headline_2026-11.txt
+[ -s "$UNITS_FILE" ] || { echo "[steal] no units file $UNITS_FILE"; exit 1; }
 while true; do
   [ $(( $(date +%s) - START )) -gt "$BUDGET" ] && { echo "[steal] time budget reached"; break; }
   UNIT=""
@@ -31,7 +33,7 @@ while true; do
     if mkdir "$B/claims/$U" 2>/dev/null; then
       echo "$(hostname) job=${SLURM_JOB_ID:-} $(date +%F_%T)" > "$B/claims/$U/owner"; UNIT="$U"; break
     fi
-  done < "$B/units.txt"
+  done < "$UNITS_FILE"
   [ -z "$UNIT" ] && { echo "[steal] no unclaimed units left"; break; }
   read -r DS V SEED <<<"$(echo "$UNIT" | sed 's/__/ /g; s/seed//')"
   PD="$DS"; [[ "$V" == *_L2 ]] && PD="${DS}__L2"
