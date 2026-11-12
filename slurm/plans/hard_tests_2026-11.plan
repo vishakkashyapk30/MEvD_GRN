@@ -1,0 +1,14 @@
+# One configuration per line, run in order by every worker of slurm/scmgrn_work_plan.sh (units are claimed from the
+# shared queue, so 4 workers split each configuration and move on together). Format: shell assignments.
+# 1. held-out-TF split: official scMultiomeGRN (3 seeds) + MeVD-GRN headline (5 seeds)
+DS=lung SPLIT_KIND=tfholdout KINDS="official mevd" OFFICIAL_SEEDS="666 42 43" VARIANTS="mevd_fm_h384:obs:nosmg" SEEDS="42 43 44 45 46"
+DS=hema SPLIT_KIND=tfholdout KINDS="official mevd" OFFICIAL_SEEDS="666 42 43" VARIANTS="mevd_fm_h384:obs:nosmg" SEEDS="42 43 44 45 46"
+# 2. official split: MeVD-GRN ablations re-run so they carry the degree-matched and caliper metrics (3 seeds)
+DS=lung UNIT_TAG=abldm KINDS=mevd SEEDS="42 43 44" EXTRA_ARGS="--variant_suffix _dm" VARIANTS="mevd_abl_nofm:obs:nosmg mevd_abl_noatac:obs:nosmg mevd_abl_nognn:obs:nosmg mevd_abl_coexpr:obs:nosmg mevd_abl_tfcand:obs:nosmg mevd_abl_base:obs:nosmg mevd_fm_h384:noobs:nosmg mevd_abl_min:noobs:nosmg mevd_abl_fl_atac:noobs:nosmg mevd_abl_fl_fm:noobs:nosmg mevd_abl_fl_gnn:noobs:nosmg"
+DS=hema UNIT_TAG=abldm KINDS=mevd SEEDS="42 43 44" EXTRA_ARGS="--variant_suffix _dm" VARIANTS="mevd_abl_nofm:obs:nosmg mevd_abl_noatac:obs:nosmg mevd_abl_nognn:obs:nosmg mevd_abl_coexpr:obs:nosmg mevd_abl_tfcand:obs:nosmg mevd_abl_base:obs:nosmg mevd_fm_h384:noobs:nosmg mevd_abl_min:noobs:nosmg mevd_abl_fl_atac:noobs:nosmg mevd_abl_fl_fm:noobs:nosmg mevd_abl_fl_gnn:noobs:nosmg"
+# 3. held-out-TF split: the same ablations (3 seeds)
+DS=lung SPLIT_KIND=tfholdout KINDS=mevd SEEDS="42 43 44" VARIANTS="mevd_abl_nofm:obs:nosmg mevd_abl_noatac:obs:nosmg mevd_abl_nognn:obs:nosmg mevd_abl_coexpr:obs:nosmg mevd_abl_tfcand:obs:nosmg mevd_abl_base:obs:nosmg mevd_fm_h384:noobs:nosmg mevd_abl_min:noobs:nosmg mevd_abl_fl_atac:noobs:nosmg mevd_abl_fl_fm:noobs:nosmg mevd_abl_fl_gnn:noobs:nosmg"
+DS=hema SPLIT_KIND=tfholdout KINDS=mevd SEEDS="42 43 44" VARIANTS="mevd_abl_nofm:obs:nosmg mevd_abl_noatac:obs:nosmg mevd_abl_nognn:obs:nosmg mevd_abl_coexpr:obs:nosmg mevd_abl_tfcand:obs:nosmg mevd_abl_base:obs:nosmg mevd_fm_h384:noobs:nosmg mevd_abl_min:noobs:nosmg mevd_abl_fl_atac:noobs:nosmg mevd_abl_fl_fm:noobs:nosmg mevd_abl_fl_gnn:noobs:nosmg"
+# 4. official split: two more scMultiomeGRN seeds with saved scores (degree-matched and caliper metrics)
+DS=lung KINDS=offabl OFFABL_TAGS=full OFFABL_SEEDS="42 43"
+DS=hema KINDS=offabl OFFABL_TAGS=full OFFABL_SEEDS="42 43"
