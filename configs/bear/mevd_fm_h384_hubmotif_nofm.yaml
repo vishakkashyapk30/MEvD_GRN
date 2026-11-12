@@ -1,0 +1,4 @@
+# BEAR ablation (s12.8): headline M3 without the Geneformer embedding (same h384 / 2 layers).
+inherit: mevd_fm_h384_hubmotif.yaml
+model:
+  use_fm: false

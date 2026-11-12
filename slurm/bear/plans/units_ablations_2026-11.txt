@@ -1,0 +1,25 @@
+# BEAR-GRN ablations (s12.8), units for slurm/bear/bear_ada_steal.sh: <dataset> <variant> <seed>
+K562 fm_h384_hubmotif_noatac 42
+K562 fm_h384_hubmotif_nofm 42
+Macrophage_S1 fm_h384_hubmotif_noatac 42
+Macrophage_S1 fm_h384_hubmotif_nofm 42
+mESC_E7.5_rep1 fm_h384_hubmotif_noatac 42
+mESC_E7.5_rep1 fm_h384_hubmotif_nofm 42
+K562 fm_h384_hubmotif_seq 42
+mESC_E7.5_rep1 fm_h384_hubmotif_seq 42
+K562 fm_h384_hubmotif_noatac 43
+K562 fm_h384_hubmotif_nofm 43
+Macrophage_S1 fm_h384_hubmotif_noatac 43
+Macrophage_S1 fm_h384_hubmotif_nofm 43
+mESC_E7.5_rep1 fm_h384_hubmotif_noatac 43
+mESC_E7.5_rep1 fm_h384_hubmotif_nofm 43
+K562 fm_h384_hubmotif_seq 43
+mESC_E7.5_rep1 fm_h384_hubmotif_seq 43
+K562 fm_h384_hubmotif_noatac 44
+K562 fm_h384_hubmotif_nofm 44
+Macrophage_S1 fm_h384_hubmotif_noatac 44
+Macrophage_S1 fm_h384_hubmotif_nofm 44
+mESC_E7.5_rep1 fm_h384_hubmotif_noatac 44
+mESC_E7.5_rep1 fm_h384_hubmotif_nofm 44
+K562 fm_h384_hubmotif_seq 44
+mESC_E7.5_rep1 fm_h384_hubmotif_seq 44
