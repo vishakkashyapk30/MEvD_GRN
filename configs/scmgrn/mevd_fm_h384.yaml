@@ -1,5 +1,5 @@
 # MeVD-GRN on the scMultiomeGRN benchmark: the project's recommended size
-# (Geneformer FM embeddings + hidden 384 / 2 GNN layers; results.md s5b, s7).
+# (Geneformer FM embeddings + hidden 384 / 2 GNN layers; archive/results_sc_mo_grn_db.md s5b, s7).
 # Headline configuration (pre-registered), used with scripts/17 --obs_graph.
 inherit: mevd_base.yaml
 model:

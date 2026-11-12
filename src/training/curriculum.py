@@ -35,12 +35,12 @@ def build_all_at_once_stage(cfg: dict, splits_per_tier: Dict[str, dict]
 
     Structurally avoids catastrophic forgetting -- there is no stage
     boundary to forget across. Whether this beats the sequential 2-stage
-    curriculum is SIZE-DEPENDENT, not a fixed fact -- see results.md
+    curriculum is SIZE-DEPENDENT, not a fixed fact -- see archive/results_sc_mo_grn_db.md
     Section 3: at the small (307K-param, no-FM) size, joint training
     dilutes perturbation's positives with localization's larger pool and
     loses on perturbation/dual-evidence despite winning localization;
     at the larger FM-embedding size (h384/l2), that tradeoff disappears
-    and all_at_once wins every tier. Check results.md for the current
+    and all_at_once wins every tier. Check archive/results_sc_mo_grn_db.md for the current
     numbers at whatever size you're using -- don't assume either
     direction holds without checking. Mutates
     `cfg["curriculum"]["use_hard_negatives"]` to False, since tier-hierarchy

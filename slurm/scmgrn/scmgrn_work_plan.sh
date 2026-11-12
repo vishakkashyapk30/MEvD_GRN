@@ -1,0 +1,39 @@
+#!/bin/bash
+# GPU workers that run a PLAN file of worker configurations in order (slurm/scmgrn/plans/*.plan). Every worker claims
+# units from the shared queue (slurm/scmgrn/scmgrn_worker_lib.sh), so N workers split each configuration; a worker that
+# finds nothing claimable moves to the next line. Resubmitting resumes (done markers + existing fold files).
+#   sbatch --export=ALL,PLAN=slurm/scmgrn/plans/hard_tests_2026-11.plan slurm/scmgrn/scmgrn_work_plan.sh
+#SBATCH --job-name=smg-plan
+#SBATCH --account=research
+#SBATCH --qos=medium
+#SBATCH --partition=u22
+#SBATCH --constraint=2080ti
+#SBATCH -n 1
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=22G                      # ~9 CPUs: 4 workers fit under the 40-CPU cap with room for CPU jobs
+#SBATCH --time=4-00:00:00
+#SBATCH --array=0-3%4
+#SBATCH --output=logs/smg_plan_%A_%a.out
+set -uo pipefail
+source "${SLURM_SUBMIT_DIR:-$PWD}/slurm/scmgrn/scmgrn_common.sh"
+activate
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+: "${PLAN:?set PLAN=slurm/scmgrn/plans/<file>.plan}"
+while IFS= read -r line; do
+  [[ -z "$line" || "$line" == \#* ]] && continue
+  echo "===== plan line: $line ($(date +%T))"
+  (
+    eval "export $line"
+    source "$REPO/slurm/scmgrn/scmgrn_worker_lib.sh" || exit 1
+    mkdir -p "$SHARE/claims/$DS" "$SHARE/done/$DS" "$SHARE/failed/$DS"
+    q_exec() { "$@"; }
+    res_dir() { [ "$SPLIT_KIND" = official ] && echo "results/$DS" || echo "results/${DS}_$SPLIT_KIND"; }
+    stage_ct() { pull official/ScmultiomeGRN-main; pull official_ablation/ScmultiomeGRN-main; local CT=$1
+      pull "graph/$DS/$CT"; pull "splits/$DS/$CT"; pull "processed/$DS/$CT"; pull "$(res_dir)/$CT"
+      rm -rf "$SCMGRN_ROOT_LOCAL/graph/$DS/$CT/work"; }
+    publish_ct() { push "$(res_dir)/$1"; }
+    WAIT_FOR_BUILD=0 worker_loop
+  )
+done < "$REPO/$PLAN"
+echo "[plan] worker ${SLURM_ARRAY_TASK_ID:-0} finished all lines"

@@ -26,8 +26,8 @@ class CellTypeData:
     evidence: Dict[str, torch.Tensor]   # tier -> (2, E)
     negative_pool: torch.Tensor         # (2, N_neg)
     fm_embeddings: torch.Tensor = None   # (N_G, 768) pretrained Geneformer gene
-                                         # embeddings (plan.md Section 5); zeros if
-                                         # scripts/11_extract_fm_embeddings.py hasn't
+                                         # embeddings (archive/plan_2026-07.md Section 5); zeros if
+                                         # scripts/sc_mo_grn_db/11_extract_fm_embeddings.py hasn't
                                          # been run for this cell type yet.
     motif_edges: torch.Tensor = None     # (2, E) TF -> gene with an actual PWM hit in a
                                          # top-K accessible peak (src/data/motif_scan.py);

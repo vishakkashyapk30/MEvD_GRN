@@ -1,4 +1,4 @@
-# Data (downloaded from SC-MO-GRN-DB; re-fetch with scripts/01_download_data.sh)
+# Data (downloaded from SC-MO-GRN-DB; re-fetch with scripts/sc_mo_grn_db/01_download_data.sh)
 data/raw/
 data/processed/
 data/splits/

@@ -1,6 +1,6 @@
-# BEAR-GRN benchmark datasets (docs/experiments/bear_grn_benchmark.md s2-3).
+# BEAR-GRN benchmark datasets (docs/benchmarks/bear_grn.md s2-3).
 # Paths are relative to $BEAR_ROOT (= --root), which mirrors the Zenodo zips
-# (10.5281/zenodo.20704929) as unpacked by scripts/20_bear_download.py.
+# (10.5281/zenodo.20704929) as unpacked by scripts/bear/20_bear_download.py.
 #
 # labels: training-label sources for regime L1 (in-cell-type, TF-disjoint);
 #   tier name -> GT file. These ARE the BEAR GT files; held-out TFs are removed

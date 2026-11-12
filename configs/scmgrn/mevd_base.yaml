@@ -1,6 +1,6 @@
 # MeVD-GRN on the scMultiomeGRN benchmark: base model (h128/l2, no FM).
 # Single evidence tier (motif-in-accessible-promoter ground truth) -> one
-# training stage; see docs/experiments/scmultiomegrn_generalization.md s5.
+# training stage; see docs/benchmarks/scmultiomegrn.md s5.
 # Every value here was fixed a priori (before any benchmark result existed).
 inherit: ../default.yaml
 

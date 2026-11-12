@@ -1,5 +1,5 @@
 """After the s12.6 selection: write the frozen-headline configs and append the run lines to the
-local GPU queue (slurm/bear_gpu_queue.sh). Order (s12.9): (2) seeds 42-44 on all datasets, ChIP-only
+local GPU queue (slurm/bear/bear_gpu_queue.sh). Order (s12.9): (2) seeds 42-44 on all datasets, ChIP-only
 datasets first; (3) seeds 45-46; (4) L2; (5) ablations (K562, Macrophage_S1, mESC_E7.5_rep1; 3 seeds).
 
   python -m src.benchmarks.bear_queue --variant fm_h384_hubmotif [--dry]
@@ -15,7 +15,7 @@ ROOT = Path.home() / ".cache/bear/data"
 ORDER_DS = ["Macrophage_S1", "Macrophage_S2", "iPS", "K562", "mESC_E7.5_rep1", "mESC_E7.5_rep2",
             "mESC_E8.5_rep1", "mESC_E8.5_rep2", "Naive_mESC"]
 ABL_DS = ["K562", "Macrophage_S1", "mESC_E7.5_rep1"]
-PY = "/home/vishak/miniforge3/bin/python -u scripts/22_bear_train_eval.py --root %s --device cuda:0 " \
+PY = "/home/vishak/miniforge3/bin/python -u scripts/bear/22_bear_train_eval.py --root %s --device cuda:0 " \
      "--skip_existing --tmp_dir /home/vishak/.cache/bear/tmp" % ROOT
 
 

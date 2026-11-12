@@ -1,5 +1,5 @@
 """MeVD-GRN with BEAR-specific decoder terms (pre-registered M2 / M3,
-docs/experiments/bear_grn_benchmark.md s12.6). A subclass, so the shared
+docs/benchmarks/bear_grn.md s12.6). A subclass, so the shared
 model code (src/models) is untouched.
 
   logit(tf, g) = MEvDGRN.decode(...)                                  (M0 / M1)
