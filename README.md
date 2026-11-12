@@ -23,8 +23,8 @@ Park & Marcotte 2012), both in `src/benchmarks/scmgrn_protocol.py`.
 | Branch | Contents |
 |---|---|
 | `main` | The model (`src/`), data building and evaluation for every benchmark, MeVD-GRN training and evaluation, docs, paper |
-| `scmgrn-reproduction` | `main` + end-to-end reproduction of scMultiomeGRN with its official code (`scripts/scmgrn/18_scmgrn_official_repro.py`, worker kind `official`) |
-| `ablations` | `scmgrn-reproduction` + MeVD-GRN ablation configs and tables, scMultiomeGRN ablations (patched official code, STRING prior), run plans |
+| `scmgrn-reproduction` | `main` + end-to-end reproduction of scMultiomeGRN with its official code (`scripts/scmgrn/18_scmgrn_official_repro.py`, worker kind `official`) and the switchable patched copy of that code (`scripts/scmgrn/23_patch_official_ablation.py`) |
+| `ablations` | `scmgrn-reproduction` + MeVD-GRN ablation configs and table, scMultiomeGRN ablations (worker kind `offabl`, STRING prior), run plans |
 | `baselines` | `scmgrn-reproduction` + statistical and simple baselines, link-prediction heuristics, the look-alike probe, DeepTFni and GENELink |
 | `archive/*` (branches and tags) | The pre-restructure branches, unchanged |
 

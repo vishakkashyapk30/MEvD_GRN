@@ -1,4 +1,0 @@
-# Route-isolation ablation: the floor model plus only the ATAC channel. Run with --noobs and no scMultiomeGRN inputs (the floor model mevd_abl_min plus ONE route).
-inherit: mevd_abl_min.yaml
-model:
-  use_atac: true
