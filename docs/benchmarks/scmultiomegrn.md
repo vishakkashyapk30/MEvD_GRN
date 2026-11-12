@@ -374,3 +374,65 @@ scMultiomeGRN) and `vs_mevd_*.md` (against MeVD-GRN).
   fall to near the degree rule (0.724). This is the clearest evidence so far that MeVD-GRN uses information beyond
   hubness. The negatives come only from each fold's official test negatives (27 in a Myeloid fold), so it should
   be confirmed on a split with more negatives per hub (for example, holding out whole TFs).
+
+## 13. 2026-11-12: hub-controlled and held-out-TF evaluations (ICML 2027 preparation)
+
+Everything in this section is an evaluation we add; the official folds, metric and headline (section 11) are
+unchanged. Code: `src/benchmarks/scmgrn_protocol.py` (`make_tf_holdout_splits`, `tfholdout_degree_matched_test`,
+`degree_caliper_test`, `evaluate_all`); every script scores through `evaluate_all`, so all methods see the same pairs.
+
+### 13.1 Held-out-TF split (ours)
+- TFs are shuffled (seed 666) into 10 groups. Fold k: test TFs = group k, validation TFs = group k+1, training TFs =
+  the rest. Training = every pair of two training TFs (links and non-links, plus the diagonal as in the official
+  files). Validation = all links touching a validation TF (and no test TF) plus as many random non-links. Test = all
+  links touching a test TF (and no validation TF) plus, per class, as many random non-links. Test-validation pairs are
+  used nowhere. Files use the official format, so the official scMultiomeGRN code runs on them unchanged
+  (`scripts/scmgrn/30_scmgrn_make_tfholdout_splits.py`, `splits/<ds>/<ct>/tfholdout_seed-666_fold-10/`).
+- Pair classes follow Park & Marcotte (Nat Methods 2012): **C2** = one TF of the pair hidden, **C3** = both hidden.
+  A hidden TF has no training links, so every neighbourhood heuristic scores its pairs 0 (AUROC exactly 0.5), and the
+  degree rule only sees the training partner's degree.
+- Test links per cell type over the 10 folds: C2 434-8,048, C3 23-501 (`splits/tfholdout_report.json` on Ada).
+- Very dense cell types have hidden TFs with more links than non-links among their candidate pairs, so their test
+  sets are not exactly balanced; every table reports the share of positives (random AUPR) next to AUPR.
+
+### 13.2 Caliper-matched hub control
+- Held-out TF (C2): each C2 link (hidden t, training TF r) is paired with a non-link (t, w) of the **same hidden TF**
+  whose partner w has |log1p deg(w) - log1p deg(r)| <= 0.1; links without such a partner are dropped. These pairs
+  are in no training file. On synthetic hub graphs the degree rule scores 0.500-0.503 AUROC while 76-82% of C2 links
+  are kept.
+- Official split (`test_degcaliper`): a test link is kept only if some official test non-link has both sorted
+  endpoint degrees within the caliper; one such non-link is drawn. The degree rule falls to 0.507 on a dense
+  synthetic graph (44% of links kept). The nearest-3 degree-matched test of section 12 (`test_degmatched`) is kept for
+  continuity; in these dense graphs it leaves the degree rule at 0.72 AUPR, which the caliper version removes.
+- Existing official-split results that saved their score matrices get the new metric from
+  `scripts/scmgrn/31_scmgrn_backfill_metrics.py`; the baselines are recomputed (version 4).
+
+### 13.3 Does family structure explain MeVD-GRN's degree-matched gap? (look-alike probe, official split)
+`scripts/scmgrn/26_scmgrn_cf_probe.py` (branch `baselines`): item-based collaborative filtering on the training
+links ("are u's look-alike TFs linked to v?"), and the same with Geneformer look-alikes. 12 cell types, AUPR:
+
+| Method | Official test | Degree-matched |
+|---|---|---|
+| MeVD-GRN | 0.935 | 0.878 |
+| Look-alike TFs (training links) | 0.929 | 0.759 |
+| Look-alike TFs, normalised | 0.927 | 0.761 |
+| Geneformer look-alikes linked to v | 0.839 | 0.668 |
+| Degree and neighbourhood scores (logistic regression) | 0.932 | 0.759 |
+
+Matrix completion over similar TFs is no better than the link-count models on the degree-matched test, so the TF-family
+structure of the training links does not explain MeVD-GRN's 0.878.
+
+### 13.4 Added baselines
+DeepTFni and GENELink, the two GNN baselines the scMultiomeGRN paper reports, now run on our folds with the copies
+shipped in the official repository (branch `baselines`): DeepTFni through the official Trainer with
+`model_cls=DeepTFni` (patched copy, pair histograms off since DeepTFni never reads them); GENELink through
+`scripts/scmgrn/32_scmgrn_genelink.py` with its default hyper-parameters.
+
+### 13.5 Runs launched 2026-11-12 (Ada, 4 x 2080 Ti; plan `slurm/scmgrn/plans/hard_tests_2026-11.plan`, branch `ablations`)
+1. Held-out-TF split: official scMultiomeGRN (seeds 666, 42, 43) and MeVD-GRN (seeds 42-46), 12 cell types.
+2. Official split: the 11 MeVD-GRN ablations re-run (seeds 42-44) so they carry the degree-matched and caliper metrics.
+3. Held-out-TF split: the same 11 ablations (seeds 42-44).
+4. Official split: scMultiomeGRN seeds 42 and 43 with saved score matrices.
+CPU: all statistical baselines and the look-alike probe on both splits; metric backfill. Results are compiled with
+`scripts/scmgrn/25_scmgrn_baseline_table.py` (cluster-bootstrap 95% CIs over cell types; paired Wilcoxon against a
+chosen reference, e.g. scMultiomeGRN or the strongest baseline).
