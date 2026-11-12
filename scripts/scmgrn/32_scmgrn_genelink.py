@@ -43,7 +43,7 @@ cfg["seed"] = kw["model_seed"]
 random.seed(cfg["seed"]); np.random.seed(cfg["seed"]); torch.manual_seed(cfg["seed"]); torch.cuda.manual_seed_all(cfg["seed"])
 data = GraphDataModule(**cfg)
 data.prepare_data()
-model = GENELink(root_dir=kw["root_dir"], **cfg)
+model = GENELink(**cfg)                  # cfg carries root_dir
 model.train(**data.train_data.data)
 m, feat, adj = model.model, model.data_feature, model.adj
 n = adj.shape[0]
