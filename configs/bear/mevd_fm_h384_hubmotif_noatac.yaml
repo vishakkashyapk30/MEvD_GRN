@@ -1,0 +1,4 @@
+# BEAR ablation (s12.8): headline M3 without ATAC (ATAC features and openness zeroed).
+inherit: mevd_fm_h384_hubmotif.yaml
+bear:
+  zero_atac: true

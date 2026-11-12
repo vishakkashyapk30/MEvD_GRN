@@ -1,0 +1,5 @@
+# BEAR ablation (s12.8): headline M3 with a sequential curriculum (one stage per label tier, ChIP then KO)
+# instead of all_at_once. Only datasets with more than one tier (K562, mouse).
+inherit: mevd_fm_h384_hubmotif.yaml
+curriculum:
+  protocol: sequential
