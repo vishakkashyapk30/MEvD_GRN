@@ -32,7 +32,8 @@ DRIVER = r"""
 import json, sys, random, numpy as np, torch
 kw = json.loads(sys.argv[1])
 from src.benchmark.dataset import GraphDataModule
-GraphDataModule.compute_edge_attr = lambda self, scrna_file, adj_norm, bins=16: np.zeros((adj_norm._nnz(), 16, 16))
+GraphDataModule.compute_edge_attr = lambda self, scrna_file, adj_norm, bins=16: np.zeros(
+    (adj_norm._nnz() if hasattr(adj_norm, "_nnz") else adj_norm.nnz, 16, 16))
 from src.benchmark.models.genelink import GENELink
 import argparse
 p = GENELink.add_argparse_args(argparse.ArgumentParser())
