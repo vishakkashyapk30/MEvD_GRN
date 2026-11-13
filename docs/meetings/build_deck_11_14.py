@@ -348,12 +348,26 @@ column and *italics* the second best.""")
 
 {table(OFF, REF + SMG_ABL, OFF_COLS, OFF_HEAD)}""")
 
+    drop1 = [m for m, _ in MEVD_ABL if "_fl_" not in m and "_min_" not in m]
+    cal1 = [v(OFF, m, "test_degcaliper_auroc") for m in drop1]
+    cal1 = [x for x in cal1 if x is not None]
+    small = [m for m in drop1 if m not in ("mevd_abl_nofm_obs_dm", "mevd_abl_base_obs_dm")]
+    dsmall = [abs(v(OFF, m, "test_aupr") - v(OFF, MEVD, "test_aupr")) for m in small if v(OFF, m, "test_aupr") is not None]
+    tfc2 = [v(TF, m, "test_degcaliper_auroc") for m, _ in [(MEVD_TF, "")] + MEVD_ABL_TF]
+    tfc2 = [x for x in tfc2 if x is not None]
     S.append(f"""## 8. MeVD-GRN ablations
 
-- Geneformer is the component that matters on the official test: the floor model plus Geneformer alone reaches
-  {g(OFF,'mevd_abl_fl_fm_noobs_dm','test_aupr')} AUPR, and removing Geneformer from the full model costs the most.
-- Removing the ATAC tower, the graph network or the training-link relation changes little.
-- No component moves the hub-controlled scores away from chance.
+- Official test: Geneformer is the component that matters. The floor model plus Geneformer alone reaches
+  {g(OFF,'mevd_abl_fl_fm_noobs_dm','test_aupr')} AUPR (full model {g(OFF,MEVD,'test_aupr')}); removing Geneformer gives
+  {g(OFF,'mevd_abl_nofm_obs_dm','test_aupr')}, and the smaller base size {g(OFF,'mevd_abl_base_obs_dm','test_aupr')}.
+- Removing the ATAC tower, the graph network, either graph type or the training-link relation changes AUPR by at most
+  {f3(max(dsmall) if dsmall else None)}.
+- Caliper-matched test, official split: every single removal stays between {f3(min(cal1) if cal1 else None)} and
+  {f3(max(cal1) if cal1 else None)} AUROC (full model {g(OFF,MEVD,'test_degcaliper_auroc')}), while the floor model is at
+  {g(OFF,'mevd_abl_min_noobs_dm','test_degcaliper_auroc')}: the small signal beyond link counts comes from the
+  components together, and no single one is needed for it.
+- Held-out-TF split, C2 caliper-matched: the full model and every variant are between {f3(min(tfc2) if tfc2 else None)}
+  and {f3(max(tfc2) if tfc2 else None)} AUROC, i.e. chance.
 
 {table(OFF, REF[:1] + MEVD_ABL, OFF_COLS, OFF_HEAD)}
 
