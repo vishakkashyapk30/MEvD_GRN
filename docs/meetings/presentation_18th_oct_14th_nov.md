@@ -162,25 +162,32 @@ column and *italics* the second best.
 
 ## 8. MeVD-GRN ablations
 
-- Geneformer is the component that matters on the official test: the floor model plus Geneformer alone reaches
-  – AUPR, and removing Geneformer from the full model costs the most.
-- Removing the ATAC tower, the graph network or the training-link relation changes little.
-- No component moves the hub-controlled scores away from chance.
+- Official test: Geneformer is the component that matters. The floor model plus Geneformer alone reaches
+  0.931 AUPR (full model 0.935); removing Geneformer gives
+  0.922, and the smaller base size 0.925.
+- Removing the ATAC tower, the graph network, either graph type or the training-link relation changes AUPR by at most
+  0.001.
+- Caliper-matched test, official split: every single removal stays between 0.547 and
+  0.562 AUROC (full model 0.560), while the floor model is at
+  0.501: the small signal beyond link counts comes from the
+  components together, and no single one is needed for it.
+- Held-out-TF split, C2 caliper-matched: the full model and every variant are between 0.482
+  and 0.508 AUROC, i.e. chance.
 
 | Method | AUPR | AUROC | AUROC, degree-matched | AUROC, caliper-matched |
 |---|---|---|---|---|
-| MeVD-GRN | **0.935** | **0.924** | **0.708** | **0.560** |
-| Without Geneformer | pending | pending | pending | pending |
-| Without the ATAC tower | pending | pending | pending | pending |
-| Without the graph network | pending | pending | pending | pending |
-| Co-expression graph only | pending | pending | pending | pending |
-| TF-candidate graph only | pending | pending | pending | pending |
-| Base size (smaller model) | pending | pending | pending | pending |
-| Without the training-link relation | pending | pending | pending | pending |
-| Floor model (none of the four parts) | pending | pending | pending | pending |
-| Floor model + ATAC tower | pending | pending | pending | pending |
-| Floor model + Geneformer | pending | pending | pending | pending |
-| Floor model + graph network | pending | pending | pending | pending |
+| MeVD-GRN | **0.935** | **0.924** | **0.708** | *0.560* |
+| Without Geneformer | 0.922 | 0.910 | 0.686 | 0.559 |
+| Without the ATAC tower | **0.935** | *0.923* | *0.707* | 0.557 |
+| Without the graph network | *0.934* | *0.923* | 0.705 | **0.562** |
+| Co-expression graph only | *0.934* | 0.922 | 0.704 | 0.552 |
+| TF-candidate graph only | *0.934* | *0.923* | 0.701 | 0.553 |
+| Base size (smaller model) | 0.925 | 0.912 | 0.691 | *0.560* |
+| Without the training-link relation | *0.934* | *0.923* | 0.702 | 0.547 |
+| Floor model (none of the four parts) | 0.633 | 0.635 | 0.533 | 0.501 |
+| Floor model + ATAC tower | 0.833 | 0.822 | 0.619 | 0.522 |
+| Floor model + Geneformer | 0.931 | 0.921 | 0.697 | 0.552 |
+| Floor model + graph network | 0.875 | 0.862 | 0.642 | 0.528 |
 
 Held-out-TF split:
 
