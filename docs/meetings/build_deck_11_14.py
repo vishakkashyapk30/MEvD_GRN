@@ -255,13 +255,15 @@ def bear_slide():
         "- **Random.** Expected AUPRC of a random ranking (AUROC 0.5).",
         f"- On ChIP AUPRC, Pearson beats LINGER on {n_pear} of {len(b)} datasets and \"all measured pairs\" on {n_cov} of {len(b)}.",
         "",
-        "ChIP-seq ground truth, AUPRC (MeVD-GRN = mean over seeds; in-degree = mean of 5 fold seeds; bold = best and italics = second best in each dataset):",
+        "**Table 1. ChIP-seq ground truth, AUPRC.** MeVD-GRN = mean over seeds; in-degree = mean of 5 fold seeds; bold = best",
+        "and italics = second best in each dataset.",
         "",
         ]
     lines += bear_table(chip, agg, "AUPRC")
     lines += ["", "DIRECT-NET's released network has no edge scores, so it has no AUROC or AUPRC (BEAR-GRN reports only its",
               "top-10k precision)."]
-    lines += ["", "Same, AUROC (\"all measured pairs\" ties every pair, so it is 0.5 by construction):", ""]
+    lines += ["", "**Table 2. ChIP-seq ground truth, AUROC.** Same models and datasets as Table 1; \"all measured pairs\" ties",
+              "every pair, so it is 0.5 by construction.", ""]
     lines += bear_table(chip, agg, "AUROC")
     hp = REPO / "docs/results/bear/hub_control_mevd_fm_h384_hubmotif_seed42.csv"
     if hp.exists():
@@ -282,6 +284,9 @@ def bear_slide():
             f"{', '.join(mouse_up) if mouse_up else 'none'} ({len(mouse_up)} of {len(mouse)}).",
             f"- KO: {piv['KO']['within_stratum'].min():.3f} to {piv['KO']['within_stratum'].max():.3f} on "
             f"{len(piv['KO'])} datasets, the clearest signal beyond in-degree so far.",
+            "",
+            "**Table 3. Hub control for MeVD-GRN (seed 42).** AUROC on the ChIP-seq and knockout (KO) ground truths, raw and",
+            "within groups of target genes with the same in-degree.",
             "",
             "| Dataset | ChIP AUROC | ChIP AUROC within in-degree groups | KO AUROC | KO AUROC within in-degree groups |",
             "|---|---|---|---|---|"]
