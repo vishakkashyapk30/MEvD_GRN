@@ -33,7 +33,20 @@ while IFS= read -r line; do
       pull "graph/$DS/$CT"; pull "splits/$DS/$CT"; pull "processed/$DS/$CT"; pull "$(res_dir)/$CT"
       rm -rf "$SCMGRN_ROOT_LOCAL/graph/$DS/$CT/work"; }
     publish_ct() { push "$(res_dir)/$1"; }
-    WAIT_FOR_BUILD=0 worker_loop
+    # WORKERS > 1: that many worker loops share this GPU (MeVD-GRN runs are CPU-bound, ~0-5% GPU), each with its own
+    # scratch tree and an equal share of the job's CPUs; they claim from the same queue as every other worker.
+    W=${WORKERS:-1}; NCPU=${SLURM_CPUS_ON_NODE:-$(nproc)}; BASE_SCR=$SCR
+    for k in $(seq 1 "$W"); do
+      (
+        if [ "$W" -gt 1 ]; then
+          export SCR="$BASE_SCR/w$k" SCMGRN_ROOT_LOCAL="$BASE_SCR/w$k/scmgrn"; mkdir -p "$SCMGRN_ROOT_LOCAL"
+          T=$(( NCPU / W > 0 ? NCPU / W : 1 )); export OMP_NUM_THREADS=$T MKL_NUM_THREADS=$T OPENBLAS_NUM_THREADS=$T
+        fi
+        WAIT_FOR_BUILD=0 worker_loop 2>&1 | sed -u "s/^/[w$k] /"
+      ) &
+      sleep 20                                        # stagger the first claims/stage-ins
+    done
+    wait
   )
 done < "$REPO/$PLAN"
 echo "[plan] worker ${SLURM_ARRAY_TASK_ID:-0} finished all lines"
