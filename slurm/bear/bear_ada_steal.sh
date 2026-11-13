@@ -20,6 +20,7 @@
 set -uo pipefail
 source "${SLURM_SUBMIT_DIR:-$PWD}/slurm/bear/bear_ada_common.sh"
 activate
+NFAIL=0                                             # consecutive failures; stop after 3 (a broken setup must not loop)
 START=$(date +%s); BUDGET=${BUDGET_SEC:-140000}     # stop claiming new units ~12 h before the walltime
 UNITS_FILE="${UNITS:-$B/units.txt}"   # e.g. UNITS=$REPO/slurm/bear/plans/units_headline_2026-11.txt
 [ -s "$UNITS_FILE" ] || { echo "[steal] no units file $UNITS_FILE"; exit 1; }
@@ -39,7 +40,7 @@ while true; do
   PD="$DS"; [[ "$V" == *_L2 ]] && PD="${DS}__L2"
   echo "===== unit $UNIT $(date +%T) ====="
   rm -rf "$BEAR_ROOT/processed" "$BEAR_ROOT/results"; mkdir -p "$BEAR_ROOT/results"
-  stage_in "processed/$PD" || { echo "[steal] stage-in failed"; mv "$B/claims/$UNIT" "$B/failed/$UNIT.$(date +%s)"; continue; }
+  stage_in "processed/$PD" || { echo "[steal] stage-in failed"; mv "$B/claims/$UNIT" "$B/failed/$UNIT.$(date +%s)"; NFAIL=$((NFAIL+1)); [ $NFAIL -ge 3 ] && break; continue; }
   EXTRA=""; [ "${MODALITY:-1}" = 1 ] && [[ "$V" == fm_h384 || "$V" == *_hub* ]] && EXTRA="--modality_check"
   python -u scripts/bear/22_bear_train_eval.py --root "$BEAR_ROOT" --dataset "$DS" \
       --model_config "configs/bear/mevd_$V.yaml" --seed "$SEED" --device cuda:0 --tmp_dir "$SCR/tmp" $EXTRA \
@@ -48,9 +49,10 @@ while true; do
   cp -f "$SCR/train.log" "$B/logs/${UNIT}.log" 2>/dev/null
   if [ $RC -eq 0 ] && publish_dir "$BEAR_ROOT/results/$DS/mevd_$V" "$B/results/$DS/mevd_$V" \
         && [ -s "$B/results/$DS/mevd_$V/seed$SEED/grn.tsv.gz" ]; then
-    echo "$(date +%F_%T) rc=0" > "$B/done/$UNIT"; echo "[steal] DONE $UNIT"
+    echo "$(date +%F_%T) rc=0" > "$B/done/$UNIT"; echo "[steal] DONE $UNIT"; NFAIL=0
   else
     echo "[steal] FAILED $UNIT rc=$RC"; mv "$B/claims/$UNIT" "$B/failed/$UNIT.$(date +%s)"
+    NFAIL=$((NFAIL+1)); [ $NFAIL -ge 3 ] && { echo "[steal] 3 failures in a row: stopping"; tail -5 "$SCR/train.log"; break; }
   fi
 done
 echo "[steal] worker finished"
