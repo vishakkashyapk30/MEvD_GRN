@@ -442,3 +442,27 @@ shipped in the official repository (branch `baselines`): DeepTFni through the of
 CPU: all statistical baselines and the look-alike probe on both splits; metric backfill. Results are compiled with
 `scripts/scmgrn/25_scmgrn_baseline_table.py` (cluster-bootstrap 95% CIs over cell types; paired Wilcoxon against a
 chosen reference, e.g. scMultiomeGRN or the strongest baseline).
+
+### 13.6 Results, held-out-TF split (2026-11-13; all runs re-scored after the degree fix, identical pairs for every method)
+Tables: `docs/results/scmgrn/final/tfholdout_vs_*.md`. 12 cell types, AUROC [95% CI over cell types]:
+
+| Method | C2 | C3 | C2 caliper-matched |
+|---|---|---|---|
+| MeVD-GRN (5 seeds) | 0.753 [0.741, 0.765] | 0.529 [0.491, 0.566] | 0.487 [0.481, 0.494] |
+| scMultiomeGRN (official code, 3 seeds) | 0.744 [0.732, 0.758] | 0.526 [0.497, 0.551] | 0.483 [0.475, 0.492] |
+| DeepTFni / GENELink | 0.576 / 0.661 | 0.483 / 0.518 | 0.501 / 0.492 |
+| Link-count rule (degree product) | **0.779** [0.769, 0.792] | 0.500 (ties) | 0.509 [0.506, 0.512] |
+| Mutual information of expression | 0.536 | 0.573 [0.539, 0.607] | **0.520** [0.510, 0.530] |
+| Random forest, MAESTRO + GRNBoost2 | 0.695 | 0.535 | 0.517 |
+
+- C2: the link-count rule beats every model; it still knows the training partner's link count.
+- C3: every supervised model is at chance; only label-free expression statistics edge above it (about 0.57).
+- C2 caliper-matched: no method exceeds 0.52. No MeVD-GRN ablation moves it off chance (0.482-0.508).
+- Official split, caliper-matched (`docs/results/scmgrn/final/official_vs_*.md`): MeVD-GRN 0.560 [0.541, 0.577],
+  low-rank SVD 0.567, GENELink 0.537, scMultiomeGRN 0.524, link-count rule 0.506; a small signal beyond link counts
+  remains for several methods, on small sets.
+- **Conclusion.** On this benchmark the scores of all methods, MeVD-GRN included, are explained by hub TFs plus, on
+  the official split, the family structure of the training links. It cannot show that any model learns TF-TF
+  regulation beyond that; MeVD-GRN's claim has to rest on BEAR-GRN (ChIP-seq / knockout ground truths).
+- An earlier version of this section reported MeVD-GRN 0.687 on the C2 caliper test; that run had the degree bug
+  (section 12.4 correction).
