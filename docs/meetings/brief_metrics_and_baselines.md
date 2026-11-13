@@ -77,16 +77,16 @@ Every kept link has a non-link partner with (almost) the same degrees, so any ru
 **Toy:** in 2.2, only the (2, 11) candidate is inside the caliper (differences 0 and 0.087), so it is the partner.
 If it did not exist, the link would be dropped.
 
-### 2.4 Held-out-TF split, C2 and C3 (Park and Marcotte, Nature Methods 2012)
+### 2.4 Held-out-TF split: "one TF unseen" and "both TFs unseen" (Park and Marcotte, Nature Methods 2012)
 TFs, not links, are split into 10 groups (seed 666). Fold k: group k = test TFs, group k+1 = validation TFs, the rest
 training TFs. Training uses only pairs of two training TFs.
-- **C2** = pairs with one test TF and one training TF (the test TF has **no** training links).
-- **C3** = pairs of two test TFs.
+- **One TF unseen** (the paper calls it C2) = pairs with one test TF and one training TF (the test TF has **no** training links).
+- **Both TFs unseen** (C3) = pairs of two test TFs.
 Each class gets as many random non-links as links. Pairs of a test TF with a validation TF are used nowhere.
 (`make_tf_holdout_splits`.) A test TF's degree is 0 in training, so a model cannot count its links.
 
-### 2.5 C2 caliper-matched test (own construction)
-For a C2 link (hidden TF t, training TF r), the partner non-link is (t, w) with the **same hidden TF t** and a
+### 2.5 One-TF-unseen caliper-matched test (own construction)
+For a one-TF-unseen link (hidden TF t, training TF r), the partner non-link is (t, w) with the **same hidden TF t** and a
 training TF w whose log degree is within 0.1 of r's. Links without such a w are dropped.
 (`tfholdout_degree_matched_test`.) Both ends are matched: t is the same TF, r and w have the same degree.
 
