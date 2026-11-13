@@ -208,6 +208,30 @@ def bear_slide():
             top = max(vals)
             cells += [f"**{x:.3f}**" if x == top else f"{x:.3f}" for x in vals]
         lines.append(f"| {ds} | " + " | ".join(cells) + f" | {r['AUPRC']['random']:.3f} |")
+    hp = REPO / "docs/results/bear/hub_control_mevd_fm_h384_hubmotif_seed42.csv"
+    if hp.exists():
+        h = pd.read_csv(hp)
+        h = h[h["variant"].isin(["raw", "within_stratum"])]
+        piv = {gt: h[h["gt"] == gt].pivot_table(index="dataset", columns="variant", values="AUROC")
+               for gt in ("ChIP", "KO")}
+        human = [x for x in ("K562", "Macrophage_S1", "Macrophage_S2", "iPS") if x in piv["ChIP"].index]
+        mouse = [x for x in piv["ChIP"].index if x not in human]
+        ws = piv["ChIP"]["within_stratum"]
+        lines += [
+            "",
+            "Hub control (pre-registered, seed 42): AUROC when MeVD-GRN's scores are ranked only within groups of target",
+            "genes with the same in-degree (0 alone, then 20 quantile bins), so the in-degree ranking scores 0.5.",
+            f"- ChIP: a small signal beyond in-degree remains on the human datasets ({ws[human].min():.3f} to "
+            f"{ws[human].max():.3f}) and none on the mouse datasets ({ws[mouse].min():.3f} to {ws[mouse].max():.3f}).",
+            f"- KO: {piv['KO']['within_stratum'].min():.3f} to {piv['KO']['within_stratum'].max():.3f} on "
+            f"{len(piv['KO'])} datasets, the clearest signal beyond in-degree so far.",
+            "",
+            "| Dataset | ChIP AUROC | ChIP AUROC within in-degree groups | KO AUROC | KO AUROC within in-degree groups |",
+            "|---|---|---|---|---|"]
+        for ds in sorted(piv["ChIP"].index):
+            c, k = piv["ChIP"].loc[ds], (piv["KO"].loc[ds] if ds in piv["KO"].index else None)
+            kc = "– | –" if k is None else f"{k['raw']:.3f} | {k['within_stratum']:.3f}"
+            lines.append(f"| {ds} | {c['raw']:.3f} | {c['within_stratum']:.3f} | {kc} |")
     return "\n".join(lines)
 
 
@@ -381,7 +405,8 @@ Held-out-TF split:
 - Simple link-count models match or beat the published GNNs; label-free statistics are at chance.
 - Once hubness is controlled (caliper matching, held-out TFs), no method, MeVD-GRN included, keeps a meaningful signal.
 - BEAR-GRN shows the same effect on target genes: an in-degree ranking beats every published method on ChIP AUPRC,
-  and MeVD-GRN beats LINGER but not yet that ranking.
+  and MeVD-GRN beats LINGER but not yet that ranking. Within groups of genes with the same in-degree, MeVD-GRN
+  keeps a small signal on human ChIP and on knockout ground truths, and none on mouse ChIP.
 - These results are a finding about how GRN benchmarks are scored and belong in the paper as an evaluation
   contribution, alongside MeVD-GRN.
 - Next: complete BEAR-GRN (5 seeds, the strict L2 regime, ablations) with a hub control against the in-degree
