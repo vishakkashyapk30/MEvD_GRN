@@ -21,9 +21,9 @@ column and *italics* the second best.
 - On a new split that holds out whole TFs, the link-count rule is the best method when one TF of the pair is unseen
   (0.779 AUROC against 0.753 for MeVD-GRN), and
   every model is near chance once hubness is controlled (0.487 for MeVD-GRN).
-- Conclusion: on this benchmark, the scores of all methods, MeVD-GRN included, are explained by hub TFs. The claim
-  that MeVD-GRN learns regulation beyond hubness has to be tested on BEAR-GRN, whose ChIP-seq ground truth does not
-  come from the motif rule.
+- Conclusion: on this benchmark, the scores of all methods, MeVD-GRN included, are explained by hub TFs.
+- BEAR-GRN (ChIP-seq and knockout ground truths, interim results): MeVD-GRN beats LINGER on most datasets, but a
+  baseline that ranks target genes by their number of regulators is stronger still on ChIP (section 11).
 - Correction: an earlier draft reported 0.878 AUPR for MeVD-GRN on the degree-matched test. That value came from an
   evaluation bug, fixed in this period; the corrected value is 0.779 (section 9).
 
@@ -248,7 +248,32 @@ Held-out-TF split:
 
 ## 11. BEAR-GRN: ChIP-seq and knockout ground truths
 
-- MeVD-GRN runs on all 9 BEAR-GRN datasets are in progress on Ada (pre-registered protocol, section 12 of `docs/benchmarks/bear_grn.md`); results will be added when scored.
+- BEAR-GRN (Nat Methods 2025) scores TF-to-gene networks against ChIP-seq, knockout (KO), union and intersection
+  ground truths on 9 datasets (human K562, macrophage, iPS; mouse embryo and ESC). None of them comes from a motif rule.
+- MeVD-GRN follows the pre-registered protocol (section 12 of `docs/benchmarks/bear_grn.md`): TF-disjoint 5-fold
+  cross-fitting, so every scored TF is unseen in training; the configuration was fixed on K562 before any other
+  dataset was run. Released outputs of the BEAR methods are re-scored with the same code.
+- **Interim:** 8 of 9 datasets, 1-2 seeds per dataset (5 seeds and the strict L2 regime
+  are still running).
+- Over the four ground truths (44 dataset x metric cells), MeVD-GRN beats LINGER in 28, every released method in 19, and the target
+  in-degree baseline in 17. The pre-registered win (above LINGER, in-degree and coverage) holds in 11.
+- On ChIP, MeVD-GRN beats LINGER in AUPRC on 8 of 8 datasets, but the in-degree
+  baseline is above MeVD-GRN on 7 of 8 (AUROC) and also above LINGER on 8 of 8 (AUPRC).
+- So BEAR-GRN shows the same pattern as scMultiomeGRN: ranking target genes by how many TFs regulate them beats
+  the published methods, and MeVD-GRN does not yet clear that baseline on ChIP.
+
+ChIP-seq ground truth (in-degree = mean of 5 seeds; best of the three per metric in bold):
+
+| Dataset | AUROC MeVD-GRN | AUROC LINGER | AUROC in-degree | AUPRC MeVD-GRN | AUPRC LINGER | AUPRC in-degree | AUPRC random |
+|---|---|---|---|---|---|---|---|
+| K562 | 0.608 | 0.536 | **0.652** | 0.475 | 0.430 | **0.484** | 0.331 |
+| Macrophage_S1 | **0.626** | 0.596 | 0.609 | **0.375** | 0.321 | 0.365 | 0.272 |
+| Macrophage_S2 | 0.604 | 0.548 | **0.610** | 0.371 | 0.324 | **0.374** | 0.271 |
+| Naive_mESC | 0.539 | 0.476 | **0.598** | 0.284 | 0.160 | **0.308** | 0.153 |
+| iPS | 0.596 | 0.496 | **0.604** | **0.152** | 0.108 | 0.150 | 0.091 |
+| mESC_E7.5_rep1 | 0.561 | **0.652** | 0.604 | 0.299 | 0.241 | **0.323** | 0.155 |
+| mESC_E8.5_rep1 | 0.532 | **0.658** | 0.607 | 0.277 | 0.227 | **0.312** | 0.154 |
+| mESC_E8.5_rep2 | 0.536 | **0.656** | 0.609 | 0.274 | 0.224 | **0.313** | 0.155 |
 
 ## 12. Conclusions and next steps
 
@@ -256,6 +281,9 @@ Held-out-TF split:
   from a motif rule on the same ATAC data the models read, and its random non-links are easy to separate by link count.
 - Simple link-count models match or beat the published GNNs; label-free statistics are at chance.
 - Once hubness is controlled (caliper matching, held-out TFs), no method, MeVD-GRN included, keeps a meaningful signal.
-- These results are a finding about the benchmark and belong in the paper as an evaluation contribution.
-- Next: complete BEAR-GRN (5 seeds, the strict L2 regime, ablations) and its hub control against the in-degree
-  baseline; then PBMC10k with LINGER's own candidate genes.
+- BEAR-GRN shows the same effect on target genes: an in-degree ranking beats every published method on ChIP AUPRC,
+  and MeVD-GRN beats LINGER but not yet that ranking.
+- These results are a finding about how GRN benchmarks are scored and belong in the paper as an evaluation
+  contribution, alongside MeVD-GRN.
+- Next: complete BEAR-GRN (5 seeds, the strict L2 regime, ablations) with a hub control against the in-degree
+  baseline (within-in-degree-stratum scores); then PBMC10k with LINGER's own candidate genes.
