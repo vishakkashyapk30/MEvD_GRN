@@ -260,12 +260,12 @@ Held-out-TF split:
 - MeVD-GRN follows the pre-registered protocol (section 12 of `docs/benchmarks/bear_grn.md`): TF-disjoint 5-fold
   cross-fitting, so every scored TF is unseen in training; the configuration was fixed on K562 before any other
   dataset was run. Released outputs of the BEAR methods are re-scored with the same code.
-- **Interim:** 8 of 9 datasets, 1-2 seeds per dataset (5 seeds and the strict L2 regime
+- **Interim:** 9 of 9 datasets, 2-3 seeds per dataset (5 seeds and the strict L2 regime
   are still running).
-- Over the four ground truths (44 dataset x metric cells), MeVD-GRN beats LINGER in 28, every released method in 19, and the target
-  in-degree baseline in 17. The pre-registered win (above LINGER, in-degree and coverage) holds in 11.
-- On ChIP, MeVD-GRN beats LINGER in AUPRC on 8 of 8 datasets, but the in-degree
-  baseline is above MeVD-GRN on 7 of 8 (AUROC) and also above LINGER on 8 of 8 (AUPRC).
+- Over the four ground truths (52 dataset x metric cells), MeVD-GRN beats LINGER in 33, every released method in 21, and the target
+  in-degree baseline in 23. The pre-registered win (above LINGER, in-degree and coverage) holds in 16.
+- On ChIP, MeVD-GRN beats LINGER in AUPRC on 9 of 9 datasets, but the in-degree
+  baseline is above MeVD-GRN on 7 of 9 (AUROC) and also above LINGER on 9 of 9 (AUPRC).
 - So BEAR-GRN shows the same pattern as scMultiomeGRN: ranking target genes by how many TFs regulate them beats
   the published methods, and MeVD-GRN does not yet clear that baseline on ChIP.
 
@@ -273,19 +273,20 @@ ChIP-seq ground truth (in-degree = mean of 5 seeds; best of the three per metric
 
 | Dataset | AUROC MeVD-GRN | AUROC LINGER | AUROC in-degree | AUPRC MeVD-GRN | AUPRC LINGER | AUPRC in-degree | AUPRC random |
 |---|---|---|---|---|---|---|---|
-| K562 | 0.608 | 0.536 | **0.652** | 0.475 | 0.430 | **0.484** | 0.331 |
-| Macrophage_S1 | **0.626** | 0.596 | 0.609 | **0.375** | 0.321 | 0.365 | 0.272 |
-| Macrophage_S2 | 0.604 | 0.548 | **0.610** | 0.371 | 0.324 | **0.374** | 0.271 |
-| Naive_mESC | 0.539 | 0.476 | **0.598** | 0.284 | 0.160 | **0.308** | 0.153 |
-| iPS | 0.596 | 0.496 | **0.604** | **0.152** | 0.108 | 0.150 | 0.091 |
-| mESC_E7.5_rep1 | 0.561 | **0.652** | 0.604 | 0.299 | 0.241 | **0.323** | 0.155 |
-| mESC_E8.5_rep1 | 0.532 | **0.658** | 0.607 | 0.277 | 0.227 | **0.312** | 0.154 |
-| mESC_E8.5_rep2 | 0.536 | **0.656** | 0.609 | 0.274 | 0.224 | **0.313** | 0.155 |
+| K562 | 0.603 | 0.536 | **0.652** | 0.473 | 0.430 | **0.484** | 0.331 |
+| Macrophage_S1 | **0.625** | 0.596 | 0.609 | **0.373** | 0.321 | 0.365 | 0.272 |
+| Macrophage_S2 | 0.588 | 0.548 | **0.610** | 0.367 | 0.324 | **0.374** | 0.271 |
+| Naive_mESC | 0.541 | 0.476 | **0.598** | 0.285 | 0.160 | **0.308** | 0.153 |
+| iPS | **0.617** | 0.496 | 0.604 | **0.156** | 0.108 | 0.150 | 0.091 |
+| mESC_E7.5_rep1 | 0.549 | **0.652** | 0.604 | 0.296 | 0.241 | **0.323** | 0.155 |
+| mESC_E7.5_rep2 | 0.563 | **0.644** | 0.596 | 0.294 | 0.225 | **0.306** | 0.153 |
+| mESC_E8.5_rep1 | 0.544 | **0.658** | 0.607 | 0.283 | 0.227 | **0.312** | 0.154 |
+| mESC_E8.5_rep2 | 0.539 | **0.656** | 0.609 | 0.277 | 0.224 | **0.313** | 0.155 |
 
 Hub control (pre-registered, seed 42): AUROC when MeVD-GRN's scores are ranked only within groups of target
 genes with the same in-degree (0 alone, then 20 quantile bins), so the in-degree ranking scores 0.5.
-- ChIP: a small signal beyond in-degree remains on the human datasets (0.530 to 0.573) and none on the mouse datasets (0.475 to 0.509).
-- KO: 0.516 to 0.657 on 4 datasets, the clearest signal beyond in-degree so far.
+- ChIP: a small signal beyond in-degree remains on the human datasets (0.530 to 0.573); on the mouse datasets it is 0.475 to 0.542, above 0.52 only on mESC_E7.5_rep2 (1 of 5).
+- KO: 0.516 to 0.657 on 5 datasets, the clearest signal beyond in-degree so far.
 
 | Dataset | ChIP AUROC | ChIP AUROC within in-degree groups | KO AUROC | KO AUROC within in-degree groups |
 |---|---|---|---|---|
@@ -295,6 +296,7 @@ genes with the same in-degree (0 alone, then 20 quantile bins), so the in-degree
 | Naive_mESC | 0.539 | 0.498 | – | – |
 | iPS | 0.551 | 0.541 | – | – |
 | mESC_E7.5_rep1 | 0.561 | 0.509 | 0.487 | 0.524 |
+| mESC_E7.5_rep2 | 0.586 | 0.542 | 0.547 | 0.611 |
 | mESC_E8.5_rep1 | 0.532 | 0.477 | 0.522 | 0.565 |
 | mESC_E8.5_rep2 | 0.536 | 0.475 | 0.597 | 0.657 |
 
@@ -306,7 +308,7 @@ genes with the same in-degree (0 alone, then 20 quantile bins), so the in-degree
 - Once hubness is controlled (caliper matching, held-out TFs), no method, MeVD-GRN included, keeps a meaningful signal.
 - BEAR-GRN shows the same effect on target genes: an in-degree ranking beats every published method on ChIP AUPRC,
   and MeVD-GRN beats LINGER but not yet that ranking. Within groups of genes with the same in-degree, MeVD-GRN
-  keeps a small signal on human ChIP and on knockout ground truths, and none on mouse ChIP.
+  keeps a small signal on human ChIP and on knockout ground truths, and little on mouse ChIP.
 - These results are a finding about how GRN benchmarks are scored and belong in the paper as an evaluation
   contribution, alongside MeVD-GRN.
 - Next: complete BEAR-GRN (5 seeds, the strict L2 regime, ablations) with a hub control against the in-degree
