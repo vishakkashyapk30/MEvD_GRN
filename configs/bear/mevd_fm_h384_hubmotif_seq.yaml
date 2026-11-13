@@ -1,5 +1,11 @@
 # BEAR ablation (s12.8): headline M3 with a sequential curriculum (one stage per label tier, ChIP then KO)
 # instead of all_at_once. Only datasets with more than one tier (K562, mouse).
+# The stages must be listed here: mevd_base.yaml sets a single `evidence_tier: all` stage, which the
+# sequential tier filter in scripts/bear/22 drops (no stages -> IndexError). Same total budget (60 epochs),
+# lr and neg_ratio as the headline, so only the curriculum changes.
 inherit: mevd_fm_h384_hubmotif.yaml
 curriculum:
   protocol: sequential
+  stages:
+    - {name: Stage1_ChIP, evidence_tier: localization, n_epochs: 40, lr: 1.0e-3, neg_ratio: 2, freeze_encoder: false}
+    - {name: Stage2_KO, evidence_tier: perturbation, n_epochs: 20, lr: 3.0e-4, neg_ratio: 2, freeze_encoder: false}
