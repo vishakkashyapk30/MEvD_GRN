@@ -190,6 +190,8 @@ column and *italics* the second best.
 - Held-out-TF split, pairs with one unseen TF, caliper-matched: the full model and every variant are between 0.482
   and 0.508 AUROC, i.e. chance.
 
+**Table 1. Official split** (links split into folds): official, degree-matched and caliper-matched tests.
+
 | Method | AUPR | AUROC | AUROC, degree-matched | AUROC, caliper-matched |
 |---|---|---|---|---|
 | MeVD-GRN | **0.935** | **0.924** | **0.708** | *0.560* |
@@ -205,7 +207,8 @@ column and *italics* the second best.
 | Floor model + Geneformer | 0.931 | 0.921 | 0.697 | 0.552 |
 | Floor model + graph network | 0.875 | 0.862 | 0.642 | 0.528 |
 
-Held-out-TF split:
+**Table 2. Held-out-TF split** (TFs split into folds): pairs with one unseen TF, pairs of two unseen TFs, and the
+caliper-matched test on pairs with one unseen TF.
 
 | Method | AUROC, pairs with one unseen TF | AUROC, pairs of two unseen TFs | AUROC, pairs with one unseen TF, caliper-matched |
 |---|---|---|---|
