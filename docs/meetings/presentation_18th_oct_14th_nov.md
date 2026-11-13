@@ -275,6 +275,22 @@ ChIP-seq ground truth (in-degree = mean of 5 seeds; best of the three per metric
 | mESC_E8.5_rep1 | 0.532 | **0.658** | 0.607 | 0.277 | 0.227 | **0.312** | 0.154 |
 | mESC_E8.5_rep2 | 0.536 | **0.656** | 0.609 | 0.274 | 0.224 | **0.313** | 0.155 |
 
+Hub control (pre-registered, seed 42): AUROC when MeVD-GRN's scores are ranked only within groups of target
+genes with the same in-degree (0 alone, then 20 quantile bins), so the in-degree ranking scores 0.5.
+- ChIP: a small signal beyond in-degree remains on the human datasets (0.530 to 0.573) and none on the mouse datasets (0.475 to 0.509).
+- KO: 0.516 to 0.657 on 4 datasets, the clearest signal beyond in-degree so far.
+
+| Dataset | ChIP AUROC | ChIP AUROC within in-degree groups | KO AUROC | KO AUROC within in-degree groups |
+|---|---|---|---|---|
+| K562 | 0.610 | 0.530 | 0.559 | 0.516 |
+| Macrophage_S1 | 0.630 | 0.573 | – | – |
+| Macrophage_S2 | 0.575 | 0.530 | – | – |
+| Naive_mESC | 0.539 | 0.498 | – | – |
+| iPS | 0.551 | 0.541 | – | – |
+| mESC_E7.5_rep1 | 0.561 | 0.509 | 0.487 | 0.524 |
+| mESC_E8.5_rep1 | 0.532 | 0.477 | 0.522 | 0.565 |
+| mESC_E8.5_rep2 | 0.536 | 0.475 | 0.597 | 0.657 |
+
 ## 12. Conclusions and next steps
 
 - The scMultiomeGRN benchmark measures how well a method knows which TFs are hubs. Its ground-truth network comes
@@ -282,7 +298,8 @@ ChIP-seq ground truth (in-degree = mean of 5 seeds; best of the three per metric
 - Simple link-count models match or beat the published GNNs; label-free statistics are at chance.
 - Once hubness is controlled (caliper matching, held-out TFs), no method, MeVD-GRN included, keeps a meaningful signal.
 - BEAR-GRN shows the same effect on target genes: an in-degree ranking beats every published method on ChIP AUPRC,
-  and MeVD-GRN beats LINGER but not yet that ranking.
+  and MeVD-GRN beats LINGER but not yet that ranking. Within groups of genes with the same in-degree, MeVD-GRN
+  keeps a small signal on human ChIP and on knockout ground truths, and none on mouse ChIP.
 - These results are a finding about how GRN benchmarks are scored and belong in the paper as an evaluation
   contribution, alongside MeVD-GRN.
 - Next: complete BEAR-GRN (5 seeds, the strict L2 regime, ablations) with a hub control against the in-degree
