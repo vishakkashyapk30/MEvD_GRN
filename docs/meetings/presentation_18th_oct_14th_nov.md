@@ -23,11 +23,11 @@ column and *italics* the second best.
   every model is near chance once hubness is controlled (0.487 for MeVD-GRN).
 - Conclusion: on this benchmark, the scores of all methods, MeVD-GRN included, are explained by hub TFs.
 - BEAR-GRN (ChIP-seq and knockout ground truths, interim results): MeVD-GRN beats LINGER on most datasets, but a
-  baseline that ranks target genes by their number of regulators is stronger still on ChIP (section 11).
+  baseline that ranks target genes by their number of regulators is stronger still on ChIP (section 12).
 - Correction: an earlier draft reported 0.878 AUPR for MeVD-GRN on the degree-matched test. That value came from an
-  evaluation bug, fixed in this period; the corrected value is 0.779 (section 9).
+  evaluation bug, fixed in this period; the corrected value is 0.779 (section 10).
 
-## 2. Model families and evaluation protocol
+## 2. Model families
 
 - **Label-free statistical scores.** No labels: correlations, mutual information, GRNBoost2, GENIE3, ridge and lasso
   regression (the BEELINE and geneRNIB baselines).
@@ -46,6 +46,9 @@ column and *italics* the second best.
   numbers from its RNA (mean expression, variance, share of cells that detect it), passed through a small MLP; a pair
   is scored by the symmetric decoder plus a co-expression term (correlation of the two TFs' expression signatures).
   It is trained on the fold's training links like the full model.
+
+## 3. Evaluation protocol
+
 - **Official test** [1]. scMultiomeGRN's 10 folds split the links: each test link is paired with a random non-link.
 - **Degree-matched test** (own variant of degree-aware negatives [2, 3]). Each test link is paired with one of the
   three test non-links closest to it in the two TFs' training-link counts.
@@ -61,10 +64,10 @@ column and *italics* the second best.
   use AUROC, because trapezoidal AUPR gives a method with all scores tied (1 + share of positives) / 2, about 0.75,
   instead of 0.5 (linear interpolation in precision-recall space overestimates the area [7]).
 - **Statistics** (standard methods). 95% CIs by bootstrap over cell types; paired Wilcoxon signed-rank tests over
-  cell type x fold. Sources of every test: slide 13.
+  cell type x fold. Sources of every test: slide 14.
 - Nothing from the test fold is used for fitting; every model is checked for zero test-to-train leakage.
 
-## 3. Label-free statistical scores
+## 4. Label-free statistical scores
 
 - These methods ask whether two TFs behave alike across cells, without any label.
 - All of them sit between 0.50 and 0.54 AUROC on every test, which is chance.
@@ -87,7 +90,7 @@ column and *italics* the second best.
 | Correlation of MAESTRO accessibility | 0.528 | 0.520 | 0.519 | 0.511 |
 | Similarity of Geneformer embeddings | 0.529 | 0.529 | 0.525 | 0.516 |
 
-## 4. Supervised models on pair features
+## 5. Supervised models on pair features
 
 - Learned from the training links, scMultiomeGRN's inputs become informative on the official test: GRNBoost2 alone
   reaches 0.729 AUPR, the two inputs side by side 0.788,
@@ -111,7 +114,7 @@ column and *italics* the second best.
 | Linear regression, side by side | 0.788 | 0.763 | 0.596 | 0.514 |
 | Random forest, side by side | 0.836 | 0.814 | 0.606 | 0.502 |
 
-## 5. Link-prediction heuristics on the training graph
+## 6. Link-prediction heuristics on the training graph
 
 - The product of the two link counts scores 0.924 AUPR and a logistic regression on
   the two counts 0.931; both beat scMultiomeGRN (0.919).
@@ -139,7 +142,7 @@ column and *italics* the second best.
 | Link counts + MAESTRO + GRNBoost2 | 0.926 | 0.915 | 0.667 | 0.520 |
 | Counts and neighbour scores + Geneformer | 0.931 | *0.919* | 0.681 | 0.534 |
 
-## 6. GNN baselines of the scMultiomeGRN paper
+## 7. GNN baselines of the scMultiomeGRN paper
 
 - DeepTFni scores 0.882 AUPR and GENELink 0.902 on the official test,
   both below scMultiomeGRN, consistent with the scMultiomeGRN paper.
@@ -152,7 +155,7 @@ column and *italics* the second best.
 | DeepTFni | 0.882 | 0.871 | 0.647 | 0.517 |
 | GENELink | 0.902 | 0.901 | 0.627 | *0.537* |
 
-## 7. scMultiomeGRN ablations
+## 8. scMultiomeGRN ablations
 
 - The known-link graph is what matters: without it AUPR drops from 0.919 to
   0.826; a STRING network in its place gives
@@ -171,7 +174,7 @@ column and *italics* the second best.
 | RNA features only | 0.916 | 0.910 | 0.650 | 0.511 |
 | With Geneformer added | 0.917 | 0.911 | 0.649 | *0.527* |
 
-## 8. MeVD-GRN ablations
+## 9. MeVD-GRN ablations
 
 - Floor model = MeVD-GRN without Geneformer, the ATAC tower, the graph network and the training-link relation: each
   TF is reduced to three RNA numbers (mean, variance, detection rate) plus a co-expression term (definition on slide 2).
@@ -219,7 +222,7 @@ Held-out-TF split:
 | Floor model + Geneformer | **0.761** | 0.497 | 0.491 |
 | Floor model + graph network | 0.640 | 0.529 | *0.500* |
 
-## 9. Hub-controlled tests on the official split, and a correction
+## 10. Hub-controlled tests on the official split, and a correction
 
 - Degree-matched test: MeVD-GRN 0.708 AUROC [0.682, 0.738],
   scMultiomeGRN 0.651, best simple model 0.688, from Look-alike TFs (matrix completion).
@@ -238,7 +241,7 @@ Held-out-TF split:
   on unique pairs; every method now uses identical test pairs on every fold (checked on all 55,000 fold results), and
   the corrected value is 0.779 AUPR.
 
-## 10. Held-out-TF split
+## 11. Held-out-TF split
 
 - On pairs with one unseen TF, the link-count rule is the best method: it still knows the partner TF's link count.
   MeVD-GRN scores 0.753 [0.741, 0.765], scMultiomeGRN
@@ -266,7 +269,7 @@ Held-out-TF split:
 | Random forest, MAESTRO and GRNBoost2 | 0.695 | 0.535 | *0.517* |
 | Link counts + Geneformer | *0.774* | 0.539 | 0.504 |
 
-## 11. BEAR-GRN: ChIP-seq and knockout ground truths
+## 12. BEAR-GRN: ChIP-seq and knockout ground truths
 
 - BEAR-GRN (Nat Commun 2026) [8] scores TF-to-gene networks against ChIP-seq, knockout (KO), union and intersection
   ground truths on 9 datasets (human K562, macrophage, iPS; mouse embryo and ESC). None of them comes from a motif rule.
@@ -355,7 +358,7 @@ genes with the same in-degree (0 alone, then 20 quantile bins), so the in-degree
 | mESC_E8.5_rep1 | 0.532 | 0.477 | 0.522 | 0.565 |
 | mESC_E8.5_rep2 | 0.536 | 0.475 | 0.597 | 0.657 |
 
-## 12. Conclusions and next steps
+## 13. Conclusions and next steps
 
 - The scMultiomeGRN benchmark measures how well a method knows which TFs are hubs. Its ground-truth network comes
   from a motif rule on the same ATAC data the models read, and its random non-links are easy to separate by link count.
@@ -369,7 +372,7 @@ genes with the same in-degree (0 alone, then 20 quantile bins), so the in-degree
 - Next: complete BEAR-GRN (5 seeds, the strict L2 regime, ablations) with a hub control against the in-degree
   baseline (within-in-degree-stratum scores); then PBMC10k with LINGER's own candidate genes.
 
-## 13. Sources of the evaluation tests
+## 14. Sources of the evaluation tests
 
 | Test or metric | Source | Published, or own construction |
 |---|---|---|
