@@ -169,11 +169,46 @@ def best_in(R, items, key):
 
 
 def bear_slide():
-    p = REPO / "docs/results/bear/headline_2026-11.md"
-    if p.exists():
-        return p.read_text().strip()
-    return ("- MeVD-GRN runs on all 9 BEAR-GRN datasets are in progress on Ada (pre-registered protocol, section 12 of "
-            "`docs/benchmarks/bear_grn.md`); results will be added when scored.")
+    import pandas as pd
+    p = REPO / "docs/results/bear/head_to_head__mevd_fm_h384_hubmotif.csv"
+    if not p.exists():
+        return "- MeVD-GRN runs on the 9 BEAR-GRN datasets are in progress; results will be added when scored."
+    d = pd.read_csv(p)
+    prim = d[d["gt"].isin(["ChIP", "KO", "Union", "Intersection"]) & d["mevd"].notna()]
+    chip = prim[prim["gt"] == "ChIP"]
+    n_ds, seeds = chip["dataset"].nunique(), sorted(chip["n_seeds"].unique())
+    a, b = chip[chip.metric == "AUROC"], chip[chip.metric == "AUPRC"]
+    lines = [
+        "- BEAR-GRN (Nat Methods 2025) scores TF-to-gene networks against ChIP-seq, knockout (KO), union and intersection",
+        "  ground truths on 9 datasets (human K562, macrophage, iPS; mouse embryo and ESC). None of them comes from a motif rule.",
+        "- MeVD-GRN follows the pre-registered protocol (section 12 of `docs/benchmarks/bear_grn.md`): TF-disjoint 5-fold",
+        "  cross-fitting, so every scored TF is unseen in training; the configuration was fixed on K562 before any other",
+        "  dataset was run. Released outputs of the BEAR methods are re-scored with the same code.",
+        f"- **Interim:** {n_ds} of 9 datasets, {'-'.join(map(str, seeds))} seeds per dataset (5 seeds and the strict L2 regime",
+        "  are still running).",
+        f"- Over the four ground truths ({len(prim)} dataset x metric cells), MeVD-GRN beats LINGER in "
+        f"{int(prim.beats_LINGER.sum())}, every released method in {int(prim.beats_all_released.sum())}, and the target",
+        f"  in-degree baseline in {int((prim.mevd > prim.indegree).sum())}. The pre-registered win (above LINGER, in-degree"
+        f" and coverage) holds in {int(prim.WIN.sum())}.",
+        f"- On ChIP, MeVD-GRN beats LINGER in AUPRC on {int(b.beats_LINGER.sum())} of {len(b)} datasets, but the in-degree",
+        f"  baseline is above MeVD-GRN on {int((a.indegree > a.mevd).sum())} of {len(a)} (AUROC) and also above LINGER on "
+        f"{int((b.indegree > b.LINGER).sum())} of {len(b)} (AUPRC).",
+        "- So BEAR-GRN shows the same pattern as scMultiomeGRN: ranking target genes by how many TFs regulate them beats",
+        "  the published methods, and MeVD-GRN does not yet clear that baseline on ChIP.",
+        "",
+        "ChIP-seq ground truth (in-degree = mean of 5 seeds; best of the three per metric in bold):",
+        "",
+        "| Dataset | AUROC MeVD-GRN | AUROC LINGER | AUROC in-degree | AUPRC MeVD-GRN | AUPRC LINGER | AUPRC in-degree | AUPRC random |",
+        "|---|---|---|---|---|---|---|---|"]
+    for ds in sorted(chip["dataset"].unique()):
+        r = {m: chip[(chip.dataset == ds) & (chip.metric == m)].iloc[0] for m in ("AUROC", "AUPRC")}
+        cells = []
+        for m in ("AUROC", "AUPRC"):
+            vals = [r[m]["mevd"], r[m]["LINGER"], r[m]["indegree"]]
+            top = max(vals)
+            cells += [f"**{x:.3f}**" if x == top else f"{x:.3f}" for x in vals]
+        lines.append(f"| {ds} | " + " | ".join(cells) + f" | {r['AUPRC']['random']:.3f} |")
+    return "\n".join(lines)
 
 
 def main():
@@ -207,9 +242,9 @@ column and *italics* the second best.""")
 - On a new split that holds out whole TFs, the link-count rule is the best method when one TF of the pair is unseen
   ({g(TF,'heur_degree_product','test_c2_auroc')} AUROC against {g(TF,MEVD_TF,'test_c2_auroc')} for MeVD-GRN), and
   every model is near chance once hubness is controlled ({g(TF,MEVD_TF,'test_degcaliper_auroc')} for MeVD-GRN).
-- Conclusion: on this benchmark, the scores of all methods, MeVD-GRN included, are explained by hub TFs. The claim
-  that MeVD-GRN learns regulation beyond hubness has to be tested on BEAR-GRN, whose ChIP-seq ground truth does not
-  come from the motif rule.
+- Conclusion: on this benchmark, the scores of all methods, MeVD-GRN included, are explained by hub TFs.
+- BEAR-GRN (ChIP-seq and knockout ground truths, interim results): MeVD-GRN beats LINGER on most datasets, but a
+  baseline that ranks target genes by their number of regulators is stronger still on ChIP (section 11).
 - Correction: an earlier draft reported 0.878 AUPR for MeVD-GRN on the degree-matched test. That value came from an
   evaluation bug, fixed in this period; the corrected value is {g(OFF,MEVD,'test_degmatched_aupr')} (section 9).""")
 
@@ -345,9 +380,12 @@ Held-out-TF split:
   from a motif rule on the same ATAC data the models read, and its random non-links are easy to separate by link count.
 - Simple link-count models match or beat the published GNNs; label-free statistics are at chance.
 - Once hubness is controlled (caliper matching, held-out TFs), no method, MeVD-GRN included, keeps a meaningful signal.
-- These results are a finding about the benchmark and belong in the paper as an evaluation contribution.
-- Next: complete BEAR-GRN (5 seeds, the strict L2 regime, ablations) and its hub control against the in-degree
-  baseline; then PBMC10k with LINGER's own candidate genes.""")
+- BEAR-GRN shows the same effect on target genes: an in-degree ranking beats every published method on ChIP AUPRC,
+  and MeVD-GRN beats LINGER but not yet that ranking.
+- These results are a finding about how GRN benchmarks are scored and belong in the paper as an evaluation
+  contribution, alongside MeVD-GRN.
+- Next: complete BEAR-GRN (5 seeds, the strict L2 regime, ablations) with a hub control against the in-degree
+  baseline (within-in-degree-stratum scores); then PBMC10k with LINGER's own candidate genes.""")
 
     OUT.write_text("\n\n".join(S) + "\n")
     print(f"wrote {OUT} ({len(S)} slides)")
