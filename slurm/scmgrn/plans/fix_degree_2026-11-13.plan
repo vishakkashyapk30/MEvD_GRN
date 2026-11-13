@@ -1,0 +1,14 @@
+# Re-run (2026-11-13) of every MeVD-GRN result that was scored inside script 17 before commit e4b36e5: those runs
+# matched the degree-controlled tests on wrong training degrees (u<v rows, column-0 count). C2/C3 and official-test
+# metrics were right; test_degmatched/test_degcaliper were not. The old fold files are kept on Ada under
+# ~/scmgrn/results_wrong_degree_20261113/. All runs now save score matrices, so a later metric change only needs
+# scripts/scmgrn/31_scmgrn_backfill_metrics.py.
+# 1. held-out-TF split: MeVD-GRN headline (5 seeds)
+DS=lung SPLIT_KIND=tfholdout UNIT_TAG=tfholdout_fix KINDS=mevd EXTRA_ARGS="--save_scores" VARIANTS="mevd_fm_h384:obs:nosmg" SEEDS="42 43 44 45 46"
+DS=hema SPLIT_KIND=tfholdout UNIT_TAG=tfholdout_fix KINDS=mevd EXTRA_ARGS="--save_scores" VARIANTS="mevd_fm_h384:obs:nosmg" SEEDS="42 43 44 45 46"
+# 2. held-out-TF split: ablations (3 seeds)
+DS=lung SPLIT_KIND=tfholdout UNIT_TAG=tfholdout_fix KINDS=mevd SEEDS="42 43 44" EXTRA_ARGS="--save_scores" VARIANTS="mevd_abl_nofm:obs:nosmg mevd_abl_noatac:obs:nosmg mevd_abl_nognn:obs:nosmg mevd_abl_coexpr:obs:nosmg mevd_abl_tfcand:obs:nosmg mevd_abl_base:obs:nosmg mevd_fm_h384:noobs:nosmg mevd_abl_min:noobs:nosmg mevd_abl_fl_atac:noobs:nosmg mevd_abl_fl_fm:noobs:nosmg mevd_abl_fl_gnn:noobs:nosmg"
+DS=hema SPLIT_KIND=tfholdout UNIT_TAG=tfholdout_fix KINDS=mevd SEEDS="42 43 44" EXTRA_ARGS="--save_scores" VARIANTS="mevd_abl_nofm:obs:nosmg mevd_abl_noatac:obs:nosmg mevd_abl_nognn:obs:nosmg mevd_abl_coexpr:obs:nosmg mevd_abl_tfcand:obs:nosmg mevd_abl_base:obs:nosmg mevd_fm_h384:noobs:nosmg mevd_abl_min:noobs:nosmg mevd_abl_fl_atac:noobs:nosmg mevd_abl_fl_fm:noobs:nosmg mevd_abl_fl_gnn:noobs:nosmg"
+# 3. official split: ablations (3 seeds), suffix _dm
+DS=lung UNIT_TAG=abldm_fix KINDS=mevd SEEDS="42 43 44" EXTRA_ARGS="--variant_suffix _dm --save_scores" VARIANTS="mevd_abl_nofm:obs:nosmg mevd_abl_noatac:obs:nosmg mevd_abl_nognn:obs:nosmg mevd_abl_coexpr:obs:nosmg mevd_abl_tfcand:obs:nosmg mevd_abl_base:obs:nosmg mevd_fm_h384:noobs:nosmg mevd_abl_min:noobs:nosmg mevd_abl_fl_atac:noobs:nosmg mevd_abl_fl_fm:noobs:nosmg mevd_abl_fl_gnn:noobs:nosmg"
+DS=hema UNIT_TAG=abldm_fix KINDS=mevd SEEDS="42 43 44" EXTRA_ARGS="--variant_suffix _dm --save_scores" VARIANTS="mevd_abl_nofm:obs:nosmg mevd_abl_noatac:obs:nosmg mevd_abl_nognn:obs:nosmg mevd_abl_coexpr:obs:nosmg mevd_abl_tfcand:obs:nosmg mevd_abl_base:obs:nosmg mevd_fm_h384:noobs:nosmg mevd_abl_min:noobs:nosmg mevd_abl_fl_atac:noobs:nosmg mevd_abl_fl_fm:noobs:nosmg mevd_abl_fl_gnn:noobs:nosmg"
