@@ -2,7 +2,7 @@
 # Single evidence tier (motif-in-accessible-promoter ground truth) -> one
 # training stage; see docs/benchmarks/scmultiomegrn.md s5.
 # Every value here was fixed a priori (before any benchmark result existed).
-inherit: ../default.yaml
+inherit: ../sc_mo_grn_db/default.yaml
 
 data:
   evidence_tiers: [tfbs_promoter]
