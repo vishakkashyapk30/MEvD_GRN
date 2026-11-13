@@ -6,32 +6,45 @@ Companion to `presentation_18th_oct_14th_nov.md`. Every definition below is what
 ## Contents
 
 1. [Notation](#notation)
-2. [Metrics](#s1)
-   - [1.1 AUROC](#s1-1)
-   - [1.2 AUPR, as scMultiomeGRN computes it](#s1-2)
-   - [1.3 AP (average precision)](#s1-3)
-   - [1.4 Random level](#s1-4)
-3. [Test sets on the scMultiomeGRN benchmark](#s2)
-   - [2.1 Official test](#s2-1)
-   - [2.2 Degree-matched test](#s2-2)
-   - [2.3 Caliper-matched test](#s2-3)
-   - [2.4 Held-out-TF split](#s2-4)
-   - [2.5 Caliper-matched test on pairs with one unseen TF](#s2-5)
-4. [Baselines on the scMultiomeGRN benchmark](#s3)
-   - [3.1 Link-prediction heuristics](#s3-1)
-   - [3.2 Look-alike TFs](#s3-2)
-   - [3.3 Label-free statistical scores](#s3-3)
-   - [3.4 Supervised models on pair features](#s3-4)
+2. [Glossary of terms used in the deck](#glossary)
+   - [Training graph](#g-training-graph) · [Degree, hub](#g-degree) · [In-degree](#g-in-degree)
+   - [Link-prediction heuristic](#g-heuristic) · [Label-free vs supervised](#g-label-free)
+   - [MeVD-GRN parts: Geneformer embedding](#g-geneformer) · [ATAC tower](#g-atac-tower) ·
+     [Graph network](#g-graph-network) · [Training-link relation](#g-training-link-relation) ·
+     [Floor model](#g-floor-model)
+   - [Degree-matched and caliper-matched, in one paragraph](#g-matched)
+   - [Held-out-TF split](#g-held-out-tf) · [TF-disjoint cross-fitting (BEAR-GRN)](#g-cross-fitting)
+   - [L1 and L2 regimes (BEAR-GRN)](#g-l1-l2) · [Universe, all measured pairs](#g-universe) ·
+     [Hub control](#g-hub-control)
+3. [Metrics](#s1)
+   - [1.1 AUROC](#s1-1) · [1.2 AUPR, as scMultiomeGRN computes it](#s1-2) · [1.3 AP](#s1-3) ·
+     [1.4 Random level](#s1-4)
+4. [Test sets on the scMultiomeGRN benchmark](#s2)
+   - [2.1 Official test](#s2-1) · [2.2 Degree-matched test](#s2-2) · [2.3 Caliper-matched test](#s2-3) ·
+     [2.4 Held-out-TF split](#s2-4) · [2.5 Caliper-matched test on pairs with one unseen TF](#s2-5)
+5. [Baselines on the scMultiomeGRN benchmark](#s3)
+   - [3.1 Link-prediction heuristics](#s3-1):
+     [degree product](#m-degree-product) · [degree sum](#m-degree-sum) ·
+     [common neighbours](#m-common-neighbours) · [Jaccard](#m-jaccard) · [Adamic-Adar](#m-adamic-adar) ·
+     [resource allocation](#m-resource-allocation) · [Katz](#m-katz) · [random walk with restart](#m-rwr) ·
+     [low-rank SVD](#m-svd) · [low-rank spectral](#m-spectral)
+   - [3.2 Look-alike TFs](#s3-2): [look-alike TFs](#m-lookalike) · [normalised](#m-lookalike-norm) ·
+     [Geneformer look-alikes](#m-gf-lookalike)
+   - [3.3 Label-free statistical scores](#s3-3):
+     [Pearson / Spearman](#m-pearson) · [partial correlation](#m-partial) · [mutual information](#m-mi) ·
+     [CLR](#m-clr) · [GRNBoost2](#m-grnboost2) · [GENIE3](#m-genie3) · [ridge / lasso](#m-ridge-lasso) ·
+     [cosine of profiles / embeddings](#m-cosine)
+   - [3.4 Supervised models on pair features](#s3-4):
+     [pair feature](#m-pair-feature) · [single input](#m-single) · [side by side](#m-side-by-side) ·
+     [multiplied](#m-multiplied) · [product only](#m-product-only) · [logistic / linear / random forest](#m-models)
    - [3.5 Link counts + features](#s3-5)
-5. [BEAR-GRN](#s4)
-   - [4.1 Universe](#s4-1)
-   - [4.2 AUROC (BEAR-GRN definition)](#s4-2)
-   - [4.3 AUPRC (BEAR-GRN definition)](#s4-3)
-   - [4.4 Baselines run on BEAR-GRN](#s4-4)
-   - [4.5 Pre-registered "WIN"](#s4-5)
-   - [4.6 Hub control: AUROC within in-degree groups](#s4-6)
-6. [Statistics in the tables](#s5)
-7. [Likely questions, short answers](#s6)
+6. [BEAR-GRN](#s4)
+   - [4.1 Universe](#s4-1) · [4.2 AUROC](#s4-2) · [4.3 AUPRC](#s4-3)
+   - [4.4 Baselines](#s4-4): [released methods](#m-bear-released) · [in-degree](#m-bear-indegree) ·
+     [Pearson](#m-bear-pearson) · [GRNBoost2](#m-bear-grnboost2) · [all measured pairs](#m-bear-coverage)
+   - [4.5 Pre-registered "WIN"](#s4-5) · [4.6 Hub control](#s4-6)
+7. [Statistics in the tables](#s5)
+8. [Likely questions, short answers](#s6)
 
 ---
 
@@ -44,6 +57,93 @@ Companion to `presentation_18th_oct_14th_nov.md`. Every definition below is what
 - $A$ = training adjacency matrix ($A_{uv} = 1$ if $u$–$v$ is a training link), $d_u = \sum_w A_{uw}$ = degree of
   TF $u$ (its number of training links).
 - $\ell_u = \log(1 + d_u)$ = log degree, used by the matched tests.
+
+---
+
+<a id="glossary"></a>
+## Glossary of terms used in the deck
+
+<a id="g-training-graph"></a>
+**Training graph.** For one fold, the TF-TF network made only of that fold's **training links**: nodes = the cell
+type's TFs, edges = known links in the training part. Test links (and validation links) are removed, so a model
+that reads the training graph never sees the answer for a test pair. Example: if the ground truth has 1,000 links,
+fold 1 tests 100 of them; the training graph holds about 720 (the rest minus 20% for validation).
+
+<a id="g-degree"></a>
+**Degree, hub.** A TF's degree = its number of links in the training graph. A **hub** is a TF with many links.
+On this benchmark hubs dominate: most true links involve a hub, most random non-links do not.
+
+<a id="g-in-degree"></a>
+**In-degree (BEAR-GRN).** For a target gene: how many TFs regulate it in the (training) ground truth. Directed
+version of degree, counted on the target side.
+
+<a id="g-heuristic"></a>
+**Link-prediction heuristic.** A fixed formula on the training graph that scores an unlinked pair, with **no
+learning and no cell data** (e.g. "how many partners do the two TFs share?"). Why it is run: it measures how much
+of the benchmark can be solved from the **shape of the known network alone**. If such a formula matches a deep
+model, the benchmark rewards network structure (hubs, shared partners), not biology from the cells.
+
+<a id="g-label-free"></a>
+**Label-free vs supervised.** Label-free = no ground-truth links used at all (e.g. correlation of expression).
+Supervised = fitted on the fold's training links (e.g. logistic regression, MeVD-GRN, scMultiomeGRN).
+
+<a id="g-geneformer"></a>
+**Geneformer embedding.** A 768-number vector per gene from Geneformer, a model pre-trained on tens of millions of single-cell transcriptomes
+elsewhere; it is not trained on these cells or labels.
+
+<a id="g-atac-tower"></a>
+**ATAC tower.** The branch of MeVD-GRN that reads each gene's chromatin accessibility (MAESTRO activity summary:
+mean, variance, detection rate; plus promoter-openness descriptors) and turns it into a vector.
+
+<a id="g-graph-network"></a>
+**Graph network.** MeVD-GRN's graph neural network: each gene's vector is updated with messages from its
+neighbours in label-free graphs built from the cells, a **co-expression graph** (genes with similar expression
+across cells) and a **TF-candidate graph** (TF to genes that are accessible / co-expressed with it).
+
+<a id="g-training-link-relation"></a>
+**Training-link relation.** An optional extra edge type for the graph network: the **training graph** itself.
+With it, MeVD-GRN also passes messages along the fold's known training links, which is exactly what
+scMultiomeGRN's encoder does (same information for both). "Without the training-link relation" = the training
+links are used only as labels to learn from, not as an input graph. Test links are never in it.
+
+<a id="g-floor-model"></a>
+**Floor model.** MeVD-GRN with all four parts above removed (no Geneformer, no ATAC tower, no graph network, no
+training-link relation), smaller size. Each TF = 3 RNA numbers (mean, variance, detection rate) + a co-expression
+term. It shows what is left with almost nothing.
+
+<a id="g-matched"></a>
+**Degree-matched and caliper-matched, in one paragraph.** On the official test, a true link usually involves a hub
+and a random non-link usually does not, so "is it a hub?" already wins. Both tests replace the random non-links by
+non-links whose two TFs have the **same numbers of training links** as the true link's TFs, so that hub-counting no
+longer helps. **Degree-matched**: the partner is one of the 3 closest non-links (may still differ somewhat).
+**Caliper-matched**: the partner must be within 0.1 on the log scale for both TFs, otherwise the link is dropped;
+a pure counting rule then scores 0.5. Details: [2.2](#s2-2), [2.3](#s2-3).
+
+<a id="g-held-out-tf"></a>
+**Held-out-TF split.** Instead of hiding some links, hide whole TFs: about one tenth of the TFs have **no** links in
+training. Test pairs have one hidden TF or two. Details: [2.4](#s2-4).
+
+<a id="g-cross-fitting"></a>
+**TF-disjoint cross-fitting (BEAR-GRN).** The ground-truth TFs are split into 5 groups; a model is trained on 4
+groups' labels and scores the 5th group's TFs, rotating 5 times. Every scored TF is unseen in training.
+
+<a id="g-l1-l2"></a>
+**L1 and L2 regimes (BEAR-GRN).** Which labels MeVD-GRN may train on.
+- **L1 (headline, all results in the deck):** labels of **other TFs in the same cell type** (the BEAR-GRN ground
+  truth with the scored TFs removed, by cross-fitting).
+- **L2 (strict, still running):** **no labels from this cell type at all**: training labels come only from a generic
+  ChIP-seq compendium (SC-MO-GRN-DB's non-cell-type-specific ChIP network, RN005 human / RN006 mouse), with every TF
+  that appears in the dataset's ground truth removed; one model scores all ground-truth TFs. This is the closest
+  analogue to LINGER, which also learns only from external data.
+
+<a id="g-universe"></a>
+**Universe, all measured pairs (BEAR-GRN).** The universe = every (ground-truth TF, ground-truth target) pair; pairs
+a method does not output count as score 0. "All measured pairs" outputs every pair whose gene is measured, all with
+the same score. Details: [4.1](#s4-1), [4.3](#s4-3).
+
+<a id="g-hub-control"></a>
+**Hub control (BEAR-GRN).** Compare scores only among target genes with similar in-degree, so "this gene is a hub"
+cannot help. Details: [4.6](#s4-6).
 
 ---
 
@@ -233,16 +333,16 @@ $N(u)$ = set of TFs linked to $u$: $N(B) = \{A, C\}$, $N(D) = \{A, E\}$, common 
 
 | Name | Formula for pair $(u, v)$ | Toy B–D |
 |---|---|---|
-| Degree product (preferential attachment) | $(d_u + 1)(d_v + 1)$ | $3 \times 3 = 9$ |
-| Degree sum | $d_u + d_v$ | $4$ |
-| Common neighbours | $\lvert N(u) \cap N(v) \rvert$ | $1$ |
-| Jaccard | $\dfrac{\lvert N(u) \cap N(v) \rvert}{\lvert N(u) \cup N(v) \rvert}$ | $1/3$ |
-| Adamic-Adar | $\sum_{w \in N(u) \cap N(v)} \dfrac{1}{\log d_w}$ | $1/\log 3 = 0.910$ |
-| Resource allocation | $\sum_{w \in N(u) \cap N(v)} \dfrac{1}{d_w}$ | $1/3$ |
-| Katz | $\sum_{L=1}^{4} 0.05^L \, (A^L)_{uv}$ | walks: $L{=}2$: 1, $L{=}3$: 1, $L{=}4$: 5 $\Rightarrow 0.0027$ |
-| Random walk with restart | $R = 0.15\,(I - 0.85\,P)^{-1}$, $P = D^{-1} A$; score $R_{uv} + R_{vu}$ | how often a walker from $u$ (restarting at $u$ w.p. 0.15) is at $v$ |
-| Low-rank SVD | $(U_{16} \Sigma_{16} V_{16}^\top)_{uv}$ of $A$ | matrix completion |
-| Low-rank spectral | rank-16 reconstruction of $D^{-1/2} A D^{-1/2}$ | degree-normalised version |
+| <a id="m-degree-product"></a>Degree product (preferential attachment) | $(d_u + 1)(d_v + 1)$ | $3 \times 3 = 9$ |
+| <a id="m-degree-sum"></a>Degree sum | $d_u + d_v$ | $4$ |
+| <a id="m-common-neighbours"></a>Common neighbours | $\lvert N(u) \cap N(v) \rvert$ | $1$ |
+| <a id="m-jaccard"></a>Jaccard | $\dfrac{\lvert N(u) \cap N(v) \rvert}{\lvert N(u) \cup N(v) \rvert}$ | $1/3$ |
+| <a id="m-adamic-adar"></a>Adamic-Adar | $\sum_{w \in N(u) \cap N(v)} \dfrac{1}{\log d_w}$ | $1/\log 3 = 0.910$ |
+| <a id="m-resource-allocation"></a>Resource allocation | $\sum_{w \in N(u) \cap N(v)} \dfrac{1}{d_w}$ | $1/3$ |
+| <a id="m-katz"></a>Katz | $\sum_{L=1}^{4} 0.05^L \, (A^L)_{uv}$ | walks: $L{=}2$: 1, $L{=}3$: 1, $L{=}4$: 5 $\Rightarrow 0.0027$ |
+| <a id="m-rwr"></a>Random walk with restart | $R = 0.15\,(I - 0.85\,P)^{-1}$, $P = D^{-1} A$; score $R_{uv} + R_{vu}$ | how often a walker from $u$ (restarting at $u$ w.p. 0.15) is at $v$ |
+| <a id="m-svd"></a>Low-rank SVD | $(U_{16} \Sigma_{16} V_{16}^\top)_{uv}$ of $A$ | matrix completion |
+| <a id="m-spectral"></a>Low-rank spectral | rank-16 reconstruction of $D^{-1/2} A D^{-1/2}$ | degree-normalised version |
 
 $(A^L)_{uv}$ counts walks of length $L$ from $u$ to $v$. Adamic-Adar and resource allocation down-weight common
 neighbours that are hubs.
@@ -250,7 +350,7 @@ neighbours that are hubs.
 <a id="s3-2"></a>
 ### 3.2 Look-alike TFs (collaborative filtering)
 
-Similarity of two TFs = cosine of their training-link rows (diagonal set to 0):
+<a id="m-lookalike"></a>Similarity of two TFs = cosine of their training-link rows (diagonal set to 0):
 
 $$
 C_{uw} = \frac{A_u \cdot A_w}{\lVert A_u \rVert \, \lVert A_w \rVert}, \qquad
@@ -264,7 +364,7 @@ TFs linked to D are A and E, so $\sum_w C_{Bw} A_{wD} = 0.408$. From D's side, T
 $C_{DA} = 0$, $C_{DC} = 0.5$, giving 0.5. Score $= 0.908$.
 
 Why it matters: the ground truth is a motif scan, so TFs of one family (similar motifs) have near-identical rows.
-"Normalised" divides by $\sum_w C_{uw}$. "Geneformer look-alikes": the same idea with the 5 most similar TFs by
+<a id="m-lookalike-norm"></a>"Normalised" divides by $\sum_w C_{uw}$. <a id="m-gf-lookalike"></a>"Geneformer look-alikes": the same idea with the 5 most similar TFs by
 Geneformer embedding instead of link rows.
 
 <a id="s3-3"></a>
@@ -274,30 +374,30 @@ $x_u$ = TF $u$'s expression across cells (or MAESTRO accessibility for that row)
 
 | Score | Definition |
 |---|---|
-| Pearson / Spearman | $\lvert \text{corr}(x_u, x_v) \rvert$ (Spearman on ranks) |
-| Partial correlation | $P = \Sigma^{-1}$ (Ledoit-Wolf shrinkage), $\rho_{uv} = \dfrac{-P_{uv}}{\sqrt{P_{uu} P_{vv}}}$; correlation left after removing all other TFs |
-| Mutual information | 8 equal-width bins per TF; $\text{MI} = \sum_{a, b} p(a, b) \log \dfrac{p(a, b)}{p(a)\,p(b)}$ |
-| CLR | $z_u = \max\!\big(0, \frac{\text{MI}_{uv} - \mu_u}{\sigma_u}\big)$ over row $u$ (same for $v$); score $= \sqrt{z_u^2 + z_v^2}$ |
-| GRNBoost2 between the two TFs | $\max(\text{imp}_{u \to v}, \text{imp}_{v \to u})$ from gradient-boosting regression |
-| GENIE3 | random forest predicting each TF from all others; importance, symmetrised |
-| Ridge / lasso | regress each TF on all others ($\alpha = 1$ / $0.01$); $\lvert \beta \rvert$, symmetrised |
-| Cosine of GRNBoost2 profiles / Geneformer | $\cos(g_u, g_v)$, $\cos(f_u, f_v)$ |
+| <a id="m-pearson"></a>Pearson / Spearman | $\lvert \text{corr}(x_u, x_v) \rvert$ (Spearman on ranks) |
+| <a id="m-partial"></a>Partial correlation | $P = \Sigma^{-1}$ (Ledoit-Wolf shrinkage), $\rho_{uv} = \dfrac{-P_{uv}}{\sqrt{P_{uu} P_{vv}}}$; correlation left after removing all other TFs |
+| <a id="m-mi"></a>Mutual information | 8 equal-width bins per TF; $\text{MI} = \sum_{a, b} p(a, b) \log \dfrac{p(a, b)}{p(a)\,p(b)}$ |
+| <a id="m-clr"></a>CLR | $z_u = \max\!\big(0, \frac{\text{MI}_{uv} - \mu_u}{\sigma_u}\big)$ over row $u$ (same for $v$); score $= \sqrt{z_u^2 + z_v^2}$ |
+| <a id="m-grnboost2"></a>GRNBoost2 between the two TFs | $\max(\text{imp}_{u \to v}, \text{imp}_{v \to u})$ from gradient-boosting regression |
+| <a id="m-genie3"></a>GENIE3 | random forest predicting each TF from all others; importance, symmetrised |
+| <a id="m-ridge-lasso"></a>Ridge / lasso | regress each TF on all others ($\alpha = 1$ / $0.01$); $\lvert \beta \rvert$, symmetrised |
+| <a id="m-cosine"></a>Cosine of GRNBoost2 profiles / Geneformer | $\cos(g_u, g_v)$, $\cos(f_u, f_v)$ |
 
 <a id="s3-4"></a>
 ### 3.4 Supervised models on pair features
 
-Per-TF vectors (MAESTRO, GRNBoost2 profile, Geneformer) are first reduced to 32 numbers by SVD (no labels). The
+<a id="m-pair-feature"></a>Per-TF vectors (MAESTRO, GRNBoost2 profile, Geneformer) are first reduced to 32 numbers by SVD (no labels). The
 **pair feature** is symmetric, so $(u, v)$ and $(v, u)$ get the same score:
 
 $$
 \phi(u, v) = \big[\, x_u \odot x_v ,\; \lvert x_u - x_v \rvert \,\big] \qquad (\odot = \text{element-wise product})
 $$
 
-- "X only": logistic regression on $\phi$ of one input.
-- "Side by side" (given independently): $[\phi_{\text{MAESTRO}}, \phi_{\text{GRNBoost2}}]$.
-- "MAESTRO multiplied by GRNBoost2": per TF first, $z_u = m_u \odot g_u$, then $\phi$ on $z$.
-- "Product of the two TFs' features only": only the $x_u \odot x_v$ parts.
-- Logistic regression: L2 strength chosen from $\{0.001, 0.01, 0.1, 1, 10\}$ by 3-fold CV on training pairs only.
+- <a id="m-single"></a>"X only": logistic regression on $\phi$ of one input.
+- <a id="m-side-by-side"></a>"Side by side" (given independently): $[\phi_{\text{MAESTRO}}, \phi_{\text{GRNBoost2}}]$.
+- <a id="m-multiplied"></a>"MAESTRO multiplied by GRNBoost2": per TF first, $z_u = m_u \odot g_u$, then $\phi$ on $z$.
+- <a id="m-product-only"></a>"Product of the two TFs' features only": only the $x_u \odot x_v$ parts.
+- <a id="m-models"></a>Logistic regression: L2 penalty (ridge-type regularisation, unrelated to the BEAR-GRN L2 regime) chosen from $\{0.001, 0.01, 0.1, 1, 10\}$ by 3-fold CV on training pairs only.
   Linear regression = ridge on the 0/1 label. Random forest = 300 trees.
 
 **Toy:** $x_A = (1, 0)$, $x_B = (1, 1)$: $\phi(A, B) = [(1, 0), (0, 1)]$; logistic regression learns one weight per
@@ -358,9 +458,9 @@ scored 0, area by PRROC's continuous interpolation. Repeated over 20 random draw
 <a id="s4-4"></a>
 ### 4.4 Baselines run on BEAR-GRN (13 in total, all 9 datasets)
 
-- **9 released methods** (CellOracle, DIRECT-NET, FigR, GRaNIE, LINGER, Pando-GLM, Pando-XGB, SCENIC+, TRIPOD):
+- <a id="m-bear-released"></a>**9 released methods** (CellOracle, DIRECT-NET, FigR, GRaNIE, LINGER, Pando-GLM, Pando-XGB, SCENIC+, TRIPOD):
   their published networks, re-scored. DIRECT-NET has no scores, so no AUROC / AUPRC.
-- **In-degree** (`scripts/bear/23_bear_baselines.py`): same TF-disjoint 5 folds as MeVD-GRN. For a held-out TF $t$
+- <a id="m-bear-indegree"></a>**In-degree** (`scripts/bear/23_bear_baselines.py`): same TF-disjoint 5 folds as MeVD-GRN. For a held-out TF $t$
   and gene $g$:
 
   $$
@@ -371,9 +471,9 @@ scored 0, area by PRROC's continuous interpolation. Repeated over 20 random draw
   seeds.
   **Toy:** training TFs T2, T3, T4 target $\{g1, g2\}$, $\{g1\}$, $\{g1, g3\}$: in-degree g1 = 3, g2 = 1, g3 = 1,
   g4 = 0, so the held-out T1 is predicted g1 first.
-- **Pearson**: $\lvert \text{corr}(x_t, x_g) \rvert$ across cells (CP10k + log1p). No labels.
-- **GRNBoost2**: importance of the TF for the gene. No labels.
-- **All measured pairs** ("coverage"): every TF $\times$ measured-gene pair scores 1. No ranking; AUROC $= 0.5$ by
+- <a id="m-bear-pearson"></a>**Pearson**: $\lvert \text{corr}(x_t, x_g) \rvert$ across cells (CP10k + log1p). No labels.
+- <a id="m-bear-grnboost2"></a>**GRNBoost2**: importance of the TF for the gene. No labels.
+- <a id="m-bear-coverage"></a>**All measured pairs** ("coverage"): every TF $\times$ measured-gene pair scores 1. No ranking; AUROC $= 0.5$ by
   ties.
 
 <a id="s4-5"></a>
