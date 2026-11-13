@@ -442,9 +442,12 @@ column and *italics* the second best.""")
 - Held-out-TF split, pairs with one unseen TF, caliper-matched: the full model and every variant are between {f3(min(tfc2) if tfc2 else None)}
   and {f3(max(tfc2) if tfc2 else None)} AUROC, i.e. chance.
 
+**Table 1. Official split** (links split into folds): official, degree-matched and caliper-matched tests.
+
 {table(OFF, REF[:1] + MEVD_ABL, OFF_COLS, OFF_HEAD)}
 
-Held-out-TF split:
+**Table 2. Held-out-TF split** (TFs split into folds): pairs with one unseen TF, pairs of two unseen TFs, and the
+caliper-matched test on pairs with one unseen TF.
 
 {table(TF, [(MEVD_TF, "MeVD-GRN")] + MEVD_ABL_TF, TF_COLS, TF_HEAD)}""")
 
