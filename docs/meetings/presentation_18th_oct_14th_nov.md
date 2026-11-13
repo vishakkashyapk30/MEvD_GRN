@@ -280,19 +280,46 @@ Held-out-TF split:
 - So BEAR-GRN shows the same pattern as scMultiomeGRN: ranking target genes by how many TFs regulate them beats
   the published methods, and MeVD-GRN does not yet clear that baseline on ChIP.
 
-ChIP-seq ground truth (in-degree = mean of 5 seeds; best of the three per metric in bold):
+**Baselines on BEAR-GRN** (9 released methods + 4 simple baselines, all on the 9 datasets):
+- **Released methods** (CellOracle, DIRECT-NET, FigR, GRaNIE, LINGER,
+  Pando-GLM, Pando-XGB, SCENIC+, TRIPOD): the networks published with BEAR-GRN, re-scored with its code.
+- **In-degree (supervised hub prior).** Score of an edge TF -> gene = how many *training* TFs (same TF-disjoint
+  folds as MeVD-GRN) have that gene as a target in the ground truth. Every TF gets the same ranking of genes; no cell
+  data is used. It asks only "is this gene a target of many TFs?" (Stock et al. [2] call it the in-degree sorter).
+- **Pearson.** |correlation| of the TF's and the gene's expression across cells. No labels.
+- **GRNBoost2.** GRNBoost2 importance of the TF for the gene, from expression only. No labels.
+- **All measured pairs.** Every TF-gene pair present in the data gets the same score: no ranking at all. BEAR-GRN
+  scores pairs a method leaves out as 0, so this measures how much AUPRC comes from just emitting a dense network.
+- **Random.** Expected AUPRC of a random ranking (AUROC 0.5).
+- On ChIP AUPRC, Pearson beats LINGER on 9 of 9 datasets and "all measured pairs" on 9 of 9.
 
-| Dataset | AUROC MeVD-GRN | AUROC LINGER | AUROC in-degree | AUPRC MeVD-GRN | AUPRC LINGER | AUPRC in-degree | AUPRC random |
-|---|---|---|---|---|---|---|---|
-| K562 | 0.603 | 0.536 | **0.652** | 0.473 | 0.430 | **0.484** | 0.331 |
-| Macrophage_S1 | **0.625** | 0.596 | 0.609 | **0.373** | 0.321 | 0.365 | 0.272 |
-| Macrophage_S2 | 0.588 | 0.548 | **0.610** | 0.367 | 0.324 | **0.374** | 0.271 |
-| Naive_mESC | 0.541 | 0.476 | **0.598** | 0.285 | 0.160 | **0.308** | 0.153 |
-| iPS | **0.617** | 0.496 | 0.604 | **0.156** | 0.108 | 0.150 | 0.091 |
-| mESC_E7.5_rep1 | 0.549 | **0.652** | 0.604 | 0.296 | 0.241 | **0.323** | 0.155 |
-| mESC_E7.5_rep2 | 0.563 | **0.644** | 0.596 | 0.294 | 0.225 | **0.306** | 0.153 |
-| mESC_E8.5_rep1 | 0.544 | **0.658** | 0.607 | 0.283 | 0.227 | **0.312** | 0.154 |
-| mESC_E8.5_rep2 | 0.539 | **0.656** | 0.609 | 0.277 | 0.224 | **0.313** | 0.155 |
+ChIP-seq ground truth, AUPRC (MeVD-GRN = mean over seeds; in-degree = mean of 5 fold seeds; bold = best, italics = second):
+
+| Dataset | MeVD-GRN | LINGER | Best other released | In-degree | Pearson | GRNBoost2 | All measured pairs | Random |
+|---|---|---|---|---|---|---|---|---|
+| K562 | *0.473* | 0.430 | 0.405 (TRIPOD) | **0.484** | 0.434 | 0.380 | 0.431 | 0.331 |
+| Macrophage_S1 | **0.373** | 0.321 | 0.332 (TRIPOD) | *0.365* | 0.343 | 0.362 | 0.331 | 0.272 |
+| Macrophage_S2 | *0.367* | 0.324 | 0.336 (TRIPOD) | **0.374** | 0.351 | 0.361 | 0.342 | 0.271 |
+| Naive_mESC | *0.285* | 0.160 | 0.192 (TRIPOD) | **0.308** | 0.266 | 0.203 | 0.269 | 0.153 |
+| iPS | **0.156** | 0.108 | 0.119 (TRIPOD) | *0.150* | 0.139 | 0.131 | 0.137 | 0.091 |
+| mESC_E7.5_rep1 | *0.296* | 0.241 | 0.193 (TRIPOD) | **0.323** | 0.273 | 0.215 | 0.274 | 0.155 |
+| mESC_E7.5_rep2 | *0.294* | 0.225 | 0.186 (TRIPOD) | **0.306** | 0.267 | 0.210 | 0.268 | 0.153 |
+| mESC_E8.5_rep1 | *0.283* | 0.227 | 0.185 (CellOracle) | **0.312** | 0.258 | 0.209 | 0.265 | 0.154 |
+| mESC_E8.5_rep2 | *0.277* | 0.224 | 0.188 (CellOracle) | **0.313** | 0.259 | 0.205 | 0.263 | 0.155 |
+
+Same, AUROC ("all measured pairs" ties every pair, so it is 0.5 by construction):
+
+| Dataset | MeVD-GRN | LINGER | Best other released | In-degree | Pearson | GRNBoost2 | All measured pairs | Random |
+|---|---|---|---|---|---|---|---|---|
+| K562 | *0.603* | 0.536 | 0.576 (Pando-GLM) | **0.652** | 0.506 | 0.496 | 0.500 | 0.500 |
+| Macrophage_S1 | **0.625** | 0.596 | 0.599 (SCENIC+) | *0.609* | 0.523 | 0.567 | 0.500 | 0.500 |
+| Macrophage_S2 | 0.588 | 0.548 | *0.605* (CellOracle) | **0.610** | 0.517 | 0.562 | 0.500 | 0.500 |
+| Naive_mESC | 0.541 | 0.476 | *0.556* (SCENIC+) | **0.598** | 0.494 | 0.484 | 0.500 | 0.500 |
+| iPS | **0.617** | 0.496 | 0.568 (GRaNIE) | *0.604* | 0.531 | 0.465 | 0.500 | 0.500 |
+| mESC_E7.5_rep1 | 0.549 | **0.652** | 0.570 (GRaNIE) | *0.604* | 0.498 | 0.511 | 0.500 | 0.500 |
+| mESC_E7.5_rep2 | 0.563 | **0.644** | 0.594 (GRaNIE) | *0.596* | 0.496 | 0.506 | 0.500 | 0.500 |
+| mESC_E8.5_rep1 | 0.544 | **0.658** | 0.588 (GRaNIE) | *0.607* | 0.487 | 0.504 | 0.500 | 0.500 |
+| mESC_E8.5_rep2 | 0.539 | **0.656** | *0.621* (GRaNIE) | 0.609 | 0.492 | 0.497 | 0.500 | 0.500 |
 
 Hub control (pre-registered, seed 42): AUROC when MeVD-GRN's scores are ranked only within groups of target
 genes with the same in-degree (0 alone, then 20 quantile bins), so the in-degree ranking scores 0.5.
