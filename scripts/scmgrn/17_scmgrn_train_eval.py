@@ -113,6 +113,7 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
         raise SystemExit(f"use_fm=true but {pdir}/fm_gene_embeddings.npy is missing "
                          "(run scripts/16 --steps fm on the login node)")
     f = proto.load_fold(sdir, fold, n)
+    f_eval = proto.load_fold(sdir, fold, n)                      # untouched copy for evaluate_all (both directions)
     undirected = cfg["model"].get("task", "directed") == "undirected"
     if undirected:                                                # one example per unordered pair
         for p in ("train", "val", "test"):
@@ -153,7 +154,7 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
     res = trainer.train_stage(stage, splits)
     secs = time.time() - t0
     S = score_matrix(trainer, n)
-    m = proto.evaluate_all(S, adj, f, sdir, fold)
+    m = proto.evaluate_all(S, adj, f_eval, sdir, fold)
     if args.save_scores:
         np.save(out_path.parent / f"scores_fold{fold:02d}.npy", S.astype(np.float32))
     shutil.rmtree(ckpt, ignore_errors=True)

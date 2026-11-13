@@ -152,6 +152,16 @@ def evaluate_score_matrix(S: np.ndarray, adj: np.ndarray, test_eval: dict) -> Di
     return {"test": test, "all": all_, "all_offdiag": all_off}
 
 
+def train_degree(pos: np.ndarray, n: int) -> np.ndarray:
+    """Number of distinct training partners per TF. Works for both-direction pair arrays (load_fold) and for
+    one-row-per-unordered-pair arrays alike: pairs are canonicalised to (min, max) and de-duplicated first.
+    (Counting column 0 alone is only correct for the both-direction form; on u < v rows it counts the partners
+    with a larger index, which silently changes every degree-matched and caliper-matched test set.)"""
+    e = np.sort(np.asarray(pos).reshape(-1, 2), axis=1)
+    e = np.unique(e[e[:, 0] != e[:, 1]], axis=0)
+    return np.bincount(e.ravel(), minlength=n).astype(float)
+
+
 def degree_matched_test(adj: np.ndarray, fold: dict, seed: int = 0, n_near: int = 3) -> Dict[str, np.ndarray]:
     """Second, degree-controlled test set ("Hidden sampling biases inflate performance in GRN inference", 2025).
 
@@ -162,7 +172,7 @@ def degree_matched_test(adj: np.ndarray, fold: dict, seed: int = 0, n_near: int 
     """
     n = adj.shape[0]
     tr = fold["train"]["pos"]
-    ld = np.log1p(np.bincount(tr[:, 0], minlength=n).astype(float))
+    ld = np.log1p(train_degree(tr, n))
     seen = np.zeros((n, n), dtype=bool)
     for part in ("train", "val"):
         for k in ("pos", "neg"):
@@ -192,7 +202,7 @@ def degree_caliper_test(adj: np.ndarray, fold: dict, seed: int = 0, caliper: flo
     the link's; one such non-link is drawn at random. Unmatched links are dropped, so the degree rule is at chance."""
     n = adj.shape[0]
     tr = fold["train"]["pos"]
-    ld = np.log1p(np.bincount(tr[:, 0], minlength=n).astype(float))
+    ld = np.log1p(train_degree(tr, n))
     seen = np.zeros((n, n), dtype=bool)
     for part in ("train", "val"):
         for k in ("pos", "neg"):
@@ -316,7 +326,7 @@ def tfholdout_degree_matched_test(adj: np.ndarray, fold: dict, test_tfs, val_tfs
     pool is every C2 non-link of that TF."""
     n = adj.shape[0]
     tr = fold["train"]["pos"]
-    ld = np.log1p(np.bincount(tr[:, 0], minlength=n).astype(float))
+    ld = np.log1p(train_degree(tr, n))
     hidden = np.zeros(n, bool)
     hidden[list(test_tfs)] = True
     val = np.zeros(n, bool)
