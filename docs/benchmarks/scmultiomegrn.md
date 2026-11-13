@@ -340,7 +340,7 @@ scMultiomeGRN) and `vs_mevd_*.md` (against MeVD-GRN).
 
 | Method | Test AUPR | Test AUROC | Degree-matched AUPR | Degree-matched AUROC |
 |---|---|---|---|---|
-| MeVD-GRN | 0.935 | 0.924 | 0.878 | 0.857 |
+| MeVD-GRN | 0.935 | 0.924 | 0.779 | 0.708 |
 | scMultiomeGRN (official code) | 0.918 | 0.912 | 0.705 | 0.649 |
 | Degree product | 0.924 | 0.912 | 0.724 | 0.653 |
 | Logistic regression, degree only | 0.931 | 0.919 | 0.745 | 0.672 |
@@ -370,10 +370,15 @@ scMultiomeGRN) and `vs_mevd_*.md` (against MeVD-GRN).
 - scMultiomeGRN depends on its training-link graph: without it AUPR falls by 0.092 overall (lung -0.012, but
   hematopoiesis -0.334, to 0.585), and replacing it with STRING is worse still (0.781). Its pair histograms,
   either single modality and an added Geneformer embedding change nothing measurable (|diff| <= 0.002, p >= 0.29).
-- On the degree-matched test MeVD-GRN keeps 0.878 AUPR while scMultiomeGRN (0.705) and the best simple model (0.759)
-  fall to near the degree rule (0.724). This is the clearest evidence so far that MeVD-GRN uses information beyond
-  hubness. The negatives come only from each fold's official test negatives (27 in a Myeloid fold), so it should
-  be confirmed on a split with more negatives per hub (for example, holding out whole TFs).
+- On the degree-matched test MeVD-GRN has the highest score, 0.779 AUPR / 0.708 AUROC, against scMultiomeGRN
+  (0.708 / 0.651), the best simple model (0.758 / 0.682) and the degree rule (0.724 / 0.653). The margin over the
+  best simple model is small (+0.02 AUPR). The negatives come only from each fold's official test negatives
+  (27 in a Myeloid fold), so the held-out-TF split (section 13) is the stronger test.
+- **Correction (2026-11-13).** Earlier versions of this section, and the 18-24 Oct deck, gave MeVD-GRN 0.878 / 0.857
+  on this test. That number was wrong: script 17 reduced the fold to one row per pair (u < v) before scoring, and the
+  degree-matched tests counted training degree from the first column only, so MeVD-GRN was scored on different pairs
+  from every other method. Fixed in `scmgrn_protocol.train_degree` (commit e4b36e5); the numbers above are recomputed
+  from saved score matrices and use the same pairs as every other method on all 120 folds.
 
 ## 13. 2026-11-12: hub-controlled and held-out-TF evaluations (ICML 2027 preparation)
 
@@ -413,14 +418,15 @@ links ("are u's look-alike TFs linked to v?"), and the same with Geneformer look
 
 | Method | Official test | Degree-matched |
 |---|---|---|
-| MeVD-GRN | 0.935 | 0.878 |
+| MeVD-GRN | 0.935 | 0.779 |
 | Look-alike TFs (training links) | 0.929 | 0.759 |
 | Look-alike TFs, normalised | 0.927 | 0.761 |
 | Geneformer look-alikes linked to v | 0.839 | 0.668 |
 | Degree and neighbourhood scores (logistic regression) | 0.932 | 0.759 |
 
-Matrix completion over similar TFs is no better than the link-count models on the degree-matched test, so the TF-family
-structure of the training links does not explain MeVD-GRN's 0.878.
+Matrix completion over similar TFs scores about as well as the link-count models on the degree-matched test
+(0.759-0.761 against 0.758). MeVD-GRN is only 0.02 AUPR above it (corrected value, see 12.4), so on the official
+split TF-family structure explains most of what the degree rule does not.
 
 ### 13.4 Added baselines
 DeepTFni and GENELink, the two GNN baselines the scMultiomeGRN paper reports, now run on our folds with the copies
