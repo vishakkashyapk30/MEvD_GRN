@@ -52,9 +52,10 @@ column and *italics* the second best.
 - **Caliper-matched test** (own construction: caliper matching [4, 5] applied to link counts). Stricter: a test link
   is kept only if a test non-link has both TFs' log link counts within 0.1 of the link's, so the link-count rule
   scores 0.5 by construction.
-- **Held-out-TF split (new)** [6]. The TFs, not the links, are split into 10 groups. Test pairs fall in
-  two classes: **one TF unseen** in training (Park and Marcotte's "C2") and **both TFs unseen** ("C3"). The
-  one-TF-unseen caliper-matched test (own construction) pairs each link of a hidden TF with a
+- **Held-out-TF split (new)** [6]. The TFs, not the links, are split into 10 groups. Each test item is a pair of
+  TFs, in one of two classes: **pairs with one unseen TF** (one TF of the pair is hidden from training, the other was
+  seen; Park and Marcotte's "C2") and **pairs of two unseen TFs** (both TFs of the pair hidden; "C3"). The
+  caliper-matched test on pairs with one unseen TF (own construction) pairs each link of a hidden TF with a
   non-link of the same TF whose partner has the same link count.
 - **Metrics.** AUROC; AUPR with scMultiomeGRN's trapezoidal code [1]; average precision [7]. Hub-controlled columns
   use AUROC, because trapezoidal AUPR gives a method with all scores tied (1 + share of positives) / 2, about 0.75,
@@ -183,7 +184,7 @@ column and *italics* the second best.
   0.562 AUROC (full model 0.560), while the floor model is at
   0.501: the small signal beyond link counts comes from the
   components together, and no single one is needed for it.
-- Held-out-TF split, one TF unseen, caliper-matched: the full model and every variant are between 0.482
+- Held-out-TF split, pairs with one unseen TF, caliper-matched: the full model and every variant are between 0.482
   and 0.508 AUROC, i.e. chance.
 
 | Method | AUPR | AUROC | AUROC, degree-matched | AUROC, caliper-matched |
@@ -203,7 +204,7 @@ column and *italics* the second best.
 
 Held-out-TF split:
 
-| Method | AUROC, one TF unseen | AUROC, both TFs unseen | AUROC, one TF unseen, caliper-matched |
+| Method | AUROC, pairs with one unseen TF | AUROC, pairs of two unseen TFs | AUROC, pairs with one unseen TF, caliper-matched |
 |---|---|---|---|
 | MeVD-GRN | 0.753 | 0.529 | 0.487 |
 | Without Geneformer | 0.716 | *0.542* | 0.492 |
@@ -239,17 +240,17 @@ Held-out-TF split:
 
 ## 10. Held-out-TF split
 
-- With one TF unseen, the link-count rule is the best method: it still knows the partner TF's link count.
+- On pairs with one unseen TF, the link-count rule is the best method: it still knows the partner TF's link count.
   MeVD-GRN scores 0.753 [0.741, 0.765], scMultiomeGRN
   0.744, the link-count rule 0.779.
-- With both TFs unseen, every supervised model is at chance; the best score is 0.575,
+- On pairs of two unseen TFs, every supervised model is at chance; the best score is 0.575,
   from Joint expression histograms only. These sets are small (4 to 102 links per fold).
-- On the one-TF-unseen caliper-matched test no method exceeds 0.52: MeVD-GRN 0.487
+- On the caliper-matched test of pairs with one unseen TF, no method exceeds 0.52: MeVD-GRN 0.487
   [0.481, 0.494], best method 0.520 [0.510, 0.530],
   from Mutual information of expression.
 - Neighbourhood heuristics and look-alike TFs score exactly 0.5 here, because a hidden TF has no training links.
 
-| Method | AUROC, one TF unseen | AUROC, both TFs unseen | AUROC, one TF unseen, caliper-matched |
+| Method | AUROC, pairs with one unseen TF | AUROC, pairs of two unseen TFs | AUROC, pairs with one unseen TF, caliper-matched |
 |---|---|---|---|
 | MeVD-GRN | 0.753 | 0.529 | 0.487 |
 | scMultiomeGRN (official code) | 0.744 | 0.526 | 0.483 |
@@ -374,8 +375,8 @@ genes with the same in-degree (0 alone, then 20 quantile bins), so the in-degree
 |---|---|---|
 | Official test: random non-links, 10 folds, AUROC and trapezoidal AUPR | scMultiomeGRN [1] | Published (Nucleic Acids Research) |
 | Degree-matched test | Idea: degree-preserving negatives [3], degree-aware negatives [2]; nearest-3 matching on training-link counts is own | Idea published (Bioinformatics); closest GRN version is a preprint; this variant is own |
-| Caliper-matched test (official split, and held-out-TF with one TF unseen) | Caliper matching from causal inference [4, 5], applied here to TF link counts | Own construction; no published link-prediction paper using it was found |
-| Held-out-TF split, one-TF-unseen and both-TFs-unseen classes (C2 and C3 in the paper) | Park and Marcotte [6] | Published (Nature Methods) |
+| Caliper-matched test (official split, and held-out-TF pairs with one unseen TF) | Caliper matching from causal inference [4, 5], applied here to TF link counts | Own construction; no published link-prediction paper using it was found |
+| Held-out-TF split, pairs with one unseen TF and pairs of two unseen TFs (C2 and C3 in the paper) | Park and Marcotte [6] | Published (Nature Methods) |
 | Average precision; overestimate of trapezoidal AUPR | Davis and Goadrich [7] | Published (ICML) |
 | BEAR-GRN: AUROC and AUPRC on ChIP, KO, union and intersection ground truths, random-baseline AUPRC | BEAR-GRN [8], scored with its own code (ported, checked against the R code) | Published (Nature Communications) |
 | BEAR-GRN in-degree baseline | In-degree sorter of [2] | Preprint |
