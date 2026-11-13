@@ -179,7 +179,7 @@ def bear_slide():
     n_ds, seeds = chip["dataset"].nunique(), sorted(chip["n_seeds"].unique())
     a, b = chip[chip.metric == "AUROC"], chip[chip.metric == "AUPRC"]
     lines = [
-        "- BEAR-GRN (Nat Methods 2025) scores TF-to-gene networks against ChIP-seq, knockout (KO), union and intersection",
+        "- BEAR-GRN (Nat Commun 2026) [8] scores TF-to-gene networks against ChIP-seq, knockout (KO), union and intersection",
         "  ground truths on 9 datasets (human K562, macrophage, iPS; mouse embryo and ESC). None of them comes from a motif rule.",
         "- MeVD-GRN follows the pre-registered protocol (section 12 of `docs/benchmarks/bear_grn.md`): TF-disjoint 5-fold",
         "  cross-fitting, so every scored TF is unseen in training; the configuration was fixed on K562 before any other",
@@ -288,16 +288,25 @@ column and *italics* the second best.""")
   default the patched code reproduces the published code exactly.
 - **MeVD-GRN ablations.** One component removed at a time from the full model, and each component added alone to a
   floor model that has none of them (3 seeds each).
-- **Official test.** scMultiomeGRN's 10 folds split the links: each test link is paired with a random non-link.
-- **Degree-matched test.** Each test link is paired with one of the three test non-links closest to it in the two
-  TFs' training-link counts ("hidden sampling biases" preprint, December 2025).
-- **Caliper-matched test.** Stricter: a test link is kept only if a test non-link has both TFs' log link counts
-  within 0.1 of the link's, so the link-count rule scores 0.5 by construction.
-- **Held-out-TF split (new).** The TFs, not the links, are split into 10 groups (Park and Marcotte 2012). C2 = one TF
-  of the pair unseen in training, C3 = both unseen; a C2 caliper-matched test pairs each link of a hidden TF with a
+- **Floor model.** MeVD-GRN with the four components removed: no Geneformer embedding, no ATAC tower, no graph
+  network and no training-link relation, at the smaller base size (128 wide). Each TF is described only by three
+  numbers from its RNA (mean expression, variance, share of cells that detect it), passed through a small MLP; a pair
+  is scored by the symmetric decoder plus a co-expression term (correlation of the two TFs' expression signatures).
+  It is trained on the fold's training links like the full model.
+- **Official test** [1]. scMultiomeGRN's 10 folds split the links: each test link is paired with a random non-link.
+- **Degree-matched test** (own variant of degree-aware negatives [2, 3]). Each test link is paired with one of the
+  three test non-links closest to it in the two TFs' training-link counts.
+- **Caliper-matched test** (own construction: caliper matching [4, 5] applied to link counts). Stricter: a test link
+  is kept only if a test non-link has both TFs' log link counts within 0.1 of the link's, so the link-count rule
+  scores 0.5 by construction.
+- **Held-out-TF split (new)** [6]. The TFs, not the links, are split into 10 groups. C2 = one TF of the pair unseen
+  in training, C3 = both unseen; the C2 caliper-matched test (own construction) pairs each link of a hidden TF with a
   non-link of the same TF whose partner has the same link count.
-- **Metrics.** Hub-controlled columns use AUROC, because scMultiomeGRN's trapezoidal AUPR gives a method with all
-  scores tied (1 + share of positives) / 2, about 0.75, instead of 0.5.
+- **Metrics.** AUROC; AUPR with scMultiomeGRN's trapezoidal code [1]; average precision [7]. Hub-controlled columns
+  use AUROC, because trapezoidal AUPR gives a method with all scores tied (1 + share of positives) / 2, about 0.75,
+  instead of 0.5 (linear interpolation in precision-recall space overestimates the area [7]).
+- **Statistics** (standard methods). 95% CIs by bootstrap over cell types; paired Wilcoxon signed-rank tests over
+  cell type x fold. Sources of every test: slide 13.
 - Nothing from the test fold is used for fitting; every model is checked for zero test-to-train leakage.""")
 
     S.append(f"""## 3. Label-free statistical scores
@@ -359,6 +368,8 @@ column and *italics* the second best.""")
     tfc2 = [x for x in tfc2 if x is not None]
     S.append(f"""## 8. MeVD-GRN ablations
 
+- Floor model = MeVD-GRN without Geneformer, the ATAC tower, the graph network and the training-link relation: each
+  TF is reduced to three RNA numbers (mean, variance, detection rate) plus a co-expression term (definition on slide 2).
 - Official test: Geneformer is the component that matters. The floor model plus Geneformer alone reaches
   {g(OFF,'mevd_abl_fl_fm_noobs_dm','test_aupr')} AUPR (full model {g(OFF,MEVD,'test_aupr')}); removing Geneformer gives
   {g(OFF,'mevd_abl_nofm_obs_dm','test_aupr')}, and the smaller base size {g(OFF,'mevd_abl_base_obs_dm','test_aupr')}.
@@ -427,6 +438,40 @@ Held-out-TF split:
   contribution, alongside MeVD-GRN.
 - Next: complete BEAR-GRN (5 seeds, the strict L2 regime, ablations) with a hub control against the in-degree
   baseline (within-in-degree-stratum scores); then PBMC10k with LINGER's own candidate genes.""")
+
+    S.append("""## 13. Sources of the evaluation tests
+
+| Test or metric | Source | Published, or own construction |
+|---|---|---|
+| Official test: random non-links, 10 folds, AUROC and trapezoidal AUPR | scMultiomeGRN [1] | Published (Nucleic Acids Research) |
+| Degree-matched test | Idea: degree-preserving negatives [3], degree-aware negatives [2]; nearest-3 matching on training-link counts is own | Idea published (Bioinformatics); closest GRN version is a preprint; this variant is own |
+| Caliper-matched test (official split and held-out-TF C2) | Caliper matching from causal inference [4, 5], applied here to TF link counts | Own construction; no published link-prediction paper using it was found |
+| Held-out-TF split, C2 and C3 test classes | Park and Marcotte [6] | Published (Nature Methods) |
+| Average precision; overestimate of trapezoidal AUPR | Davis and Goadrich [7] | Published (ICML) |
+| BEAR-GRN: AUROC and AUPRC on ChIP, KO, union and intersection ground truths, random-baseline AUPRC | BEAR-GRN [8], scored with its own code (ported, checked against the R code) | Published (Nature Communications) |
+| BEAR-GRN in-degree baseline | In-degree sorter of [2] | Preprint |
+| BEAR-GRN hub control: AUROC within in-degree groups | Stratified evaluation, pre-registered in `docs/benchmarks/bear_grn.md` | Own construction |
+| Degree as a shortcut in pair-input prediction | [3]; Chatterjee et al. [9]; hard negatives for GNN link prediction, Li et al. [10] | Published (Bioinformatics, Nat Commun, NeurIPS) |
+
+1. Xu J. et al. Deep learning-based cell-specific gene regulatory networks inferred from single-cell multiome data.
+   *Nucleic Acids Research* 53(5), gkaf138 (2025). https://doi.org/10.1093/nar/gkaf138
+2. Stock M. et al. Hidden sampling biases inflate performance in gene regulatory network inference. *bioRxiv*
+   (December 2025, preprint, not peer reviewed). https://doi.org/10.64898/2025.12.19.695616
+3. Yu J. et al. Simple sequence-based kernels do not predict protein-protein interactions. *Bioinformatics* 26(20),
+   2610-2614 (2010). https://doi.org/10.1093/bioinformatics/btq483
+4. Rosenbaum P. R., Rubin D. B. Constructing a control group using multivariate matched sampling methods that
+   incorporate the propensity score. *The American Statistician* 39(1), 33-38 (1985).
+5. Austin P. C. Optimal caliper widths for propensity-score matching when estimating differences in means and
+   differences in proportions in observational studies. *Pharmaceutical Statistics* 10(2), 150-161 (2011).
+   https://doi.org/10.1002/pst.433
+6. Park Y., Marcotte E. M. Flaws in evaluation schemes for pair-input computational predictions. *Nature Methods* 9,
+   1134-1136 (2012). https://doi.org/10.1038/nmeth.2259
+7. Davis J., Goadrich M. The relationship between precision-recall and ROC curves. *ICML* (2006).
+8. Karamveer et al. (Uzun lab). BEAR-GRN. *Nature Communications* (2026). https://doi.org/10.1038/s41467-026-77838-w
+9. Chatterjee A. et al. Improving the generalizability of protein-ligand binding predictions with AI-Bind.
+   *Nature Communications* 14, 1989 (2023). https://doi.org/10.1038/s41467-023-37572-z
+10. Li J. et al. Evaluating graph neural networks for link prediction: current pitfalls and new benchmarking.
+    *NeurIPS* (2023). https://arxiv.org/abs/2306.10453""")
 
     OUT.write_text("\n\n".join(S) + "\n")
     print(f"wrote {OUT} ({len(S)} slides)")
