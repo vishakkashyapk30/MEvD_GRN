@@ -168,6 +168,29 @@ def best_in(R, items, key):
     return max(xs) if xs else (None, "–")
 
 
+
+def bear_row(chip, agg, ds, m):
+    r = chip[(chip.dataset == ds) & (chip.metric == m)].iloc[0]
+    def base(v):
+        x = agg[(agg.dataset == ds) & (agg.variant == v)][m]
+        return float(x.iloc[0]) if len(x) else float("nan")
+    vals = [r["mevd"], r["LINGER"], r["best_other_val"], r["indegree"], base("baseline_pearson"),
+            base("baseline_grnboost2"), base("baseline_coverage")]
+    order = sorted({round(x, 3) for x in vals if x == x}, reverse=True)
+    def fmt(x):
+        if x != x:
+            return "–"
+        t = f"{x:.3f}"
+        if round(x, 3) == order[0]:
+            return f"**{t}**"
+        if len(order) > 1 and round(x, 3) == order[1]:
+            return f"*{t}*"
+        return t
+    cells = [fmt(vals[0]), fmt(vals[1]), f"{fmt(vals[2])} ({r['best_other']})"] + [fmt(x) for x in vals[3:]]
+    rnd = 0.5 if m == "AUROC" else r["random"]
+    return f"| {ds} | " + " | ".join(cells) + f" | {rnd:.3f} |"
+
+
 def bear_slide():
     import pandas as pd
     p = REPO / "docs/results/bear/head_to_head__mevd_fm_h384_hubmotif.csv"
@@ -178,6 +201,14 @@ def bear_slide():
     chip = prim[prim["gt"] == "ChIP"]
     n_ds, seeds = chip["dataset"].nunique(), sorted(chip["n_seeds"].unique())
     a, b = chip[chip.metric == "AUROC"], chip[chip.metric == "AUPRC"]
+    agg = pd.read_csv(REPO / "docs/results/bear/summary_agg.csv")
+    agg = agg[agg["gt"] == "ChIP"]
+    REL = sorted(agg[agg["kind"] == "released"]["variant"].unique())
+    def base(ds, v, m):
+        x = agg[(agg.dataset == ds) & (agg.variant == v)][m]
+        return float(x.iloc[0]) if len(x) else float("nan")
+    n_pear = sum(base(r.dataset, "baseline_pearson", "AUPRC") > r.LINGER for r in b.itertuples())
+    n_cov = sum(base(r.dataset, "baseline_coverage", "AUPRC") > r.LINGER for r in b.itertuples())
     lines = [
         "- BEAR-GRN (Nat Commun 2026) [8] scores TF-to-gene networks against ChIP-seq, knockout (KO), union and intersection",
         "  ground truths on 9 datasets (human K562, macrophage, iPS; mouse embryo and ESC). None of them comes from a motif rule.",
@@ -196,18 +227,30 @@ def bear_slide():
         "- So BEAR-GRN shows the same pattern as scMultiomeGRN: ranking target genes by how many TFs regulate them beats",
         "  the published methods, and MeVD-GRN does not yet clear that baseline on ChIP.",
         "",
-        "ChIP-seq ground truth (in-degree = mean of 5 seeds; best of the three per metric in bold):",
+        f"**Baselines on BEAR-GRN** ({len(REL)} released methods + 4 simple baselines, all on the 9 datasets):",
+        f"- **Released methods** ({', '.join(REL[:5])},",
+        f"  {', '.join(REL[5:])}): the networks published with BEAR-GRN, re-scored with its code.",
+        "- **In-degree (supervised hub prior).** Score of an edge TF -> gene = how many *training* TFs (same TF-disjoint",
+        "  folds as MeVD-GRN) have that gene as a target in the ground truth. Every TF gets the same ranking of genes; no cell",
+        "  data is used. It asks only \"is this gene a target of many TFs?\" (Stock et al. [2] call it the in-degree sorter).",
+        "- **Pearson.** |correlation| of the TF's and the gene's expression across cells. No labels.",
+        "- **GRNBoost2.** GRNBoost2 importance of the TF for the gene, from expression only. No labels.",
+        "- **All measured pairs.** Every TF-gene pair present in the data gets the same score: no ranking at all. BEAR-GRN",
+        "  scores pairs a method leaves out as 0, so this measures how much AUPRC comes from just emitting a dense network.",
+        "- **Random.** Expected AUPRC of a random ranking (AUROC 0.5).",
+        f"- On ChIP AUPRC, Pearson beats LINGER on {n_pear} of {len(b)} datasets and \"all measured pairs\" on {n_cov} of {len(b)}.",
         "",
-        "| Dataset | AUROC MeVD-GRN | AUROC LINGER | AUROC in-degree | AUPRC MeVD-GRN | AUPRC LINGER | AUPRC in-degree | AUPRC random |",
-        "|---|---|---|---|---|---|---|---|"]
+        "ChIP-seq ground truth, AUPRC (MeVD-GRN = mean over seeds; in-degree = mean of 5 fold seeds; bold = best, italics = second):",
+        "",
+        "| Dataset | MeVD-GRN | LINGER | Best other released | In-degree | Pearson | GRNBoost2 | All measured pairs | Random |",
+        "|---|---|---|---|---|---|---|---|---|"]
     for ds in sorted(chip["dataset"].unique()):
-        r = {m: chip[(chip.dataset == ds) & (chip.metric == m)].iloc[0] for m in ("AUROC", "AUPRC")}
-        cells = []
-        for m in ("AUROC", "AUPRC"):
-            vals = [r[m]["mevd"], r[m]["LINGER"], r[m]["indegree"]]
-            top = max(vals)
-            cells += [f"**{x:.3f}**" if x == top else f"{x:.3f}" for x in vals]
-        lines.append(f"| {ds} | " + " | ".join(cells) + f" | {r['AUPRC']['random']:.3f} |")
+        lines.append(bear_row(chip, agg, ds, "AUPRC"))
+    lines += ["", "Same, AUROC (\"all measured pairs\" ties every pair, so it is 0.5 by construction):", "",
+              "| Dataset | MeVD-GRN | LINGER | Best other released | In-degree | Pearson | GRNBoost2 | All measured pairs | Random |",
+              "|---|---|---|---|---|---|---|---|---|"]
+    for ds in sorted(chip["dataset"].unique()):
+        lines.append(bear_row(chip, agg, ds, "AUROC"))
     hp = REPO / "docs/results/bear/hub_control_mevd_fm_h384_hubmotif_seed42.csv"
     if hp.exists():
         h = pd.read_csv(hp)
