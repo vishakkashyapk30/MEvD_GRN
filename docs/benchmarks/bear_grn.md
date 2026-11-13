@@ -843,3 +843,17 @@ M3 has hub terms derived from training-TF ChIP labels, so it belongs to the supe
 Incidents on the way: first Ada submissions died on a full node `/scratch` (gnode082) and on a stage-in bug
 (rsync did not create the parent dir; fixed in f745c2f); the local queue sat blocked for 4 h on a 6800 MiB gate
 threshold the desktop's GPU use made unreachable (now 5800).
+
+## 15. Headline M3 on Ada, interim (2026-11-13; seeds 42-43, 8 of 9 datasets)
+Runs: Ada job 75905 (`slurm/bear/plans/units_headline_2026-11.txt`), scored on the laptop with the port (20 draws,
+`--sparse_match`). Tables: `docs/results/bear/head_to_head__mevd_fm_h384_hubmotif.{md,csv}` (s12.9 rule),
+`summary_agg.csv`, `hub_control_mevd_fm_h384_hubmotif_seed42.csv`. mESC_E7.5_rep2 and seeds 44-46, L2 and the
+ablations are still running.
+- Primary GTs (ChIP, KO, Union, Intersection; 44 dataset x metric cells): MeVD-GRN > LINGER in 28, > every released
+  method in 19, > in-degree in 17; pre-registered WIN in 11.
+- ChIP: MeVD-GRN > LINGER in AUPRC on 8/8 datasets, but in-degree > MeVD-GRN in AUROC on 7/8, and in-degree >
+  LINGER in AUPRC on 8/8.
+- Hub control (s10.3 method, seed 42), AUROC within in-degree strata: ChIP human 0.530-0.573, mouse 0.475-0.509;
+  KO 0.516-0.657 (4 datasets). Per-TF AUROC within in-degree bins on ChIP is about 0.53.
+- The earlier K562 seed-42 development run (s14) was moved to `~/.cache/bear/archive/K562_s14_dev_hubmotif_seed42/`;
+  its numbers agree with the Ada run (ChIP AUROC 0.610 vs 0.611).
