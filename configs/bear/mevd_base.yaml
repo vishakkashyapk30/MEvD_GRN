@@ -1,6 +1,6 @@
 # MeVD-GRN under the BEAR-GRN protocol: base model (h128/l2, no FM).
 # Pre-registered (docs/benchmarks/bear_grn.md s6) before any result.
-inherit: ../default.yaml
+inherit: ../sc_mo_grn_db/default.yaml
 
 data:
   # tiers actually present are set per dataset by scripts/22 from datasets.yaml
