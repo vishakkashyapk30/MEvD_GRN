@@ -325,11 +325,11 @@ column and *italics* the second best.""")
   every model is near chance once hubness is controlled ({g(TF,MEVD_TF,'test_degcaliper_auroc')} for MeVD-GRN).
 - Conclusion: on this benchmark, the scores of all methods, MeVD-GRN included, are explained by hub TFs.
 - BEAR-GRN (ChIP-seq and knockout ground truths, interim results): MeVD-GRN beats LINGER on most datasets, but a
-  baseline that ranks target genes by their number of regulators is stronger still on ChIP (section 11).
+  baseline that ranks target genes by their number of regulators is stronger still on ChIP (section 12).
 - Correction: an earlier draft reported 0.878 AUPR for MeVD-GRN on the degree-matched test. That value came from an
-  evaluation bug, fixed in this period; the corrected value is {g(OFF,MEVD,'test_degmatched_aupr')} (section 9).""")
+  evaluation bug, fixed in this period; the corrected value is {g(OFF,MEVD,'test_degmatched_aupr')} (section 10).""")
 
-    S.append("""## 2. Model families and evaluation protocol
+    S.append("""## 2. Model families
 
 - **Label-free statistical scores.** No labels: correlations, mutual information, GRNBoost2, GENIE3, ridge and lasso
   regression (the BEELINE and geneRNIB baselines).
@@ -347,7 +347,10 @@ column and *italics* the second best.""")
   network and no training-link relation, at the smaller base size (128 wide). Each TF is described only by three
   numbers from its RNA (mean expression, variance, share of cells that detect it), passed through a small MLP; a pair
   is scored by the symmetric decoder plus a co-expression term (correlation of the two TFs' expression signatures).
-  It is trained on the fold's training links like the full model.
+  It is trained on the fold's training links like the full model.""")
+
+    S.append("""## 3. Evaluation protocol
+
 - **Official test** [1]. scMultiomeGRN's 10 folds split the links: each test link is paired with a random non-link.
 - **Degree-matched test** (own variant of degree-aware negatives [2, 3]). Each test link is paired with one of the
   three test non-links closest to it in the two TFs' training-link counts.
@@ -363,10 +366,10 @@ column and *italics* the second best.""")
   use AUROC, because trapezoidal AUPR gives a method with all scores tied (1 + share of positives) / 2, about 0.75,
   instead of 0.5 (linear interpolation in precision-recall space overestimates the area [7]).
 - **Statistics** (standard methods). 95% CIs by bootstrap over cell types; paired Wilcoxon signed-rank tests over
-  cell type x fold. Sources of every test: slide 13.
+  cell type x fold. Sources of every test: slide 14.
 - Nothing from the test fold is used for fitting; every model is checked for zero test-to-train leakage.""")
 
-    S.append(f"""## 3. Label-free statistical scores
+    S.append(f"""## 4. Label-free statistical scores
 
 - These methods ask whether two TFs behave alike across cells, without any label.
 - All of them sit between 0.50 and 0.54 AUROC on every test, which is chance.
@@ -375,7 +378,7 @@ column and *italics* the second best.""")
 
 {table(OFF, REF + LABEL_FREE, OFF_COLS, OFF_HEAD)}""")
 
-    S.append(f"""## 4. Supervised models on pair features
+    S.append(f"""## 5. Supervised models on pair features
 
 - Learned from the training links, scMultiomeGRN's inputs become informative on the official test: GRNBoost2 alone
   reaches {g(OFF,'lr_grnboost','test_aupr')} AUPR, the two inputs side by side {g(OFF,'lr_maestro_grnboost_concat','test_aupr')},
@@ -386,7 +389,7 @@ column and *italics* the second best.""")
 
 {table(OFF, REF + SUPERVISED, OFF_COLS, OFF_HEAD)}""")
 
-    S.append(f"""## 5. Link-prediction heuristics on the training graph
+    S.append(f"""## 6. Link-prediction heuristics on the training graph
 
 - The product of the two link counts scores {g(OFF,'heur_degree_product','test_aupr')} AUPR and a logistic regression on
   the two counts {g(OFF,'lr_degree_only','test_aupr')}; both beat scMultiomeGRN ({g(OFF,SMG,'test_aupr')}).
@@ -398,7 +401,7 @@ column and *italics* the second best.""")
 
 {table(OFF, REF + HEURISTICS, OFF_COLS, OFF_HEAD)}""")
 
-    S.append(f"""## 6. GNN baselines of the scMultiomeGRN paper
+    S.append(f"""## 7. GNN baselines of the scMultiomeGRN paper
 
 - DeepTFni scores {g(OFF,'deeptfni','test_aupr')} AUPR and GENELink {g(OFF,'genelink','test_aupr')} on the official test,
   both below scMultiomeGRN, consistent with the scMultiomeGRN paper.
@@ -406,7 +409,7 @@ column and *italics* the second best.""")
 
 {table(OFF, REF + GNN, OFF_COLS, OFF_HEAD)}""")
 
-    S.append(f"""## 7. scMultiomeGRN ablations
+    S.append(f"""## 8. scMultiomeGRN ablations
 
 - The known-link graph is what matters: without it AUPR drops from {g(OFF,SMG,'test_aupr')} to
   {g(OFF,'official_scmultiomegrn_no_prior','test_aupr')}; a STRING network in its place gives
@@ -423,7 +426,7 @@ column and *italics* the second best.""")
     dsmall = [abs(v(OFF, m, "test_aupr") - v(OFF, MEVD, "test_aupr")) for m in small if v(OFF, m, "test_aupr") is not None]
     tfc2 = [v(TF, m, "test_degcaliper_auroc") for m, _ in [(MEVD_TF, "")] + MEVD_ABL_TF]
     tfc2 = [x for x in tfc2 if x is not None]
-    S.append(f"""## 8. MeVD-GRN ablations
+    S.append(f"""## 9. MeVD-GRN ablations
 
 - Floor model = MeVD-GRN without Geneformer, the ATAC tower, the graph network and the training-link relation: each
   TF is reduced to three RNA numbers (mean, variance, detection rate) plus a co-expression term (definition on slide 2).
@@ -445,7 +448,7 @@ Held-out-TF split:
 
 {table(TF, [(MEVD_TF, "MeVD-GRN")] + MEVD_ABL_TF, TF_COLS, TF_HEAD)}""")
 
-    S.append(f"""## 9. Hub-controlled tests on the official split, and a correction
+    S.append(f"""## 10. Hub-controlled tests on the official split, and a correction
 
 - Degree-matched test: MeVD-GRN {g(OFF,MEVD,'test_degmatched_auroc')} AUROC{ci(OFF,MEVD,'test_degmatched_auroc')},
   scMultiomeGRN {g(OFF,SMG,'test_degmatched_auroc')}, best simple model {f3(best_simple_dm[0])}, from {best_simple_dm[1]}.
@@ -464,7 +467,7 @@ Held-out-TF split:
   on unique pairs; every method now uses identical test pairs on every fold (checked on all 55,000 fold results), and
   the corrected value is {g(OFF,MEVD,'test_degmatched_aupr')} AUPR.""")
 
-    S.append(f"""## 10. Held-out-TF split
+    S.append(f"""## 11. Held-out-TF split
 
 - On pairs with one unseen TF, the link-count rule is the best method: it still knows the partner TF's link count.
   MeVD-GRN scores {g(TF,MEVD_TF,'test_c2_auroc')}{ci(TF,MEVD_TF,'test_c2_auroc')}, scMultiomeGRN
@@ -478,11 +481,11 @@ Held-out-TF split:
 
 {table(TF, TF_ITEMS, TF_COLS, TF_HEAD)}""")
 
-    S.append(f"""## 11. BEAR-GRN: ChIP-seq and knockout ground truths
+    S.append(f"""## 12. BEAR-GRN: ChIP-seq and knockout ground truths
 
 {bear_slide()}""")
 
-    S.append(f"""## 12. Conclusions and next steps
+    S.append(f"""## 13. Conclusions and next steps
 
 - The scMultiomeGRN benchmark measures how well a method knows which TFs are hubs. Its ground-truth network comes
   from a motif rule on the same ATAC data the models read, and its random non-links are easy to separate by link count.
@@ -496,7 +499,7 @@ Held-out-TF split:
 - Next: complete BEAR-GRN (5 seeds, the strict L2 regime, ablations) with a hub control against the in-degree
   baseline (within-in-degree-stratum scores); then PBMC10k with LINGER's own candidate genes.""")
 
-    S.append("""## 13. Sources of the evaluation tests
+    S.append("""## 14. Sources of the evaluation tests
 
 | Test or metric | Source | Published, or own construction |
 |---|---|---|
