@@ -169,26 +169,41 @@ def best_in(R, items, key):
 
 
 
-def bear_row(chip, agg, ds, m):
-    r = chip[(chip.dataset == ds) & (chip.metric == m)].iloc[0]
-    def base(v):
+
+def bear_table(chip, agg, m):
+    """Models as rows, datasets as columns; bold = best, italics = second best in each column."""
+    dss = sorted(chip["dataset"].unique())
+    rel = sorted(agg[agg["kind"] == "released"]["variant"].unique(), key=lambda x: (x != "LINGER", x.lower()))
+    def agg_v(ds, v):
         x = agg[(agg.dataset == ds) & (agg.variant == v)][m]
         return float(x.iloc[0]) if len(x) else float("nan")
-    vals = [r["mevd"], r["LINGER"], r["best_other_val"], r["indegree"], base("baseline_pearson"),
-            base("baseline_grnboost2"), base("baseline_coverage")]
-    order = sorted({round(x, 3) for x in vals if x == x}, reverse=True)
-    def fmt(x):
+    def h2h(ds, col):
+        return float(chip[(chip.dataset == ds) & (chip.metric == m)].iloc[0][col])
+    rows = [("MeVD-GRN", {ds: h2h(ds, "mevd") for ds in dss})]
+    rows += [(v, {ds: agg_v(ds, v) for ds in dss}) for v in rel]
+    rows += [("In-degree", {ds: h2h(ds, "indegree") for ds in dss}),
+             ("Pearson", {ds: agg_v(ds, "baseline_pearson") for ds in dss}),
+             ("GRNBoost2", {ds: agg_v(ds, "baseline_grnboost2") for ds in dss}),
+             ("All measured pairs", {ds: agg_v(ds, "baseline_coverage") for ds in dss})]
+    rank = {}
+    for ds in dss:
+        vals = sorted({round(r[ds], 3) for _, r in rows if r[ds] == r[ds]}, reverse=True)
+        rank[ds] = vals[:2]
+    def fmt(x, ds):
         if x != x:
             return "–"
         t = f"{x:.3f}"
-        if round(x, 3) == order[0]:
+        if round(x, 3) == rank[ds][0]:
             return f"**{t}**"
-        if len(order) > 1 and round(x, 3) == order[1]:
+        if len(rank[ds]) > 1 and round(x, 3) == rank[ds][1]:
             return f"*{t}*"
         return t
-    cells = [fmt(vals[0]), fmt(vals[1]), f"{fmt(vals[2])} ({r['best_other']})"] + [fmt(x) for x in vals[3:]]
-    rnd = 0.5 if m == "AUROC" else r["random"]
-    return f"| {ds} | " + " | ".join(cells) + f" | {rnd:.3f} |"
+    out = ["| Model | " + " | ".join(dss) + " |", "|---|" + "---|" * len(dss)]
+    for name, r in rows:
+        out.append(f"| {name} | " + " | ".join(fmt(r[ds], ds) for ds in dss) + " |")
+    rnd = [0.5 if m == "AUROC" else h2h(ds, "random") for ds in dss]
+    out.append("| *Random* | " + " | ".join(f"{x:.3f}" for x in rnd) + " |")
+    return out
 
 
 def bear_slide():
@@ -240,17 +255,14 @@ def bear_slide():
         "- **Random.** Expected AUPRC of a random ranking (AUROC 0.5).",
         f"- On ChIP AUPRC, Pearson beats LINGER on {n_pear} of {len(b)} datasets and \"all measured pairs\" on {n_cov} of {len(b)}.",
         "",
-        "ChIP-seq ground truth, AUPRC (MeVD-GRN = mean over seeds; in-degree = mean of 5 fold seeds; bold = best, italics = second):",
+        "ChIP-seq ground truth, AUPRC (MeVD-GRN = mean over seeds; in-degree = mean of 5 fold seeds; bold = best and italics = second best in each dataset):",
         "",
-        "| Dataset | MeVD-GRN | LINGER | Best other released | In-degree | Pearson | GRNBoost2 | All measured pairs | Random |",
-        "|---|---|---|---|---|---|---|---|---|"]
-    for ds in sorted(chip["dataset"].unique()):
-        lines.append(bear_row(chip, agg, ds, "AUPRC"))
-    lines += ["", "Same, AUROC (\"all measured pairs\" ties every pair, so it is 0.5 by construction):", "",
-              "| Dataset | MeVD-GRN | LINGER | Best other released | In-degree | Pearson | GRNBoost2 | All measured pairs | Random |",
-              "|---|---|---|---|---|---|---|---|---|"]
-    for ds in sorted(chip["dataset"].unique()):
-        lines.append(bear_row(chip, agg, ds, "AUROC"))
+        ]
+    lines += bear_table(chip, agg, "AUPRC")
+    lines += ["", "DIRECT-NET's released network has no edge scores, so it has no AUROC or AUPRC (BEAR-GRN reports only its",
+              "top-10k precision)."]
+    lines += ["", "Same, AUROC (\"all measured pairs\" ties every pair, so it is 0.5 by construction):", ""]
+    lines += bear_table(chip, agg, "AUROC")
     hp = REPO / "docs/results/bear/hub_control_mevd_fm_h384_hubmotif_seed42.csv"
     if hp.exists():
         h = pd.read_csv(hp)
