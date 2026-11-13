@@ -217,12 +217,14 @@ def bear_slide():
         human = [x for x in ("K562", "Macrophage_S1", "Macrophage_S2", "iPS") if x in piv["ChIP"].index]
         mouse = [x for x in piv["ChIP"].index if x not in human]
         ws = piv["ChIP"]["within_stratum"]
+        mouse_up = [x for x in mouse if ws[x] > 0.52]
         lines += [
             "",
             "Hub control (pre-registered, seed 42): AUROC when MeVD-GRN's scores are ranked only within groups of target",
             "genes with the same in-degree (0 alone, then 20 quantile bins), so the in-degree ranking scores 0.5.",
             f"- ChIP: a small signal beyond in-degree remains on the human datasets ({ws[human].min():.3f} to "
-            f"{ws[human].max():.3f}) and none on the mouse datasets ({ws[mouse].min():.3f} to {ws[mouse].max():.3f}).",
+            f"{ws[human].max():.3f}); on the mouse datasets it is {ws[mouse].min():.3f} to {ws[mouse].max():.3f}, above 0.52 only on "
+            f"{', '.join(mouse_up) if mouse_up else 'none'} ({len(mouse_up)} of {len(mouse)}).",
             f"- KO: {piv['KO']['within_stratum'].min():.3f} to {piv['KO']['within_stratum'].max():.3f} on "
             f"{len(piv['KO'])} datasets, the clearest signal beyond in-degree so far.",
             "",
@@ -420,7 +422,7 @@ Held-out-TF split:
 - Once hubness is controlled (caliper matching, held-out TFs), no method, MeVD-GRN included, keeps a meaningful signal.
 - BEAR-GRN shows the same effect on target genes: an in-degree ranking beats every published method on ChIP AUPRC,
   and MeVD-GRN beats LINGER but not yet that ranking. Within groups of genes with the same in-degree, MeVD-GRN
-  keeps a small signal on human ChIP and on knockout ground truths, and none on mouse ChIP.
+  keeps a small signal on human ChIP and on knockout ground truths, and little on mouse ChIP.
 - These results are a finding about how GRN benchmarks are scored and belong in the paper as an evaluation
   contribution, alongside MeVD-GRN.
 - Next: complete BEAR-GRN (5 seeds, the strict L2 regime, ablations) with a hub control against the in-degree
