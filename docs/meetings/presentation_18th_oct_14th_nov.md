@@ -301,7 +301,8 @@ caliper-matched test on pairs with one unseen TF.
 - **Random.** Expected AUPRC of a random ranking (AUROC 0.5).
 - On ChIP AUPRC, Pearson beats LINGER on 9 of 9 datasets and "all measured pairs" on 9 of 9.
 
-ChIP-seq ground truth, AUPRC (MeVD-GRN = mean over seeds; in-degree = mean of 5 fold seeds; bold = best and italics = second best in each dataset):
+**Table 1. ChIP-seq ground truth, AUPRC.** MeVD-GRN = mean over seeds; in-degree = mean of 5 fold seeds; bold = best
+and italics = second best in each dataset.
 
 | Model | K562 | Macrophage_S1 | Macrophage_S2 | Naive_mESC | iPS | mESC_E7.5_rep1 | mESC_E7.5_rep2 | mESC_E8.5_rep1 | mESC_E8.5_rep2 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -324,7 +325,8 @@ ChIP-seq ground truth, AUPRC (MeVD-GRN = mean over seeds; in-degree = mean of 5 
 DIRECT-NET's released network has no edge scores, so it has no AUROC or AUPRC (BEAR-GRN reports only its
 top-10k precision).
 
-Same, AUROC ("all measured pairs" ties every pair, so it is 0.5 by construction):
+**Table 2. ChIP-seq ground truth, AUROC.** Same models and datasets as Table 1; "all measured pairs" ties
+every pair, so it is 0.5 by construction.
 
 | Model | K562 | Macrophage_S1 | Macrophage_S2 | Naive_mESC | iPS | mESC_E7.5_rep1 | mESC_E7.5_rep2 | mESC_E8.5_rep1 | mESC_E8.5_rep2 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -348,6 +350,9 @@ Hub control (pre-registered, seed 42): AUROC when MeVD-GRN's scores are ranked o
 genes with the same in-degree (0 alone, then 20 quantile bins), so the in-degree ranking scores 0.5.
 - ChIP: a small signal beyond in-degree remains on the human datasets (0.530 to 0.573); on the mouse datasets it is 0.475 to 0.542, above 0.52 only on mESC_E7.5_rep2 (1 of 5).
 - KO: 0.516 to 0.657 on 5 datasets, the clearest signal beyond in-degree so far.
+
+**Table 3. Hub control for MeVD-GRN (seed 42).** AUROC on the ChIP-seq and knockout (KO) ground truths, raw and
+within groups of target genes with the same in-degree.
 
 | Dataset | ChIP AUROC | ChIP AUROC within in-degree groups | KO AUROC | KO AUROC within in-degree groups |
 |---|---|---|---|---|
