@@ -35,8 +35,11 @@ Companion to `presentation_18th_oct_14th_nov.md`. Every definition below is what
      [CLR](#m-clr) · [GRNBoost2](#m-grnboost2) · [GENIE3](#m-genie3) · [ridge / lasso](#m-ridge-lasso) ·
      [cosine of profiles / embeddings](#m-cosine)
    - [3.4 Supervised models on pair features](#s3-4):
-     [pair feature](#m-pair-feature) · [single input](#m-single) · [side by side](#m-side-by-side) ·
-     [multiplied](#m-multiplied) · [product only](#m-product-only) · [logistic / linear / random forest](#m-models)
+     inputs: [MAESTRO accessibility](#m-in-maestro) ([RP formula](#m-maestro-rp)) · [GRNBoost2 profiles](#m-in-grnboost) ·
+     [Geneformer](#m-in-geneformer) · [joint expression histograms](#m-in-histogram) · [promoter openness](#m-in-openness);
+     [pair feature](#m-pair-feature); variants: [single input](#m-single) · [side by side](#m-side-by-side) ·
+     [multiplied](#m-multiplied) · [product only](#m-product-only) · [linear regression](#m-linreg) ·
+     [random forest](#m-rf); [classifiers](#m-models); [reading the results](#m-reading)
    - [3.5 Link counts + features](#s3-5)
 6. [BEAR-GRN](#s4)
    - [4.1 Universe](#s4-1) · [4.2 AUROC](#s4-2) · [4.3 AUPRC](#s4-3)
@@ -386,22 +389,100 @@ $x_u$ = TF $u$'s expression across cells (or MAESTRO accessibility for that row)
 <a id="s3-4"></a>
 ### 3.4 Supervised models on pair features
 
-<a id="m-pair-feature"></a>Per-TF vectors (MAESTRO, GRNBoost2 profile, Geneformer) are first reduced to 32 numbers by SVD (no labels). The
-**pair feature** is symmetric, so $(u, v)$ and $(v, u)$ get the same score:
+These are the rows of the deck's "Supervised models on pair features" slide. Each one: (1) describe every TF by a
+vector built from the cells, (2) turn two TFs' vectors into one **pair feature**, (3) fit a simple classifier on the
+fold's training pairs (training links = 1, the remaining training non-links = 0), (4) score every test pair.
+No neural network, no training graph as input.
+
+<a id="m-inputs"></a>
+#### 3.4.1 The inputs (what describes a TF)
+
+| Input (deck name) | Per TF | Size before reduction | What it measures |
+|---|---|---|---|
+| <a id="m-in-maestro"></a>MAESTRO accessibility | RP score in every cell (formula below) | one number per cell | how open the chromatin around the TF's gene is, cell by cell |
+| <a id="m-in-grnboost"></a>GRNBoost2 profiles | GRNBoost2 importance of this TF for every gene | one number per gene | which genes this TF's expression helps predict (its expression "targets") |
+| <a id="m-in-geneformer"></a>Geneformer embedding | pre-trained Geneformer vector | 768 | general knowledge about the gene from other datasets |
+| <a id="m-in-histogram"></a>Joint expression histograms | (a pair feature directly, see below) | 136 per pair | how the two TFs' expression values co-occur across cells |
+| <a id="m-in-openness"></a>Promoter openness | 4 summary numbers | 4 | mean and max RP weight of the nearest peaks, their mean distance, peak count |
+
+MAESTRO, GRNBoost2 and Geneformer vectors are compressed to **32 numbers per TF** by SVD (centre the TF x feature
+matrix, keep the top 32 components, standardise each). No labels are used for this.
+
+<a id="m-maestro-rp"></a>**MAESTRO regulatory potential** (scMultiomeGRN's ATAC input; MAESTRO "Enhanced" model,
+decay $d_0 = 1$ kb, re-implemented in `src/benchmarks/scmgrn_features.py`). For gene $g$ in cell $c$:
+
+$$
+\text{RP}(g, c) = \sum_{\text{peaks } p} w_{g,p}\,\text{reads}(p, c), \qquad
+w_{g,p} = \begin{cases}
+1 / (\text{exon length of } g \text{ in kb}) & \text{peak in an exon of } g \\
+2^{-\lvert d \rvert / d_0} & \text{peak within } \pm 2 \text{ kb of the TSS, or outside every gene body within 15 kb} \\
+0 & \text{intron, another gene's body, or farther than 15 kb}
+\end{cases}
+$$
+
+with $d$ = distance from the peak centre to the TSS. Toy: a promoter peak 0.5 kb away with 2 reads gives
+$2^{-0.5} \times 2 = 1.41$; a peak 3 kb away with 1 read gives $2^{-3} = 0.125$; an exon peak (exons 2 kb) with 1
+read gives $0.5$; a peak 20 kb away gives 0. RP $= 2.04$.
+
+**Joint expression histogram** (scMultiomeGRN's edge feature). For TFs $u, v$: put every cell into a $16 \times 16$
+grid by $(\log_{10}(x_u + 0.01), \log_{10}(x_v + 0.01))$, count cells per square $H$, convert to
+$e = (\log_{10}(H / n_\text{cells} + 10^{-4}) + 4)/4$, average with its transpose so the order of $u, v$ does not
+matter, and keep the 136 unique values. Already a pair feature, so no SVD and no $\phi$.
+
+<a id="m-pair-feature"></a>
+#### 3.4.2 From two TF vectors to one pair feature
 
 $$
 \phi(u, v) = \big[\, x_u \odot x_v ,\; \lvert x_u - x_v \rvert \,\big] \qquad (\odot = \text{element-wise product})
 $$
 
-- <a id="m-single"></a>"X only": logistic regression on $\phi$ of one input.
-- <a id="m-side-by-side"></a>"Side by side" (given independently): $[\phi_{\text{MAESTRO}}, \phi_{\text{GRNBoost2}}]$.
-- <a id="m-multiplied"></a>"MAESTRO multiplied by GRNBoost2": per TF first, $z_u = m_u \odot g_u$, then $\phi$ on $z$.
-- <a id="m-product-only"></a>"Product of the two TFs' features only": only the $x_u \odot x_v$ parts.
-- <a id="m-models"></a>Logistic regression: L2 penalty (ridge-type regularisation, unrelated to the BEAR-GRN L2 regime) chosen from $\{0.001, 0.01, 0.1, 1, 10\}$ by 3-fold CV on training pairs only.
-  Linear regression = ridge on the 0/1 label. Random forest = 300 trees.
+Both halves are unchanged when $u$ and $v$ are swapped, so the score is symmetric. The product is large when both TFs
+are high on the same component; the difference is small when the two TFs look alike.
 
-**Toy:** $x_A = (1, 0)$, $x_B = (1, 1)$: $\phi(A, B) = [(1, 0), (0, 1)]$; logistic regression learns one weight per
-entry.
+<a id="m-variants"></a>
+#### 3.4.3 The variants (one toy, all rows of the table)
+
+Toy, with 2 numbers per TF instead of 32: MAESTRO $m_u = (1, 2)$, $m_v = (3, 1)$; GRNBoost2 $g_u = (0, 1)$,
+$g_v = (2, 2)$.
+
+| Deck row | Feature given to the classifier | Toy feature | Length |
+|---|---|---|---|
+| <a id="m-single"></a>MAESTRO accessibility only | $\phi(m_u, m_v)$ | $[(3, 2), (2, 1)]$ | 4 |
+| GRNBoost2 profiles only | $\phi(g_u, g_v)$ | $[(0, 2), (2, 1)]$ | 4 |
+| Geneformer embedding only | $\phi(f_u, f_v)$ | (same recipe, 32 + 32 numbers) | 64 |
+| Joint expression histograms only | the 136 histogram values | – | 136 |
+| Promoter openness only | $[\phi(o_u, o_v),\; o_u + o_v]$ | – | 12 |
+| <a id="m-side-by-side"></a>MAESTRO and GRNBoost2 side by side ("given independently") | $[\phi(m_u, m_v),\; \phi(g_u, g_v)]$ | $[(3, 2), (2, 1), (0, 2), (2, 1)]$ | 8 |
+| <a id="m-multiplied"></a>MAESTRO multiplied by GRNBoost2 | first $z_u = m_u \odot g_u$, then $\phi(z_u, z_v)$ | $z_u = (0, 2)$, $z_v = (6, 2)$ $\Rightarrow [(0, 4), (6, 0)]$ | 4 |
+| <a id="m-product-only"></a>Product of the two TFs' features only | $[m_u \odot m_v,\; g_u \odot g_v]$ (no difference terms) | $[(3, 2), (0, 2)]$ | 4 |
+| <a id="m-linreg"></a>Linear regression, side by side | side-by-side feature, ridge regression on the 0/1 label | as side by side | 8 |
+| <a id="m-rf"></a>Random forest, side by side | side-by-side feature, random forest | as side by side | 8 |
+
+<a id="m-models"></a>
+#### 3.4.4 The classifiers
+
+- **Logistic regression** (every row unless stated otherwise):
+  $P(\text{link} \mid u, v) = \sigma(w^\top \phi + b)$, $\sigma(z) = 1 / (1 + e^{-z})$, fitted with an L2 penalty
+  $\lambda \lVert w \rVert^2$. $\lambda$ is chosen from 5 values by 3-fold cross-validation on the training pairs only
+  (scored by average precision). Features are standardised with training-pair statistics.
+  Toy: side-by-side feature $(3, 2, 2, 1, 0, 2, 2, 1)$, all weights 0.1, $b = -1$: $\sigma(1.3 - 1) = 0.57$.
+- **Linear regression**: ridge regression ($\alpha = 1$) predicting the 0/1 label directly; the prediction is the score.
+- **Random forest**: 300 trees, at least 2 training pairs per leaf; score = the trees' average link probability. The one
+  non-linear model of the slide.
+
+<a id="m-reading"></a>
+#### 3.4.5 Reading the results
+
+- **One input at a time:** every input carries some signal on the official test (AUPR 0.59 to 0.73), GRNBoost2
+  profiles most.
+- **Side by side beats multiplied (0.788 vs 0.721):** with side by side the classifier can weigh MAESTRO and
+  GRNBoost2 separately; multiplying first mixes them, and a near-zero value in one input erases the other
+  (toy: $g_u$'s first entry 0 wipes out $m_u$'s first entry).
+- **Product only is near chance (0.523):** dropping the $\lvert x_u - x_v \rvert$ terms removes most of the signal.
+- **Linear regression = logistic regression (0.788 both); random forest is best (0.836):** some non-linear structure
+  helps, still below scMultiomeGRN (0.919) and the link-count rules.
+- **Caliper-matched test: all between 0.49 and 0.52.** The likely reading: what the classifiers learn from these profiles is mostly which TFs are hubs, so once both TFs of every test pair have matched link counts, nothing is
+  left.
 
 <a id="s3-5"></a>
 ### 3.5 Link counts + features
