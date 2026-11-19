@@ -30,6 +30,7 @@ Mean over seeds within a dataset, then over datasets. Pairs a method does not ou
 | gradient boosting, all features | 9 | 0.581 | 0.701 | 0.528 | 0.531 | 0.583 | 0.559 | 0.582 |
 | In-degree rule, all label files (script 25 check; = covariate) | 6 | 0.611 | 0.727 | 0.511 | 0.527 | 0.615 | 0.523 | 0.599 |
 | MeVD-GRN, ATAC features zeroed (old ablation) | 3 | 0.584 | 0.685 | 0.523 | 0.525 | 0.553 | 0.543 | 0.556 |
+| LINGER re-run, full data | 1 | 0.487 | 0.531 | 0.551 | 0.525 | 0.537 | 0.537 | 0.557 |
 | In-degree | 9 | 0.610 | 0.717 | 0.516 | 0.525 | 0.578 | 0.532 | 0.580 |
 | MeVD-GRN | 9 | 0.576 | 0.662 | 0.523 | 0.524 | 0.547 | 0.537 | 0.553 |
 | MeVD-GRN, ATAC removed (all routes) | 7 | 0.577 | 0.662 | 0.522 | 0.522 | 0.548 | 0.538 | 0.550 |

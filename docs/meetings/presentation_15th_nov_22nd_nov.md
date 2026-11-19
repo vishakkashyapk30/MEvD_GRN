@@ -86,17 +86,26 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
   accessibility filter of the TF-candidate graph. "Removed" cuts all four; "shuffled" gives every gene another gene's
   ATAC values (same distribution, broken gene mapping). Seeds 42-44.
 - LINGER is re-run on Macrophage_S1 with LINGER's own bulk reference: full data, ATAC peaks shuffled (genomic location
-  broken, cell structure kept) and ATAC fully randomised (no ATAC information left).
+  broken, cell structure kept) and ATAC fully randomised (no ATAC information left). One cell population, so cells
+  are split into 9 expression clusters (k-means, label-free) to give LINGER enough metacells (it needs >= 50).
 
-ChIP-seq ground truth:
+MeVD-GRN, all datasets, ChIP-seq ground truth:
 
 | Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
 |---|---|---|---|---|---|---|---|
 | MeVD-GRN, full data | 9 | 0.576 | *0.662* | **0.523** | **0.524** | *0.537* | *0.553* |
 | MeVD-GRN, ATAC removed (all four routes) | 7 | *0.577* | *0.662* | *0.522* | *0.522* | **0.538** | 0.550 |
 | MeVD-GRN, ATAC shuffled across genes | 7 | **0.584** | **0.663** | *0.522* | *0.522* | 0.532 | **0.554** |
-| LINGER, released network (BEAR-GRN) | 9 | 0.520 | 0.519 | 0.515 | 0.507 | 0.511 | 0.507 |
-| LINGER re-run, full data | – | pending | pending | pending | pending | pending | pending |
+
+Macrophage_S1 only (the LINGER re-run dataset), ChIP-seq ground truth:
+
+| Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
+|---|---|---|---|---|---|---|---|
+| MeVD-GRN, full data | 1 | 0.619 | 0.645 | 0.538 | 0.524 | **0.556** | **0.561** |
+| MeVD-GRN, ATAC removed (all four routes) | 1 | *0.620* | **0.675** | 0.538 | **0.526** | *0.550* | 0.556 |
+| MeVD-GRN, ATAC shuffled across genes | 1 | **0.629** | *0.669* | 0.534 | 0.523 | 0.542 | 0.546 |
+| LINGER, released network (BEAR-GRN) | 1 | 0.510 | 0.529 | *0.544* | 0.519 | 0.523 | *0.558* |
+| LINGER re-run, full data | 1 | 0.487 | 0.531 | **0.551** | *0.525* | 0.537 | 0.557 |
 | LINGER re-run, ATAC peaks shuffled | – | pending | pending | pending | pending | pending | pending |
 | LINGER re-run, ATAC fully randomised | – | pending | pending | pending | pending | pending | pending |
 

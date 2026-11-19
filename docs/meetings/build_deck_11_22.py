@@ -25,6 +25,9 @@ BM = REPO / "docs/results/bear/matched.csv"
 B = pd.read_csv(BM) if BM.exists() else pd.DataFrame(columns=["gt", "method", "kind"])
 BKM = REPO / "docs/results/bear/matched_kocov.csv"
 BK = pd.read_csv(BKM) if BKM.exists() else pd.DataFrame(columns=["gt", "method", "kind"])
+BPD = REPO / "docs/results/bear/matched_per_dataset.csv"
+MS1 = (pd.read_csv(BPD).query("dataset == 'Macrophage_S1'").assign(n_datasets=1) if BPD.exists()
+       else pd.DataFrame(columns=["gt", "method", "kind"]))
 BCOLS = [("AUROC_inspace", "AUROC"), ("AUROC_perTF", "AUROC per TF"), ("AUROC_degmatched", "degree-matched"),
          ("AUROC_caliper", "caliper-matched"), ("AUROC_adjusted", "covariate-adjusted"),
          ("AUROC_aiyappa", "degree-corrected")]
@@ -185,11 +188,16 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
   accessibility filter of the TF-candidate graph. "Removed" cuts all four; "shuffled" gives every gene another gene's
   ATAC values (same distribution, broken gene mapping). Seeds 42-44.
 - LINGER is re-run on Macrophage_S1 with LINGER's own bulk reference: full data, ATAC peaks shuffled (genomic location
-  broken, cell structure kept) and ATAC fully randomised (no ATAC information left).
+  broken, cell structure kept) and ATAC fully randomised (no ATAC information left). One cell population, so cells
+  are split into 9 expression clusters (k-means, label-free) to give LINGER enough metacells (it needs >= 50).
 
-ChIP-seq ground truth:
+MeVD-GRN, all datasets, ChIP-seq ground truth:
 
-{btable('ChIP', ATAC_BEAR)}""")
+{btable('ChIP', ATAC_BEAR[:3])}
+
+Macrophage_S1 only (the LINGER re-run dataset), ChIP-seq ground truth:
+
+{btable('ChIP', ATAC_BEAR, D=MS1)}""")
 
     S.append(f"""## 6. How much ATAC adds on the scMultiomeGRN benchmark (item 3)
 
