@@ -4668,17 +4668,215 @@
    "rows": [
     {
      "method": "mevd_fm_h384_obs_atacnone",
-     "n_cell_types": 0,
+     "n_cell_types": 12,
+     "test_base": 0.5,
+     "test_aupr": 0.93481527587435,
+     "test_aupr_ci": [
+      0.9319745962207193,
+      0.9373957998278215
+     ],
+     "test_aupr_diff": 0.016155678134017644,
+     "test_aupr_p": 4.202019835241159e-15,
+     "test_ap": 0.9352718738969039,
+     "test_ap_ci": [
+      0.9324600974069701,
+      0.9377619332534731
+     ],
+     "test_ap_diff": 0.016622949105204152,
+     "test_ap_p": 2.8225893978963124e-15,
+     "test_auroc": 0.9236387500688964,
+     "test_auroc_ci": [
+      0.9191743156301276,
+      0.927154679261652
+     ],
+     "test_auroc_diff": 0.011023170194954439,
+     "test_auroc_p": 8.06840537871677e-13,
+     "test_degmatched_base": 0.5,
+     "test_degmatched_aupr": 0.7777578846461881,
+     "test_degmatched_aupr_ci": [
+      0.7560373980510325,
+      0.8018768178223223
+     ],
+     "test_degmatched_aupr_diff": 0.07006071848278118,
+     "test_degmatched_aupr_p": 3.84888348319311e-12,
+     "test_degmatched_ap": 0.778890961795406,
+     "test_degmatched_ap_ci": [
+      0.7568126764917205,
+      0.8033311371988688
+     ],
+     "test_degmatched_ap_diff": 0.07424656617672039,
+     "test_degmatched_ap_p": 2.8054075071156964e-12,
+     "test_degmatched_auroc": 0.7073646749370126,
+     "test_degmatched_auroc_ci": [
+      0.6818464082627285,
+      0.7362688983174072
+     ],
+     "test_degmatched_auroc_diff": 0.05596763024735392,
+     "test_degmatched_auroc_p": 1.6593906513965374e-12,
+     "test_degcaliper_base": 0.5,
+     "test_degcaliper_aupr": 0.6064676166378785,
+     "test_degcaliper_aupr_ci": [
+      0.5872506871955371,
+      0.625738171568514
+     ],
+     "test_degcaliper_aupr_diff": 0.07048986759699406,
+     "test_degcaliper_aupr_p": 2.349259466167531e-13,
+     "test_degcaliper_ap": 0.6250469435470832,
+     "test_degcaliper_ap_ci": [
+      0.6055590278474559,
+      0.6452367612565092
+     ],
+     "test_degcaliper_ap_diff": 0.07047458706368243,
+     "test_degcaliper_ap_p": 1.2840014934222084e-13,
+     "test_degcaliper_auroc": 0.5604420447099396,
+     "test_degcaliper_auroc_ci": [
+      0.53685673384707,
+      0.5796785865230463
+     ],
+     "test_degcaliper_auroc_diff": 0.03615223372129307,
+     "test_degcaliper_auroc_p": 1.2565048204002436e-10,
      "label": "MeVD-GRN, every ATAC input removed"
     },
     {
      "method": "mevd_fm_h384_obs_atacshuffle",
-     "n_cell_types": 0,
+     "n_cell_types": 12,
+     "test_base": 0.5,
+     "test_aupr": 0.9345101868293787,
+     "test_aupr_ci": [
+      0.9314925754180535,
+      0.9373173631454921
+     ],
+     "test_aupr_diff": 0.015850589089046522,
+     "test_aupr_p": 2.4683482514679764e-14,
+     "test_ap": 0.9349812258526567,
+     "test_ap_ci": [
+      0.9319713499292772,
+      0.9376634722040692
+     ],
+     "test_ap_diff": 0.016332301060956865,
+     "test_ap_p": 1.711034413821606e-14,
+     "test_auroc": 0.9234211161276845,
+     "test_auroc_ci": [
+      0.9184719625467214,
+      0.9271761631219955
+     ],
+     "test_auroc_diff": 0.010805536253742226,
+     "test_auroc_p": 4.5467544097271184e-12,
+     "test_degmatched_base": 0.5,
+     "test_degmatched_aupr": 0.7780672269230954,
+     "test_degmatched_aupr_ci": [
+      0.7573941345291517,
+      0.7992915384333977
+     ],
+     "test_degmatched_aupr_diff": 0.07037006075968856,
+     "test_degmatched_aupr_p": 1.156932955547623e-11,
+     "test_degmatched_ap": 0.7792175886403139,
+     "test_degmatched_ap_ci": [
+      0.7582842652161126,
+      0.8008911291986086
+     ],
+     "test_degmatched_ap_diff": 0.07457319302162839,
+     "test_degmatched_ap_p": 7.471042393068925e-12,
+     "test_degmatched_auroc": 0.7074059676353645,
+     "test_degmatched_auroc_ci": [
+      0.682843753458651,
+      0.7350071881748172
+     ],
+     "test_degmatched_auroc_diff": 0.0560089229457057,
+     "test_degmatched_auroc_p": 6.219396446635792e-12,
+     "test_degcaliper_base": 0.5,
+     "test_degcaliper_aupr": 0.6088251083236368,
+     "test_degcaliper_aupr_ci": [
+      0.590468212731582,
+      0.6273006852907426
+     ],
+     "test_degcaliper_aupr_diff": 0.07284735928275227,
+     "test_degcaliper_aupr_p": 1.281412793662718e-12,
+     "test_degcaliper_ap": 0.6265823850223351,
+     "test_degcaliper_ap_ci": [
+      0.6048196218560993,
+      0.6473090932163527
+     ],
+     "test_degcaliper_ap_diff": 0.07201002853893432,
+     "test_degcaliper_ap_p": 4.0242027544939755e-13,
+     "test_degcaliper_auroc": 0.5647160908310561,
+     "test_degcaliper_auroc_ci": [
+      0.5504798488880276,
+      0.5793437192732813
+     ],
+     "test_degcaliper_auroc_diff": 0.040426279842409624,
+     "test_degcaliper_auroc_p": 4.778232928348283e-10,
      "label": "MeVD-GRN, every ATAC input shuffled across genes"
     },
     {
      "method": "official_scmultiomegrn_atac_shuffle",
-     "n_cell_types": 0,
+     "n_cell_types": 12,
+     "test_base": 0.5,
+     "test_aupr": 0.9183554470858644,
+     "test_aupr_ci": [
+      0.9132586380092906,
+      0.9242264303057987
+     ],
+     "test_aupr_diff": -0.00030415065446817805,
+     "test_aupr_p": 0.42629753507118207,
+     "test_ap": 0.9184607338501077,
+     "test_ap_ci": [
+      0.9130334544319285,
+      0.9245407835319076
+     ],
+     "test_ap_diff": -0.0001881909415920831,
+     "test_ap_p": 0.3932427886071487,
+     "test_auroc": 0.9117155614503479,
+     "test_auroc_ci": [
+      0.9058248021472356,
+      0.9172805095020037
+     ],
+     "test_auroc_diff": -0.0009000184235941334,
+     "test_auroc_p": 0.6345553815816044,
+     "test_degmatched_base": 0.5,
+     "test_degmatched_aupr": 0.7070473219241277,
+     "test_degmatched_aupr_ci": [
+      0.6604646956934189,
+      0.7558280280928803
+     ],
+     "test_degmatched_aupr_diff": -0.0006498442392791593,
+     "test_degmatched_aupr_p": 0.6388047980322568,
+     "test_degmatched_ap": 0.7042572326770458,
+     "test_degmatched_ap_ci": [
+      0.6545927855565536,
+      0.7564026026021177
+     ],
+     "test_degmatched_ap_diff": -0.0003871629416398306,
+     "test_degmatched_ap_p": 0.41558424330723887,
+     "test_degmatched_auroc": 0.6505775795845323,
+     "test_degmatched_auroc_ci": [
+      0.604850608592792,
+      0.6995023610080736
+     ],
+     "test_degmatched_auroc_diff": -0.0008194651051263736,
+     "test_degmatched_auroc_p": 0.8692996075023348,
+     "test_degcaliper_base": 0.5,
+     "test_degcaliper_aupr": 0.5382476657877181,
+     "test_degcaliper_aupr_ci": [
+      0.515705878631937,
+      0.5622240037903755
+     ],
+     "test_degcaliper_aupr_diff": 0.0022699167468336473,
+     "test_degcaliper_aupr_p": 0.1861251652169108,
+     "test_degcaliper_ap": 0.555995290653431,
+     "test_degcaliper_ap_ci": [
+      0.523349779293101,
+      0.5922095181218826
+     ],
+     "test_degcaliper_ap_diff": 0.001422934170030403,
+     "test_degcaliper_ap_p": 0.3250364642051581,
+     "test_degcaliper_auroc": 0.5235548883537758,
+     "test_degcaliper_auroc_ci": [
+      0.509487769683399,
+      0.5388526017386724
+     ],
+     "test_degcaliper_auroc_diff": -0.0007349226348706458,
+     "test_degcaliper_auroc_p": 0.8679691930976118,
      "label": "scMultiomeGRN, ATAC features shuffled across TFs"
     }
    ]

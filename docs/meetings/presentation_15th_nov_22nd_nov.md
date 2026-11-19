@@ -102,12 +102,12 @@ ChIP-seq ground truth:
 
 | Method | AUPR | AUROC | AUROC, degree-matched | AUROC, caliper-matched |
 |---|---|---|---|---|
-| MeVD-GRN, full data | **0.935** | **0.924** | **0.708** | **0.560** |
-| MeVD-GRN, every ATAC input removed | pending | pending | pending | pending |
-| MeVD-GRN, every ATAC input shuffled across genes | pending | pending | pending | pending |
-| scMultiomeGRN, full data | *0.919* | *0.913* | *0.651* | *0.524* |
+| MeVD-GRN, full data | **0.935** | **0.924** | **0.708** | *0.560* |
+| MeVD-GRN, every ATAC input removed | **0.935** | **0.924** | *0.707* | *0.560* |
+| MeVD-GRN, every ATAC input shuffled across genes | **0.935** | *0.923* | *0.707* | **0.565** |
+| scMultiomeGRN, full data | *0.919* | 0.913 | 0.651 | 0.524 |
 | scMultiomeGRN, ATAC removed (RNA only) | 0.916 | 0.910 | 0.650 | 0.511 |
-| scMultiomeGRN, ATAC shuffled across TFs | pending | pending | pending | pending |
+| scMultiomeGRN, ATAC shuffled across TFs | 0.918 | 0.912 | 0.651 | 0.524 |
 
 ## 7. Simple and Gaussian models on BEAR-GRN, ChIP (item 4)
 
