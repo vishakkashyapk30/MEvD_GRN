@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pandas as pd
 
-COLS = [("AUROC_inspace", "AUROC"), ("AUROC_degmatched", "degree-matched"), ("AUROC_caliper", "caliper-matched"),
+COLS = [("AUROC_inspace", "AUROC"), ("AUROC_perTF", "AUROC per TF"), ("AUROC_degmatched", "degree-matched"), ("AUROC_caliper", "caliper-matched"),
         ("pairwin_caliper", "caliper, pair win rate"), ("AUROC_adjusted", "covariate-adjusted"),
         ("AUROC_aiyappa", "degree-corrected (Aiyappa)")]
 LABEL = {

@@ -26,8 +26,8 @@ Models (sklearn; features standardised on the training pairs):
   rbf    kernel logistic regression with a Gaussian (RBF) kernel, Nystroem approximation (300 components)
   mlp    one hidden layer of 32 units                                      (~700 parameters)
   hgb    histogram gradient boosting (non-neural, non-graph reference)
-Training pairs per fold: every training-TF link (subsampled to <= 60k) + 5x as many random non-links of training
-TFs (pairs in any label or ground-truth file excluded from the negatives).
+Training pairs per fold: every training-TF link (subsampled to <= 60k) + 5 non-links of the SAME TF per link
+(pairs in any label or ground-truth file excluded from the negatives), so TF identity carries no label information.
 
 Label-free models (no labels at all) are in scripts/bear/26_bear_label_free.py.
 Outputs: results/<ds>/simple_<model>_<set>/seed<s>/grn.tsv.gz, same format as scripts/23.
@@ -201,9 +201,19 @@ def main():
             pos = train
             if pos.shape[1] > args.max_pos:
                 pos = pos[:, rng.choice(pos.shape[1], args.max_pos, replace=False)]
-            nneg = args.neg_ratio * pos.shape[1]
-            cand = np.stack([rng.choice(fit_tfs, 3 * nneg), rng.integers(0, n, 3 * nneg)])
-            cand = cand[:, (cand[0] != cand[1]) & ~np.isin(bp.edge_keys(cand, n), known)][:, :nneg]
+            # negatives per TF: every positive (t, g) gets neg_ratio non-links (t, g') of the SAME TF, so TF identity
+            # carries no label information and the models must rank genes within a TF (what BEAR-GRN scores; a
+            # TF-uniform negative draw lets TF-level features learn "which TF is a hub", which does not transfer
+            # to held-out TFs and inverted two folds of Macrophage_S1).
+            src = np.repeat(pos[0], 3 * args.neg_ratio)
+            cand = np.stack([src, rng.integers(0, n, len(src))])
+            ok = (cand[0] != cand[1]) & ~np.isin(bp.edge_keys(cand, n), known)
+            cand = cand[:, ok]
+            per_tf = {int(t): args.neg_ratio * int(c) for t, c in zip(*np.unique(pos[0], return_counts=True))}
+            order = rng.permutation(cand.shape[1])
+            cand = cand[:, order]
+            rank = pd.Series(cand[0]).groupby(cand[0]).cumcount().to_numpy()
+            cand = cand[:, rank < np.array([per_tf[int(t)] for t in cand[0]])]
             tr = np.concatenate([pos, cand], axis=1)
             y = np.r_[np.ones(pos.shape[1], int), np.zeros(cand.shape[1], int)]
             rows_tr = np.array([tf_pos[int(t)] for t in tr[0]])

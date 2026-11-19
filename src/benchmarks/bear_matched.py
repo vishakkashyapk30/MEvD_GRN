@@ -10,7 +10,8 @@ Covariate = target in-degree among the TRAINING TFs of the TF-disjoint fold that
 of that seed is exactly the covariate.
 
 Tests (all AUROC; ties count 1/2):
-  inspace     plain AUROC on the in-space pairs (reference)
+  inspace     plain AUROC on the in-space pairs (reference; mixes TFs, so a TF-level score offset matters)
+  perTF       mean over TFs of the AUROC within each TF (no matching; removes TF-level offsets only)
   degmatched  each link (t, g) paired with a non-link (t, g') of the SAME TF, drawn among the 3 nearest in
               log(1 + in-degree); the scored TF's own out-degree is matched by construction
   caliper     same TF, |log(1+indeg g') - log(1+indeg g)| <= 0.1, links without a match dropped
@@ -128,7 +129,7 @@ def build_tests(f: pd.DataFrame, gt: pd.DataFrame, seed: int = 0) -> dict | None
     ay_n = np.concatenate(got)[:need] if got else np.array([], int)
     st = strata(indeg)
     cell = pd.factorize(pd.Series(tf).astype(str) + "|" + pd.Series(st).astype(str))[0]
-    return {"ins": ins, "y": y, "strata": st, "cell": cell,
+    return {"ins": ins, "y": y, "strata": st, "cell": cell, "tfc": tf_codes,
             "dm": (np.concatenate(dm_p), np.concatenate(dm_n)) if dm_p else None,
             "cal": (np.concatenate(cal_p), np.concatenate(cal_n)) if cal_p else None,
             "ay": (lp_idx, ay_n) if len(ay_n) else None}
@@ -151,6 +152,12 @@ def evaluate(s_full: np.ndarray, T: dict) -> dict:
     y = T["y"]
     out = {"n_inspace": int(len(y)), "n_links": int(y.sum()),
            "AUROC_inspace": _auc(y, s), "AP_inspace": _ap(y, s)}
+    per = []                                    # per-TF AUROC (TFs with >= 10 links and >= 10 non-links), mean
+    for _t, ii in pd.Series(np.arange(len(y))).groupby(T["tfc"]):
+        ii = ii.to_numpy()
+        if y[ii].sum() >= 10 and (~y[ii]).sum() >= 10:
+            per.append(roc_auc_score(y[ii], s[ii]))
+    out["AUROC_perTF"] = float(np.mean(per)) if per else np.nan
     for name in ("dm", "cal", "ay"):
         a, ap, n, w = _pair_auc(s, T[name])
         tag = {"dm": "degmatched", "cal": "caliper", "ay": "aiyappa"}[name]
