@@ -53,6 +53,9 @@ def main():
     d = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
     d = d.drop_duplicates(["dataset", "gt", "method", "seed"], keep="last")
     num = [c for c, _ in COLS]
+    for c in num:                                  # older per-dataset files may lack newer columns
+        if c not in d:
+            d[c] = float("nan")
     per_ds = d.groupby(["gt", "method", "kind", "dataset"], as_index=False)[num].mean()
     agg = per_ds.groupby(["gt", "method", "kind"], as_index=False).agg(
         **{c: (c, "mean") for c in num}, n_datasets=("dataset", "nunique"))
