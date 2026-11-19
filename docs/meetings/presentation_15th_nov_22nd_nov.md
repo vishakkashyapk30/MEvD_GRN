@@ -87,9 +87,9 @@ ChIP-seq ground truth:
 
 | Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
 |---|---|---|---|---|---|---|---|
-| MeVD-GRN, full data | 9 | 0.576 | *0.662* | **0.523** | **0.524** | **0.537** | **0.553** |
-| MeVD-GRN, ATAC removed (all four routes) | 7 | *0.577* | *0.662* | *0.522* | *0.522* | **0.537** | *0.549* |
-| MeVD-GRN, ATAC shuffled across genes | 7 | **0.584** | **0.663** | *0.522* | 0.521 | *0.531* | **0.553** |
+| MeVD-GRN, full data | 9 | 0.576 | *0.662* | **0.523** | **0.524** | *0.537* | *0.553* |
+| MeVD-GRN, ATAC removed (all four routes) | 7 | *0.577* | *0.662* | *0.522* | *0.522* | **0.538** | 0.550 |
+| MeVD-GRN, ATAC shuffled across genes | 7 | **0.584** | **0.663** | *0.522* | *0.522* | 0.532 | **0.554** |
 | LINGER, released network (BEAR-GRN) | 9 | 0.520 | 0.519 | 0.515 | 0.507 | 0.511 | 0.507 |
 | LINGER re-run, full data | – | pending | pending | pending | pending | pending | pending |
 | LINGER re-run, ATAC peaks shuffled | – | pending | pending | pending | pending | pending | pending |
