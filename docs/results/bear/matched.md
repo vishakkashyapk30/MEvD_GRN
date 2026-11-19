@@ -32,8 +32,8 @@ Mean over seeds within a dataset, then over datasets. Pairs a method does not ou
 | MeVD-GRN, ATAC features zeroed (old ablation) | 3 | 0.584 | 0.685 | 0.523 | 0.525 | 0.553 | 0.543 | 0.556 |
 | In-degree | 9 | 0.610 | 0.717 | 0.516 | 0.525 | 0.578 | 0.532 | 0.580 |
 | MeVD-GRN | 9 | 0.576 | 0.662 | 0.523 | 0.524 | 0.547 | 0.537 | 0.553 |
-| MeVD-GRN, ATAC removed (all routes) | 7 | 0.585 | 0.665 | 0.523 | 0.523 | 0.550 | 0.539 | 0.550 |
-| MeVD-GRN, ATAC shuffled across genes | 7 | 0.580 | 0.664 | 0.523 | 0.521 | 0.541 | 0.532 | 0.550 |
+| MeVD-GRN, ATAC removed (all routes) | 7 | 0.577 | 0.662 | 0.522 | 0.522 | 0.547 | 0.537 | 0.549 |
+| MeVD-GRN, ATAC shuffled across genes | 7 | 0.584 | 0.663 | 0.522 | 0.521 | 0.539 | 0.531 | 0.553 |
 | DeepSEM (label-free) | 9 | 0.514 | 0.526 | 0.531 | 0.511 | 0.511 | 0.511 | 0.513 |
 | RegDiffusion (label-free) | 9 | 0.505 | 0.510 | 0.520 | 0.511 | 0.511 | 0.511 | 0.507 |
 | Gaussian mixture classifier, all features | 9 | 0.470 | 0.482 | 0.509 | 0.511 | 0.519 | 0.517 | 0.496 |

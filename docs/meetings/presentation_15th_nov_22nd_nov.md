@@ -13,8 +13,8 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
   0.524 caliper-matched,
   0.537 covariate-adjusted.
 - **ATAC value (item 3), MeVD-GRN on BEAR-GRN, ChIP AUROC:** full 0.576,
-  ATAC removed 0.585, ATAC shuffled
-  0.580.
+  ATAC removed 0.577, ATAC shuffled
+  0.584.
 - **Simple models (item 4) and non-GNN models (item 5):** slides 7-10.
 
 ## 2. Sources for the degree-controlled tests (item 1)
@@ -87,10 +87,10 @@ ChIP-seq ground truth:
 
 | Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
 |---|---|---|---|---|---|---|---|
-| MeVD-GRN, full data | 9 | 0.576 | 0.662 | **0.523** | **0.524** | *0.537* | **0.553** |
-| MeVD-GRN, ATAC removed (all four routes) | 7 | **0.585** | **0.665** | **0.523** | *0.523* | **0.539** | *0.550* |
-| MeVD-GRN, ATAC shuffled across genes | 7 | *0.580* | *0.664* | **0.523** | 0.521 | 0.532 | *0.550* |
-| LINGER, released network (BEAR-GRN) | 9 | 0.520 | 0.519 | *0.515* | 0.507 | 0.511 | 0.507 |
+| MeVD-GRN, full data | 9 | 0.576 | *0.662* | **0.523** | **0.524** | **0.537** | **0.553** |
+| MeVD-GRN, ATAC removed (all four routes) | 7 | *0.577* | *0.662* | *0.522* | *0.522* | **0.537** | *0.549* |
+| MeVD-GRN, ATAC shuffled across genes | 7 | **0.584** | **0.663** | *0.522* | 0.521 | *0.531* | **0.553** |
+| LINGER, released network (BEAR-GRN) | 9 | 0.520 | 0.519 | 0.515 | 0.507 | 0.511 | 0.507 |
 | LINGER re-run, full data | – | pending | pending | pending | pending | pending | pending |
 | LINGER re-run, ATAC peaks shuffled | – | pending | pending | pending | pending | pending | pending |
 | LINGER re-run, ATAC fully randomised | – | pending | pending | pending | pending | pending | pending |
