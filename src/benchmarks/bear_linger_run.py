@@ -101,6 +101,22 @@ def main():
     a_rna = a_rna[pd.Index(a_rna.obs["barcode"]).get_indexer(sel)].copy()
     a_atac = a_atac[pd.Index(a_atac.obs["barcode"]).get_indexer(sel)].copy()
     print(f"[linger {args.mode}] cells {a_rna.shape[0]}, genes {a_rna.shape[1]}, peaks {a_atac.shape[1]}", flush=True)
+    # LINGER draws floor(sqrt(N)) + 1 metacells per cell-type label, and its training needs >= 50 of them (SHAP
+    # background of 50 drawn without replacement). BEAR-GRN datasets are one population (474 cells -> 22 metacells),
+    # so cells are split into expression clusters as pseudo-labels: k-means on RNA PCA (label-free, fixed seed),
+    # the smallest k from 2 giving >= 60 metacells. The same labels are used in every ATAC condition.
+    from sklearn.cluster import KMeans
+    tmp = a_rna.copy()
+    sc.pp.normalize_total(tmp, target_sum=1e4)
+    sc.pp.log1p(tmp)
+    sc.pp.pca(tmp, n_comps=15, random_state=0)
+    for k in range(2, 21):
+        lab = KMeans(k, n_init=10, random_state=0).fit_predict(tmp.obsm["X_pca"])
+        n_meta = sum(int(np.floor(np.sqrt(c))) + 1 for c in np.bincount(lab) if c >= 10)
+        if n_meta >= 60:
+            break
+    a_rna.obs["label"] = a_atac.obs["label"] = [f"c{x}" for x in lab]
+    print(f"[linger {args.mode}] pseudo-labels: k-means k={k} -> {n_meta} metacells", flush=True)
     TG, RE = pseudo_bulk(a_rna.copy(), a_atac.copy(), False)
     RE[RE > 100] = 100
     TG, RE = TG.fillna(0), RE.fillna(0)
