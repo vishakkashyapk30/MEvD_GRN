@@ -84,6 +84,8 @@ def main():
     ap.add_argument("--extra_kw", default="{}", help="JSON of extra official kwargs (scripts/23 switches); "
                     "'{graph_dir}' in strings -> this cell type's graph dir; gf_from_processed=true writes the "
                     "Geneformer TSV (x_node.txt order) and sets gf_feature_file")
+    ap.add_argument("--atac_shuffle_seed", type=int, default=None,
+                    help="ATAC-value experiment: feed the ATAC feature rows permuted across TFs (use with --ablation atac_shuffle)")
     ap.add_argument("--save_scores", action="store_true", help="keep the best_all score matrix (scores_foldNN.npy)")
     ap.add_argument("--split_kind", default="official", choices=proto.SPLIT_KINDS)
     args = ap.parse_args()
@@ -116,6 +118,28 @@ def main():
         extra["gf_feature_file"] = str(gf)
     if extra:
         print(f"[official {ct}] ablation={args.ablation} extra kwargs: {extra}", flush=True)
+    atac_file = gdir / "x_atac_rp_score_feature.txt"
+    if args.atac_shuffle_seed is not None:      # ATAC-value experiment (2026-11-19): rows = TFs, read by position
+        lines = atac_file.read_text().splitlines()
+        head, rows = lines[0], lines[1:]
+        def _num(x):
+            try:
+                float(x); return True
+            except ValueError:
+                return False
+        named = not _num(rows[0].split("\t")[0])
+        perm = np.random.default_rng(args.atac_shuffle_seed).permutation(len(rows))
+        if named:                               # keep each row's TF name, move the values to another TF
+            names = [r.split("\t", 1)[0] for r in rows]
+            vals = [r.split("\t", 1)[1] for r in rows]
+            rows = [f"{names[i]}\t{vals[perm[i]]}" for i in range(len(rows))]
+        else:
+            rows = [rows[perm[i]] for i in range(len(rows))]
+        work.mkdir(parents=True, exist_ok=True)
+        atac_file = work / "x_atac_rp_score_feature_shuffled.txt"
+        atac_file.write_text("\n".join([head] + rows) + "\n")
+        print(f"[official {ct}] ATAC rows shuffled across TFs (seed {args.atac_shuffle_seed}, named={named}) -> {atac_file}",
+              flush=True)
 
     for fold in folds:
         out = out_dir / f"fold{fold:02d}.json"
@@ -126,7 +150,7 @@ def main():
         wd.mkdir(parents=True, exist_ok=True)
         kw = dict(name=ct, adj_file=str(gdir / "x_graph.txt"), node_file=str(gdir / "x_node.txt"),
                   scrna_file=str(gdir / "tmp" / "scrna.csv"), comment="mevd_repro" + (f"_{args.ablation}" if args.ablation else "") + ("" if args.split_kind == "official" else f"_{args.split_kind}"),
-                  atac_feature_file=str(gdir / "x_atac_rp_score_feature.txt"),
+                  atac_feature_file=str(atac_file),
                   scrna_feature_file=str(gdir / "x_scRNA_grnboost2_feature.txt"),
                   model_cls="scMultiomeGRN", mask_rate=0.0, data_dir=str(wd / "data"),
                   train_edge_file=files["train"], val_edge_file=files["val"],
