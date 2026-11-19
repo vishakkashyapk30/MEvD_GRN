@@ -26,7 +26,9 @@ LABEL = {
     "mevd_fm_h384_hubmotif_nofm": "MeVD-GRN without Geneformer", "mevd_fm_h384_hubmotif_seq": "MeVD-GRN, sequential curriculum",
     "baseline_indegree": "In-degree", "baseline_pearson": "Pearson", "baseline_grnboost2": "GRNBoost2",
     "baseline_coverage": "All measured pairs", "lf_ggm_ridge": "Gaussian graphical model (ridge, label-free)",
-    "lf_regdiffusion": "RegDiffusion (label-free)",
+    "lf_regdiffusion": "RegDiffusion (label-free)", "lf_deepsem": "DeepSEM (label-free)",
+    "linger_rerun_full": "LINGER re-run, full data", "linger_rerun_peakshuffle": "LINGER re-run, ATAC peaks shuffled",
+    "linger_rerun_random": "LINGER re-run, ATAC fully randomised",
 }
 MODEL = {"lr": "logistic regression", "lda": "LDA", "qda": "QDA", "gnb": "Gaussian naive Bayes",
          "gmm": "Gaussian mixture classifier", "rbf": "Gaussian-kernel logistic regression", "mlp": "MLP (32 units)",

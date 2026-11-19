@@ -217,7 +217,7 @@ def main():
     ap.add_argument("--config", default=str(REPO / "configs/bear/datasets.yaml"))
     ap.add_argument("--gts", nargs="*", default=["ChIP", "KO", "Union", "Intersection"])
     ap.add_argument("--cov_seed", type=int, default=42)
-    ap.add_argument("--include", default=r"^(baseline_|mevd_|simple_|lf_|nn_)",
+    ap.add_argument("--include", default=r"^(baseline_|mevd_|simple_|lf_|nn_|linger_)",
                     help="regex on results/<ds>/<dir> names to score besides the released methods")
     ap.add_argument("--out", default=None, help="CSV (default results/matched/<datasets>.csv)")
     args = ap.parse_args()
