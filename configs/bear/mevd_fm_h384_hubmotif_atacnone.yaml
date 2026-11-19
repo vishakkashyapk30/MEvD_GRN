@@ -1,0 +1,4 @@
+# ATAC-value experiment (2026-11-19): headline M3 with every ATAC route removed (features, openness, peak-derived motif pair features; TF-candidate graph from co-expression only).
+inherit: mevd_fm_h384_hubmotif.yaml
+bear:
+  atac_mode: none

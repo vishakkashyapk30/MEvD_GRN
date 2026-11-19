@@ -1,0 +1,4 @@
+# ATAC-value experiment (2026-11-19): headline M3 with every ATAC route shuffled across genes (one fixed permutation per seed); same values, broken gene mapping.
+inherit: mevd_fm_h384_hubmotif.yaml
+bear:
+  atac_mode: shuffle

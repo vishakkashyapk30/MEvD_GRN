@@ -39,6 +39,7 @@ sys.path.insert(0, str(REPO))
 from src.benchmarks import bear_protocol as bp             # noqa: E402
 from src.benchmarks.bear_model import BearMEvDGRN, hub_vector  # noqa: E402
 from src.data.dataset import load_celltype_data            # noqa: E402
+from src.data import graph_builder as gb                    # noqa: E402
 from src.models.mevd_grn import MEvDGRN                    # noqa: E402
 from src.training.curriculum import stages_from_config     # noqa: E402
 from src.training.trainer import MEvDTrainer               # noqa: E402
@@ -138,6 +139,20 @@ def main():
         pair_feats = z["F"].astype(np.float32)
         if bcfg.get("zero_motif"):          # no-ATAC ablation: the pair features are peak-derived
             pair_feats = np.zeros_like(pair_feats)
+    # ATAC-value experiment (2026-11-19). atac_mode:
+    #   full    : unchanged (default)
+    #   none    : every ATAC route removed: ATAC features, openness, peak-derived motif pair features, and the
+    #             TF-candidate graph rebuilt from co-expression only (no accessibility filter)
+    #   shuffle : every ATAC route takes another gene's values (one fixed gene permutation per seed); the
+    #             TF-candidate graph is rebuilt with the shuffled openness. Same distribution, broken gene mapping.
+    atac_mode = bcfg.get("atac_mode", "full")
+    assert atac_mode in ("full", "none", "shuffle"), atac_mode
+    atac_perm = np.random.default_rng(10_000 + args.seed).permutation(n_genes) if atac_mode == "shuffle" else None
+    if pair_feats is not None and atac_mode == "none":
+        pair_feats = np.zeros_like(pair_feats)
+    elif pair_feats is not None and atac_mode == "shuffle":
+        pair_feats = np.ascontiguousarray(pair_feats[:, atac_perm])
+    cand_cache = {}
     outdeg = dict(zip(*np.unique(lab_union[0], return_counts=True)))
     outdeg = {int(k): int(v) for k, v in outdeg.items()}
 
@@ -207,6 +222,20 @@ def main():
         if bcfg.get("zero_atac"):
             data.atac_features = torch.zeros_like(data.atac_features)
             data.openness = torch.zeros_like(data.openness)
+        if atac_mode != "full":
+            if atac_mode == "none":
+                data.atac_features = torch.zeros_like(data.atac_features)
+                data.openness = torch.zeros_like(data.openness)
+            else:
+                pt = torch.from_numpy(atac_perm)
+                data.atac_features, data.openness = data.atac_features[pt], data.openness[pt]
+            if "tf_cand" not in cand_cache:
+                op = data.openness.numpy() if atac_mode == "shuffle" else None
+                cand_cache["tf_cand"] = gb.build_prior_graph(
+                    data.gene_index, [int(t) for t in data.tf_indices], data.atac_features.numpy(),
+                    data.rna_features.numpy(), top_k=int(cfg["data"].get("tf_candidate_topk", 500)),
+                    signatures=data.rna_signature.numpy(), openness=op, evidence=None, exclude_positives=False)
+            data.tf_candidate_edges = cand_cache["tf_cand"]
         data.evidence = {"all": T(train_pos)}
         data.negative_pool = T(pool)
         data.motif_edges = torch.zeros((2, 0), dtype=torch.long)
@@ -295,7 +324,7 @@ def main():
     meta = {"dataset": args.dataset, "variant": variant, "seed": seed,
             "model_config": str(args.model_config), "regime": regime,
             "protocol": "TF-disjoint cross-fit (s6.1)" if regime == "L1" else "compendium, all GT TFs held out (s6.2)",
-            "negatives": bcfg["negatives"], "zero_atac": bool(bcfg.get("zero_atac", False)),
+            "negatives": bcfg["negatives"], "zero_atac": bool(bcfg.get("zero_atac", False)), "atac_mode": atac_mode,
             "folds": [f.tolist() for f in folds], "fold_tf_names": [[names[i] for i in f] for f in folds],
             "fold_log": fold_log, "n_edges": int(len(df)), "seconds": time.time() - t_all,
             "leak_status": fold_log[-1]["leak_status"] if fold_log else None,
