@@ -15,7 +15,12 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
 - **ATAC value (item 3), MeVD-GRN on BEAR-GRN, ChIP AUROC:** full 0.576,
   ATAC removed 0.577, ATAC shuffled
   0.584.
-- **Simple models (item 4) and non-GNN models (item 5):** slides 7-10.
+- **Simple models (item 4):** on BEAR-GRN ChIP a 20-parameter logistic regression on cell data reaches
+  0.561 caliper-matched AUROC (MeVD-GRN
+  0.524); on scMultiomeGRN the beta-model matches MeVD-GRN on the
+  official test. Slides 7-9.
+- **Label-free, non-GNN models (item 5):** DeepSEM, RegDiffusion and a ridge Gaussian graphical model score at the
+  level of the released methods. Slide 10.
 
 ## 2. Sources for the degree-controlled tests (item 1)
 
@@ -275,4 +280,52 @@ Knockout ground truth:
 
 ## 11. Conclusions and next steps
 
-- To be written from the final numbers.
+**Hub-controlled evaluation (items 1-2)**
+- Every hub-controlled test has a published counterpart: covariate-adjusted AUROC (Janes & Pepe 2009), matched
+  estimation of it (caliper; Austin 2011), degree-corrected negatives (Aiyappa et al., ICML 2025). Only the 0.1 caliper
+  width on log-degree is a new choice.
+- BEAR-GRN ChIP: no released method exceeds 0.510 caliper-matched AUROC (CellOracle). MeVD-GRN reaches
+  0.524 caliper-matched and 0.537 covariate-adjusted,
+  level with the in-degree rule (0.525,
+  0.532).
+- BEAR-GRN KO: the in-degree rule counted over knockout labels alone scores
+  0.693 caliper-matched, above every method. With that
+  in-degree as the covariate, MeVD-GRN falls to 0.501; the degree-corrected test
+  gives the same picture (0.510).
+
+**Simple models (item 4)**
+- BEAR-GRN ChIP: logistic regression on 19 cell-data features (20 parameters) reaches
+  0.561 caliper-matched and
+  0.562 covariate-adjusted, above MeVD-GRN. Likely reason (untested):
+  training negatives drawn from the same TF as each link force a within-TF ranking, which is what the matched tests
+  measure.
+- BEAR-GRN KO, knockout-label covariate: knockout-trained cell-data LDA keeps
+  0.539 caliper-matched, the largest signal left
+  beyond hubness on KO (Pearson 0.516).
+- scMultiomeGRN: the beta-model (one parameter per TF) matches MeVD-GRN on the official test
+  (0.934 vs 0.935 AUPR); a 4-dimensional latent-space model gives the best
+  caliper-matched AUROC (0.566 vs 0.560). On pairs
+  with one unseen TF every network model scores 0.772-0.779
+  vs MeVD-GRN 0.753.
+
+**ATAC (item 3)**
+- MeVD-GRN gains nothing from ATAC on either benchmark: BEAR-GRN ChIP caliper-matched
+  0.524 full, 0.522 removed,
+  0.522 shuffled; scMultiomeGRN AUPR 0.935 /
+  0.935 / 0.935.
+- scMultiomeGRN (official code) is unchanged with its ATAC features shuffled (0.919 vs
+  0.918 AUPR), although that benchmark's ground truth is built from
+  ATAC peaks.
+- LINGER re-run on Macrophage_S1 (full / peaks shuffled / fully randomised): slide 5.
+
+**Label-free, non-GNN models (item 5)**
+- DeepSEM, RegDiffusion and the ridge Gaussian graphical model score
+  0.505-0.511
+  caliper-matched on ChIP, the level of the released BEAR-GRN methods.
+
+**Next steps (for discussion)**
+- MeVD-GRN with negatives drawn from the same TF as each link (the training choice behind the simple models'
+  advantage), scored on the hub-controlled tests.
+- Report BEAR-GRN with the covariate-adjusted and degree-corrected AUROC next to the standard metrics, and KO with the
+  knockout-label covariate.
+- Decide the role of ATAC in MeVD-GRN: no test shows a contribution.

@@ -144,7 +144,12 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
 - **ATAC value (item 3), MeVD-GRN on BEAR-GRN, ChIP AUROC:** full {f3(bget('ChIP', 'mevd_fm_h384_hubmotif', 'AUROC_inspace'))},
   ATAC removed {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_atacnone', 'AUROC_inspace'))}, ATAC shuffled
   {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_atacshuffle', 'AUROC_inspace'))}.
-- **Simple models (item 4) and non-GNN models (item 5):** slides 7-10.""")
+- **Simple models (item 4):** on BEAR-GRN ChIP a 20-parameter logistic regression on cell data reaches
+  {f3(bget('ChIP', 'simple_lr_data', 'AUROC_caliper'))} caliper-matched AUROC (MeVD-GRN
+  {f3(bget('ChIP', 'mevd_fm_h384_hubmotif', 'AUROC_caliper'))}); on scMultiomeGRN the beta-model matches MeVD-GRN on the
+  official test. Slides 7-9.
+- **Label-free, non-GNN models (item 5):** DeepSEM, RegDiffusion and a ridge Gaussian graphical model score at the
+  level of the released methods. Slide 10.""")
 
     S.append("""## 2. Sources for the degree-controlled tests (item 1)
 
@@ -254,9 +259,61 @@ Knockout ground truth:
 
 {btable('KO', LABELFREE)}""")
 
-    S.append("""## 11. Conclusions and next steps
+    M = "mevd_fm_h384_hubmotif"
+    o = lambda m, k: f3(d14.v(d14.OFF, m, k))
+    t = lambda m, k: f3(d14.v(d14.TF, m, k))
+    rel_c = best_of("ChIP", RELEASED, "AUROC_caliper")
+    S.append(f"""## 11. Conclusions and next steps
 
-- To be written from the final numbers.""")
+**Hub-controlled evaluation (items 1-2)**
+- Every hub-controlled test has a published counterpart: covariate-adjusted AUROC (Janes & Pepe 2009), matched
+  estimation of it (caliper; Austin 2011), degree-corrected negatives (Aiyappa et al., ICML 2025). Only the 0.1 caliper
+  width on log-degree is a new choice.
+- BEAR-GRN ChIP: no released method exceeds {f3(rel_c[0])} caliper-matched AUROC ({rel_c[1]}). MeVD-GRN reaches
+  {f3(bget('ChIP', M, 'AUROC_caliper'))} caliper-matched and {f3(bget('ChIP', M, 'AUROC_adjusted'))} covariate-adjusted,
+  level with the in-degree rule ({f3(bget('ChIP', 'baseline_indegree', 'AUROC_caliper'))},
+  {f3(bget('ChIP', 'baseline_indegree', 'AUROC_adjusted'))}).
+- BEAR-GRN KO: the in-degree rule counted over knockout labels alone scores
+  {f3(bget('KO', 'simple_deg_all_perturbation', 'AUROC_caliper'))} caliper-matched, above every method. With that
+  in-degree as the covariate, MeVD-GRN falls to {f3(bget('KO', M, 'AUROC_caliper', BK))}; the degree-corrected test
+  gives the same picture ({f3(bget('KO', M, 'AUROC_aiyappa'))}).
+
+**Simple models (item 4)**
+- BEAR-GRN ChIP: logistic regression on 19 cell-data features (20 parameters) reaches
+  {f3(bget('ChIP', 'simple_lr_data', 'AUROC_caliper'))} caliper-matched and
+  {f3(bget('ChIP', 'simple_lr_data', 'AUROC_adjusted'))} covariate-adjusted, above MeVD-GRN. Likely reason (untested):
+  training negatives drawn from the same TF as each link force a within-TF ranking, which is what the matched tests
+  measure.
+- BEAR-GRN KO, knockout-label covariate: knockout-trained cell-data LDA keeps
+  {f3(bget('KO', 'simple_lda_data_perturbation', 'AUROC_caliper', BK))} caliper-matched, the largest signal left
+  beyond hubness on KO (Pearson {f3(bget('KO', 'baseline_pearson', 'AUROC_caliper', BK))}).
+- scMultiomeGRN: the beta-model (one parameter per TF) matches MeVD-GRN on the official test
+  ({o('ladder_beta', 'test_aupr')} vs {o(d14.MEVD, 'test_aupr')} AUPR); a 4-dimensional latent-space model gives the best
+  caliper-matched AUROC ({o('ladder_lsm4', 'test_degcaliper_auroc')} vs {o(d14.MEVD, 'test_degcaliper_auroc')}). On pairs
+  with one unseen TF every network model scores {t('ladder_lsm2', 'test_c2_auroc')}-{t('ladder_beta', 'test_c2_auroc')}
+  vs MeVD-GRN {t(d14.MEVD_TF, 'test_c2_auroc')}.
+
+**ATAC (item 3)**
+- MeVD-GRN gains nothing from ATAC on either benchmark: BEAR-GRN ChIP caliper-matched
+  {f3(bget('ChIP', M, 'AUROC_caliper'))} full, {f3(bget('ChIP', M + '_atacnone', 'AUROC_caliper'))} removed,
+  {f3(bget('ChIP', M + '_atacshuffle', 'AUROC_caliper'))} shuffled; scMultiomeGRN AUPR {o(d14.MEVD, 'test_aupr')} /
+  {o('mevd_fm_h384_obs_atacnone', 'test_aupr')} / {o('mevd_fm_h384_obs_atacshuffle', 'test_aupr')}.
+- scMultiomeGRN (official code) is unchanged with its ATAC features shuffled ({o(d14.SMG, 'test_aupr')} vs
+  {o('official_scmultiomegrn_atac_shuffle', 'test_aupr')} AUPR), although that benchmark's ground truth is built from
+  ATAC peaks.
+- LINGER re-run on Macrophage_S1 (full / peaks shuffled / fully randomised): slide 5.
+
+**Label-free, non-GNN models (item 5)**
+- DeepSEM, RegDiffusion and the ridge Gaussian graphical model score
+  {f3(bget('ChIP', 'lf_ggm_ridge', 'AUROC_caliper'))}-{f3(bget('ChIP', 'lf_deepsem', 'AUROC_caliper'))}
+  caliper-matched on ChIP, the level of the released BEAR-GRN methods.
+
+**Next steps (for discussion)**
+- MeVD-GRN with negatives drawn from the same TF as each link (the training choice behind the simple models'
+  advantage), scored on the hub-controlled tests.
+- Report BEAR-GRN with the covariate-adjusted and degree-corrected AUROC next to the standard metrics, and KO with the
+  knockout-label covariate.
+- Decide the role of ATAC in MeVD-GRN: no test shows a contribution.""")
     OUT.write_text("\n\n".join(S) + "\n")
     print(f"wrote {OUT} ({len(S)} sections)")
 
