@@ -190,20 +190,20 @@ of the training TFs (5 datasets):
 
 | Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
 |---|---|---|---|---|---|---|---|
-| In-degree rule, knockout labels only (= covariate) | – | pending | pending | pending | pending | pending | pending |
-| In-degree, all labels | – | pending | pending | pending | pending | pending | pending |
-| Pearson | – | pending | pending | pending | pending | pending | pending |
-| MeVD-GRN | – | pending | pending | pending | pending | pending | pending |
-| Logistic regression, cell data only, all labels | – | pending | pending | pending | pending | pending | pending |
-| LDA, cell data only, all labels | – | pending | pending | pending | pending | pending | pending |
-| logistic regression, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| logistic regression, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| LDA, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| LDA, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| Gaussian naive Bayes, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| Gaussian naive Bayes, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| gradient boosting, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| gradient boosting, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| In-degree rule, knockout labels only (= covariate) | 5 | 0.682 | 0.773 | 0.500 | 0.500 | 0.514 | 0.500 |
+| In-degree, all labels | 5 | 0.446 | 0.425 | **0.618** | 0.477 | 0.476 | 0.479 |
+| Pearson | 5 | 0.540 | 0.559 | 0.544 | 0.516 | 0.517 | 0.511 |
+| MeVD-GRN | 5 | 0.531 | 0.524 | *0.608* | 0.501 | 0.503 | 0.510 |
+| Logistic regression, cell data only, all labels | 5 | 0.373 | 0.328 | 0.526 | 0.469 | 0.463 | 0.465 |
+| LDA, cell data only, all labels | 5 | 0.377 | 0.334 | 0.534 | 0.471 | 0.465 | 0.467 |
+| logistic regression, cell data only, trained on knockout labels only | 5 | 0.615 | 0.676 | 0.587 | *0.538* | 0.548 | 0.539 |
+| logistic regression, all 20 features, trained on knockout labels only | 5 | **0.693** | *0.776* | 0.520 | 0.508 | 0.548 | 0.510 |
+| LDA, cell data only, trained on knockout labels only | 5 | 0.620 | 0.684 | 0.580 | **0.539** | *0.550* | **0.542** |
+| LDA, all 20 features, trained on knockout labels only | 5 | *0.684* | **0.777** | 0.518 | 0.509 | **0.552** | 0.511 |
+| Gaussian naive Bayes, cell data only, trained on knockout labels only | 5 | 0.567 | 0.592 | 0.593 | 0.527 | 0.534 | 0.530 |
+| Gaussian naive Bayes, all 20 features, trained on knockout labels only | 5 | 0.643 | 0.707 | 0.551 | 0.517 | 0.536 | 0.516 |
+| gradient boosting, cell data only, trained on knockout labels only | 5 | 0.663 | 0.736 | 0.580 | 0.530 | 0.549 | *0.541* |
+| gradient boosting, all 20 features, trained on knockout labels only | 5 | 0.679 | 0.761 | 0.537 | 0.511 | 0.534 | 0.511 |
 
 ## 9. Parameter ladder on the scMultiomeGRN benchmark (item 4)
 
