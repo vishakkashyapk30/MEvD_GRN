@@ -26,6 +26,8 @@ Models (sklearn; features standardised on the training pairs):
   rbf    kernel logistic regression with a Gaussian (RBF) kernel, Nystroem approximation (300 components)
   mlp    one hidden layer of 32 units                                      (~700 parameters)
   hgb    histogram gradient boosting (non-neural, non-graph reference)
+  deg    no fit: score = the in-degree feature itself (set "all" only); with --label_sources it is the in-degree
+         counted in those label files, i.e. the hub rule matching the training labels
 Training pairs per fold: every training-TF link (subsampled to <= 60k) + 5 non-links of the SAME TF per link
 (pairs in any label or ground-truth file excluded from the negatives), so TF identity carries no label information.
 
@@ -237,6 +239,12 @@ def main():
                 sc = StandardScaler().fit(Xtr[:, cols])
                 A, B = sc.transform(Xtr[:, cols]), sc.transform(Xte[:, cols])
                 for m in args.models:
+                    if m == "deg":
+                        assert fs == "all", "deg needs the in-degree feature (--sets all)"
+                        o = out[(m, fs)]
+                        o[0].append(pairs[0]); o[1].append(pairs[1]); o[2].append(Xte[:, 0].astype(np.float32))
+                        o[3].append(np.full(pairs.shape[1], k, dtype=np.int16))
+                        continue
                     mdl = make_model(m, s)
                     if m in ("qda", "gmm", "rbf", "mlp") and len(y) > 120000:      # cap the slow fits
                         sub = rng.choice(len(y), 120000, replace=False)

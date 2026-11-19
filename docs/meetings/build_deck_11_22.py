@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-"""Build docs/meetings/presentation_19th_nov_21st_nov.md (advisor feedback of 19 Nov 2026) from compiled results:
+"""Build docs/meetings/presentation_15th_nov_22nd_nov.md (advisor feedback of 19 Nov 2026) from compiled results:
   docs/results/bear/matched.csv (+ _per_dataset.csv)        scripts/bear/27_bear_matched_table.py
   docs/results/scmgrn/final/*.json                           scripts/scmgrn/25_scmgrn_baseline_table.py
-Rows with missing results print "pending". Run: python docs/meetings/build_deck_11_21.py
+Rows with missing results print "pending". Run: python docs/meetings/build_deck_11_22.py
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import pandas as pd
 
 HERE = Path(__file__).parent
 REPO = HERE.parents[1]
-OUT = HERE / "presentation_19th_nov_21st_nov.md"
+OUT = HERE / "presentation_15th_nov_22nd_nov.md"
 _s = importlib.util.spec_from_file_location("d14", HERE / "build_deck_11_14.py")
 d14 = importlib.util.module_from_spec(_s)
 _s.loader.exec_module(d14)

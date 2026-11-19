@@ -13,8 +13,8 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
   0.524 caliper-matched,
   0.537 covariate-adjusted.
 - **ATAC value (item 3), MeVD-GRN on BEAR-GRN, ChIP AUROC:** full 0.576,
-  ATAC removed 0.589, ATAC shuffled
-  0.586.
+  ATAC removed 0.585, ATAC shuffled
+  0.580.
 - **Simple models (item 4) and non-GNN models (item 5):** slides 7-10.
 
 ## 2. Sources for the degree-controlled tests (item 1)
@@ -87,10 +87,10 @@ ChIP-seq ground truth:
 
 | Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
 |---|---|---|---|---|---|---|---|
-| MeVD-GRN, full data | 9 | 0.576 | *0.662* | 0.523 | **0.524** | *0.537* | **0.553** |
-| MeVD-GRN, ATAC removed (all four routes) | 6 | **0.589** | **0.663** | *0.524* | *0.523* | **0.541** | *0.551* |
-| MeVD-GRN, ATAC shuffled across genes | 6 | *0.586* | *0.662* | **0.525** | 0.521 | 0.533 | **0.553** |
-| LINGER, released network (BEAR-GRN) | 9 | 0.520 | 0.519 | 0.515 | 0.507 | 0.511 | 0.507 |
+| MeVD-GRN, full data | 9 | 0.576 | 0.662 | **0.523** | **0.524** | *0.537* | **0.553** |
+| MeVD-GRN, ATAC removed (all four routes) | 7 | **0.585** | **0.665** | **0.523** | *0.523* | **0.539** | *0.550* |
+| MeVD-GRN, ATAC shuffled across genes | 7 | *0.580* | *0.664* | **0.523** | 0.521 | 0.532 | *0.550* |
+| LINGER, released network (BEAR-GRN) | 9 | 0.520 | 0.519 | *0.515* | 0.507 | 0.511 | 0.507 |
 | LINGER re-run, full data | – | pending | pending | pending | pending | pending | pending |
 | LINGER re-run, ATAC peaks shuffled | – | pending | pending | pending | pending | pending | pending |
 | LINGER re-run, ATAC fully randomised | – | pending | pending | pending | pending | pending | pending |
@@ -170,15 +170,15 @@ Trained on knockout labels only:
 
 | Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
 |---|---|---|---|---|---|---|---|
-| MeVD-GRN | 5 | **0.531** | **0.524** | **0.544** | **0.546** | **0.580** | **0.510** |
-| logistic regression, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| logistic regression, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| LDA, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| LDA, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| Gaussian naive Bayes, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| Gaussian naive Bayes, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| gradient boosting, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
-| gradient boosting, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| MeVD-GRN | 5 | 0.531 | 0.524 | 0.544 | 0.546 | 0.580 | 0.510 |
+| logistic regression, cell data only, trained on knockout labels only | 5 | 0.615 | 0.676 | 0.627 | 0.615 | 0.630 | 0.539 |
+| logistic regression, all 20 features, trained on knockout labels only | 5 | **0.693** | *0.776* | **0.692** | **0.694** | *0.710* | 0.510 |
+| LDA, cell data only, trained on knockout labels only | 5 | 0.620 | 0.684 | 0.630 | 0.618 | 0.635 | **0.542** |
+| LDA, all 20 features, trained on knockout labels only | 5 | *0.684* | **0.777** | *0.689* | *0.692* | **0.711** | 0.511 |
+| Gaussian naive Bayes, cell data only, trained on knockout labels only | 5 | 0.567 | 0.592 | 0.590 | 0.570 | 0.585 | 0.530 |
+| Gaussian naive Bayes, all 20 features, trained on knockout labels only | 5 | 0.643 | 0.707 | 0.661 | 0.656 | 0.672 | 0.516 |
+| gradient boosting, cell data only, trained on knockout labels only | 5 | 0.663 | 0.736 | 0.670 | 0.657 | 0.673 | *0.541* |
+| gradient boosting, all 20 features, trained on knockout labels only | 5 | 0.679 | 0.761 | 0.681 | 0.679 | 0.697 | 0.511 |
 
 ## 9. Parameter ladder on the scMultiomeGRN benchmark (item 4)
 

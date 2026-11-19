@@ -32,7 +32,7 @@ LABEL = {
 }
 MODEL = {"lr": "logistic regression", "lda": "LDA", "qda": "QDA", "gnb": "Gaussian naive Bayes",
          "gmm": "Gaussian mixture classifier", "rbf": "Gaussian-kernel logistic regression", "mlp": "MLP (32 units)",
-         "hgb": "gradient boosting"}
+         "hgb": "gradient boosting", "deg": "in-degree rule"}
 
 
 def label(m: str) -> str:
