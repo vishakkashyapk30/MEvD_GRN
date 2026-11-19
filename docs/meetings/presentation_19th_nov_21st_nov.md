@@ -9,13 +9,13 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
   covariate-adjusted ROC of biostatistics (Janes & Pepe, Biometrika 2009) with degree as the covariate. No
   link-prediction paper uses a caliper on degree; the statistical method is established.
 - **BEAR-GRN under degree control (item 2).** On ChIP, the best caliper-matched AUROC of any method is
-  0.531 (MeVD-GRN); the best covariate-adjusted AUROC is 0.557 (MeVD-GRN). MeVD-GRN:
-  0.531 caliper-matched,
-  0.557 covariate-adjusted.
-- **ATAC value (item 3), MeVD-GRN on BEAR-GRN, ChIP AUROC:** full 0.600,
-  ATAC removed pending, ATAC shuffled
-  pending.
-- **Simple models (item 4) and non-GNN models (item 5):** slides 7-9.
+  0.561 (logistic regression, cell data only (20 parameters)); the best covariate-adjusted AUROC is 0.568 (logistic regression, all 20 features (21 parameters)). MeVD-GRN:
+  0.524 caliper-matched,
+  0.537 covariate-adjusted.
+- **ATAC value (item 3), MeVD-GRN on BEAR-GRN, ChIP AUROC:** full 0.576,
+  ATAC removed 0.589, ATAC shuffled
+  0.586.
+- **Simple models (item 4) and non-GNN models (item 5):** slides 7-10.
 
 ## 2. Sources for the degree-controlled tests (item 1)
 
@@ -41,39 +41,39 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
 
 | Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
 |---|---|---|---|---|---|---|---|
-| LINGER | 3 | 0.507 | pending | 0.532 | 0.514 | 0.517 | 0.544 |
-| TRIPOD | 3 | 0.563 | pending | 0.519 | *0.517* | 0.520 | 0.559 |
-| CellOracle | 3 | 0.515 | pending | 0.512 | 0.513 | 0.513 | 0.509 |
-| SCENIC+ | 3 | 0.503 | pending | 0.504 | 0.504 | 0.503 | 0.504 |
-| FigR | 3 | 0.498 | pending | 0.498 | 0.504 | 0.504 | 0.511 |
-| GRaNIE | 3 | 0.500 | pending | 0.502 | 0.502 | 0.502 | 0.501 |
-| Pando-GLM | 3 | 0.500 | pending | 0.506 | 0.502 | 0.503 | 0.503 |
-| Pando-XGB | 3 | 0.501 | pending | 0.503 | 0.502 | 0.502 | 0.504 |
-| In-degree (training TFs' links) | 2 | **0.609** | pending | 0.517 | 0.511 | *0.527* | *0.562* |
-| Pearson | 2 | 0.520 | pending | 0.521 | 0.507 | 0.507 | 0.513 |
-| GRNBoost2 | 2 | 0.563 | pending | 0.506 | 0.504 | 0.510 | 0.552 |
-| All measured pairs | 2 | 0.500 | pending | 0.500 | 0.500 | 0.500 | 0.500 |
-| MeVD-GRN | 2 | *0.600* | pending | *0.540* | **0.531** | **0.557** | **0.570** |
-| MeVD-GRN, L2 (no cell-type labels) | 2 | 0.458 | pending | **0.553** | 0.496 | 0.498 | 0.486 |
+| LINGER | 9 | 0.520 | 0.519 | 0.515 | 0.507 | 0.511 | 0.507 |
+| TRIPOD | 9 | 0.532 | 0.508 | 0.509 | 0.509 | 0.510 | 0.507 |
+| CellOracle | 9 | 0.519 | 0.512 | 0.510 | 0.510 | 0.510 | 0.509 |
+| SCENIC+ | 9 | 0.501 | 0.500 | 0.501 | 0.501 | 0.501 | 0.502 |
+| FigR | 9 | 0.503 | 0.504 | 0.500 | 0.502 | 0.502 | 0.500 |
+| GRaNIE | 9 | 0.510 | 0.506 | 0.506 | 0.504 | 0.505 | 0.503 |
+| Pando-GLM | 9 | 0.502 | 0.501 | 0.503 | 0.501 | 0.502 | 0.502 |
+| Pando-XGB | 9 | 0.502 | 0.501 | 0.502 | 0.501 | 0.501 | 0.502 |
+| In-degree (training TFs' links) | 9 | **0.610** | **0.717** | *0.516* | **0.525** | *0.532* | **0.580** |
+| Pearson | 9 | 0.505 | 0.505 | 0.509 | 0.503 | 0.503 | 0.505 |
+| GRNBoost2 | 9 | 0.508 | 0.501 | 0.504 | 0.504 | 0.505 | 0.513 |
+| All measured pairs | 9 | 0.500 | 0.500 | 0.500 | 0.500 | 0.500 | 0.500 |
+| MeVD-GRN | 9 | *0.576* | *0.662* | **0.523** | *0.524* | **0.537** | *0.553* |
+| MeVD-GRN, L2 (no cell-type labels) | 9 | 0.508 | 0.516 | 0.512 | 0.497 | 0.497 | 0.492 |
 
 ## 4. BEAR-GRN under degree control: knockout ground truth (item 2)
 
 | Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
 |---|---|---|---|---|---|---|---|
-| LINGER | – | pending | pending | pending | pending | pending | pending |
-| TRIPOD | – | pending | pending | pending | pending | pending | pending |
-| CellOracle | – | pending | pending | pending | pending | pending | pending |
-| SCENIC+ | – | pending | pending | pending | pending | pending | pending |
-| FigR | – | pending | pending | pending | pending | pending | pending |
-| GRaNIE | – | pending | pending | pending | pending | pending | pending |
-| Pando-GLM | – | pending | pending | pending | pending | pending | pending |
-| Pando-XGB | – | pending | pending | pending | pending | pending | pending |
-| In-degree (training TFs' links) | – | pending | pending | pending | pending | pending | pending |
-| Pearson | – | pending | pending | pending | pending | pending | pending |
-| GRNBoost2 | – | pending | pending | pending | pending | pending | pending |
-| All measured pairs | – | pending | pending | pending | pending | pending | pending |
-| MeVD-GRN | – | pending | pending | pending | pending | pending | pending |
-| MeVD-GRN, L2 (no cell-type labels) | – | pending | pending | pending | pending | pending | pending |
+| LINGER | 5 | 0.514 | 0.459 | 0.512 | 0.489 | 0.483 | *0.522* |
+| TRIPOD | 5 | **0.598** | 0.515 | 0.527 | 0.520 | 0.529 | **0.545** |
+| CellOracle | 5 | 0.476 | 0.503 | 0.506 | 0.504 | 0.505 | 0.496 |
+| SCENIC+ | 5 | 0.501 | 0.502 | 0.502 | 0.502 | 0.502 | 0.500 |
+| FigR | 5 | 0.532 | 0.522 | 0.516 | 0.518 | 0.518 | 0.512 |
+| GRaNIE | 5 | 0.490 | 0.490 | 0.498 | 0.498 | 0.498 | 0.502 |
+| Pando-GLM | 5 | 0.511 | 0.512 | 0.512 | 0.510 | 0.510 | 0.505 |
+| Pando-XGB | 5 | 0.510 | 0.511 | 0.510 | 0.509 | 0.510 | 0.505 |
+| In-degree (training TFs' links) | 5 | 0.446 | 0.425 | 0.498 | 0.496 | 0.501 | 0.479 |
+| Pearson | 5 | *0.540* | **0.559** | **0.558** | *0.545* | *0.547* | 0.511 |
+| GRNBoost2 | 5 | 0.501 | 0.512 | 0.511 | 0.511 | 0.510 | 0.501 |
+| All measured pairs | 5 | 0.500 | 0.500 | 0.500 | 0.500 | 0.500 | 0.500 |
+| MeVD-GRN | 5 | 0.531 | 0.524 | *0.544* | **0.546** | **0.580** | 0.510 |
+| MeVD-GRN, L2 (no cell-type labels) | 5 | 0.537 | *0.535* | 0.525 | 0.525 | 0.528 | 0.518 |
 
 ## 5. How much ATAC adds on BEAR-GRN (item 3)
 
@@ -87,10 +87,10 @@ ChIP-seq ground truth:
 
 | Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
 |---|---|---|---|---|---|---|---|
-| MeVD-GRN, full data | 2 | **0.600** | pending | **0.540** | **0.531** | **0.557** | **0.570** |
-| MeVD-GRN, ATAC removed (all four routes) | – | pending | pending | pending | pending | pending | pending |
-| MeVD-GRN, ATAC shuffled across genes | – | pending | pending | pending | pending | pending | pending |
-| LINGER, released network (BEAR-GRN) | 3 | *0.507* | pending | *0.532* | *0.514* | *0.517* | *0.544* |
+| MeVD-GRN, full data | 9 | 0.576 | *0.662* | 0.523 | **0.524** | *0.537* | **0.553** |
+| MeVD-GRN, ATAC removed (all four routes) | 6 | **0.589** | **0.663** | *0.524* | *0.523* | **0.541** | *0.551* |
+| MeVD-GRN, ATAC shuffled across genes | 6 | *0.586* | *0.662* | **0.525** | 0.521 | 0.533 | **0.553** |
+| LINGER, released network (BEAR-GRN) | 9 | 0.520 | 0.519 | 0.515 | 0.507 | 0.511 | 0.507 |
 | LINGER re-run, full data | – | pending | pending | pending | pending | pending | pending |
 | LINGER re-run, ATAC peaks shuffled | – | pending | pending | pending | pending | pending | pending |
 | LINGER re-run, ATAC fully randomised | – | pending | pending | pending | pending | pending | pending |
@@ -119,26 +119,68 @@ ChIP-seq ground truth:
 
 | Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
 |---|---|---|---|---|---|---|---|
-| In-degree | 2 | **0.609** | pending | 0.517 | 0.511 | 0.527 | *0.562* |
-| MeVD-GRN | 2 | *0.600* | pending | **0.540** | **0.531** | **0.557** | **0.570** |
-| logistic regression, all 20 features (21 parameters) | 2 | 0.411 | pending | 0.507 | 0.508 | 0.519 | 0.384 |
-| logistic regression, cell data only (20 parameters) | 2 | 0.388 | pending | 0.514 | 0.513 | 0.532 | 0.377 |
-| LDA, all 20 features (250 parameters) | 2 | 0.436 | pending | 0.498 | 0.502 | 0.514 | 0.407 |
-| LDA, cell data only (228 parameters) | 2 | 0.416 | pending | 0.520 | 0.514 | 0.533 | 0.398 |
-| QDA, all 20 features (460 parameters) | 2 | 0.428 | pending | 0.506 | 0.510 | 0.510 | 0.411 |
-| QDA, cell data only (418 parameters) | 2 | 0.412 | pending | 0.509 | 0.512 | 0.515 | 0.406 |
-| Gaussian naive Bayes, all 20 features (80 parameters) | 2 | 0.422 | pending | 0.521 | 0.519 | 0.528 | 0.435 |
-| Gaussian naive Bayes, cell data only (76 parameters) | 2 | 0.401 | pending | *0.522* | *0.520* | 0.530 | 0.432 |
-| Gaussian mixture classifier, all 20 features (1848 parameters) | 2 | 0.346 | pending | 0.477 | 0.480 | 0.484 | 0.443 |
-| Gaussian mixture classifier, cell data only (1680 parameters) | 2 | 0.442 | pending | 0.488 | 0.497 | 0.501 | 0.500 |
-| Gaussian-kernel logistic regression, all 20 features (301 parameters) | 2 | 0.468 | pending | 0.503 | 0.498 | 0.495 | 0.422 |
-| Gaussian-kernel logistic regression, cell data only (301 parameters) | 2 | 0.469 | pending | 0.514 | 0.504 | 0.504 | 0.416 |
-| MLP (32 units), all 20 features (705 parameters) | 2 | 0.503 | pending | 0.512 | 0.507 | 0.525 | 0.512 |
-| MLP (32 units), cell data only (673 parameters) | 2 | 0.505 | pending | 0.505 | 0.508 | 0.531 | 0.502 |
-| gradient boosting, all 20 features (200 trees) | 2 | 0.550 | pending | 0.507 | 0.507 | *0.535* | 0.547 |
-| gradient boosting, cell data only (200 trees) | 2 | 0.545 | pending | 0.501 | 0.506 | 0.529 | 0.548 |
+| In-degree | 9 | **0.610** | **0.717** | 0.516 | 0.525 | 0.532 | *0.580* |
+| MeVD-GRN | 9 | 0.576 | 0.662 | 0.523 | 0.524 | 0.537 | 0.553 |
+| logistic regression, all 20 features (21 parameters) | 9 | 0.576 | **0.717** | 0.526 | 0.534 | **0.568** | 0.576 |
+| logistic regression, cell data only (20 parameters) | 9 | 0.523 | 0.584 | **0.579** | **0.561** | 0.562 | 0.549 |
+| LDA, all 20 features (250 parameters) | 9 | 0.559 | 0.683 | 0.545 | 0.542 | 0.555 | 0.564 |
+| LDA, cell data only (228 parameters) | 9 | 0.523 | 0.585 | *0.574* | 0.557 | 0.558 | 0.548 |
+| QDA, all 20 features (460 parameters) | 9 | 0.557 | 0.631 | 0.560 | 0.548 | 0.557 | 0.568 |
+| QDA, cell data only (418 parameters) | 9 | 0.528 | 0.569 | 0.568 | 0.551 | 0.555 | 0.557 |
+| Gaussian naive Bayes, all 20 features (80 parameters) | 9 | 0.552 | 0.614 | 0.562 | 0.541 | 0.550 | 0.558 |
+| Gaussian naive Bayes, cell data only (76 parameters) | 9 | 0.524 | 0.562 | 0.567 | 0.546 | 0.548 | 0.551 |
+| Gaussian mixture classifier, all 20 features (1848 parameters) | 9 | 0.470 | 0.482 | 0.509 | 0.511 | 0.517 | 0.496 |
+| Gaussian mixture classifier, cell data only (1680 parameters) | 9 | 0.498 | 0.509 | 0.504 | 0.506 | 0.509 | 0.500 |
+| Gaussian-kernel logistic regression, all 20 features (301 parameters) | 9 | 0.561 | 0.685 | 0.532 | 0.537 | 0.547 | 0.575 |
+| Gaussian-kernel logistic regression, cell data only (301 parameters) | 9 | 0.518 | 0.580 | 0.572 | *0.560* | 0.559 | 0.553 |
+| MLP (32 units), all 20 features (705 parameters) | 9 | 0.575 | 0.700 | 0.528 | 0.534 | 0.553 | 0.574 |
+| MLP (32 units), cell data only (673 parameters) | 9 | 0.527 | 0.582 | 0.569 | 0.556 | 0.555 | 0.542 |
+| gradient boosting, all 20 features (200 trees) | 9 | *0.581* | *0.701* | 0.528 | 0.531 | 0.559 | **0.582** |
+| gradient boosting, cell data only (200 trees) | 9 | 0.543 | 0.637 | 0.568 | 0.551 | *0.563* | 0.559 |
 
-## 8. Parameter ladder on the scMultiomeGRN benchmark (item 4)
+## 8. Simple and Gaussian models on BEAR-GRN, knockout ground truth (item 4)
+
+- Training labels as for MeVD-GRN: binding (ChIP-derived) and knockout labels pooled. Binding labels dominate, and
+  the models then rank knockout targets below chance within a TF. The second block trains the same models on the
+  knockout labels only (6 datasets with knockout labels; same folds).
+
+| Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
+|---|---|---|---|---|---|---|---|
+| In-degree | 5 | 0.446 | 0.425 | 0.498 | 0.496 | 0.501 | 0.479 |
+| Pearson | 5 | **0.540** | **0.559** | **0.558** | *0.545* | *0.547* | *0.511* |
+| MeVD-GRN | 5 | 0.531 | 0.524 | *0.544* | **0.546** | **0.580** | 0.510 |
+| logistic regression, all 20 features (21 parameters) | 5 | 0.419 | 0.406 | 0.489 | 0.481 | 0.428 | 0.473 |
+| logistic regression, cell data only (20 parameters) | 5 | 0.373 | 0.328 | 0.428 | 0.405 | 0.389 | 0.465 |
+| LDA, all 20 features (250 parameters) | 5 | 0.386 | 0.366 | 0.448 | 0.438 | 0.406 | 0.466 |
+| LDA, cell data only (228 parameters) | 5 | 0.377 | 0.334 | 0.438 | 0.411 | 0.396 | 0.467 |
+| QDA, all 20 features (460 parameters) | 5 | 0.383 | 0.373 | 0.467 | 0.454 | 0.443 | 0.467 |
+| QDA, cell data only (418 parameters) | 5 | 0.377 | 0.368 | 0.462 | 0.442 | 0.431 | 0.466 |
+| Gaussian naive Bayes, all 20 features (80 parameters) | 5 | 0.387 | 0.377 | 0.486 | 0.464 | 0.460 | 0.465 |
+| Gaussian naive Bayes, cell data only (76 parameters) | 5 | 0.381 | 0.385 | 0.483 | 0.458 | 0.450 | 0.463 |
+| Gaussian mixture classifier, all 20 features (1848 parameters) | 5 | 0.525 | 0.527 | 0.513 | 0.508 | 0.503 | *0.511* |
+| Gaussian mixture classifier, cell data only (1680 parameters) | 5 | *0.537* | *0.537* | 0.519 | 0.514 | 0.521 | **0.514** |
+| Gaussian-kernel logistic regression, all 20 features (301 parameters) | 5 | 0.416 | 0.420 | 0.507 | 0.492 | 0.497 | 0.475 |
+| Gaussian-kernel logistic regression, cell data only (301 parameters) | 5 | 0.391 | 0.375 | 0.473 | 0.443 | 0.436 | 0.474 |
+| MLP (32 units), all 20 features (705 parameters) | 5 | 0.433 | 0.437 | 0.518 | 0.504 | 0.518 | 0.480 |
+| MLP (32 units), cell data only (673 parameters) | 5 | 0.387 | 0.368 | 0.465 | 0.440 | 0.430 | 0.475 |
+| gradient boosting, all 20 features (200 trees) | 5 | 0.473 | 0.449 | 0.518 | 0.509 | 0.520 | 0.497 |
+| gradient boosting, cell data only (200 trees) | 5 | 0.433 | 0.398 | 0.499 | 0.468 | 0.456 | 0.489 |
+
+Trained on knockout labels only:
+
+| Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
+|---|---|---|---|---|---|---|---|
+| MeVD-GRN | 5 | **0.531** | **0.524** | **0.544** | **0.546** | **0.580** | **0.510** |
+| logistic regression, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| logistic regression, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| LDA, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| LDA, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| Gaussian naive Bayes, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| Gaussian naive Bayes, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| gradient boosting, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| gradient boosting, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+
+## 9. Parameter ladder on the scMultiomeGRN benchmark (item 4)
 
 - Network models fitted on the training links only: the beta-model (one parameter per TF; Chatterjee, Diaconis & Sly
   2011), the latent-space model (Hoff, Raftery & Handcock 2002) and its degree-corrected form (Krivitsky et al. 2009).
@@ -178,20 +220,34 @@ Held-out-TF split:
 | Gaussian naive Bayes on cell-data pair features | 0.558 | 0.493 | 0.481 |
 | Gaussian mixture classifier on cell-data pair features | 0.562 | **0.545** | 0.493 |
 
-## 9. Label-free, non-GNN models on BEAR-GRN, ChIP (item 5)
+## 10. Label-free, non-GNN models on BEAR-GRN (item 5)
 
 - No labels at all, one model per dataset scores every TF, as the released BEAR-GRN methods do.
 
+ChIP-seq ground truth:
+
 | Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
 |---|---|---|---|---|---|---|---|
-| Gaussian graphical model (ridge neighbourhood regression) | 3 | 0.511 | pending | 0.525 | *0.512* | *0.513* | 0.508 |
-| RegDiffusion (diffusion model with a learned gene x gene adjacency) | 3 | 0.504 | pending | **0.537** | 0.503 | 0.504 | 0.503 |
-| DeepSEM (sparse structural-equation VAE) | – | pending | pending | pending | pending | pending | pending |
-| Pearson | 2 | *0.520* | pending | 0.521 | 0.507 | 0.507 | 0.513 |
-| GRNBoost2 | 2 | **0.563** | pending | 0.506 | 0.504 | 0.510 | **0.552** |
-| SCENIC+ (released) | 3 | 0.503 | pending | 0.504 | 0.504 | 0.503 | 0.504 |
-| LINGER (released) | 3 | 0.507 | pending | *0.532* | **0.514** | **0.517** | *0.544* |
+| Gaussian graphical model (ridge neighbourhood regression) | 9 | 0.502 | 0.501 | 0.506 | 0.505 | *0.505* | 0.502 |
+| RegDiffusion (diffusion model with a learned gene x gene adjacency) | 9 | 0.505 | 0.510 | *0.520* | **0.511** | **0.511** | *0.507* |
+| DeepSEM (sparse structural-equation VAE) | 9 | *0.514* | **0.526** | **0.531** | **0.511** | **0.511** | **0.513** |
+| Pearson | 9 | 0.505 | 0.505 | 0.509 | 0.503 | 0.503 | 0.505 |
+| GRNBoost2 | 9 | 0.508 | 0.501 | 0.504 | 0.504 | *0.505* | **0.513** |
+| SCENIC+ (released) | 9 | 0.501 | 0.500 | 0.501 | 0.501 | 0.501 | 0.502 |
+| LINGER (released) | 9 | **0.520** | *0.519* | 0.515 | *0.507* | **0.511** | *0.507* |
 
-## 10. Conclusions and next steps
+Knockout ground truth:
+
+| Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
+|---|---|---|---|---|---|---|---|
+| Gaussian graphical model (ridge neighbourhood regression) | 5 | *0.523* | *0.534* | 0.528 | *0.527* | *0.526* | 0.508 |
+| RegDiffusion (diffusion model with a learned gene x gene adjacency) | 5 | 0.489 | 0.487 | 0.502 | 0.493 | 0.493 | 0.497 |
+| DeepSEM (sparse structural-equation VAE) | 5 | 0.506 | 0.505 | *0.540* | 0.507 | 0.508 | 0.503 |
+| Pearson | 5 | **0.540** | **0.559** | **0.558** | **0.545** | **0.547** | *0.511* |
+| GRNBoost2 | 5 | 0.501 | 0.512 | 0.511 | 0.511 | 0.510 | 0.501 |
+| SCENIC+ (released) | 5 | 0.501 | 0.502 | 0.502 | 0.502 | 0.502 | 0.500 |
+| LINGER (released) | 5 | 0.514 | 0.459 | 0.512 | 0.489 | 0.483 | **0.522** |
+
+## 11. Conclusions and next steps
 
 - To be written from the final numbers.

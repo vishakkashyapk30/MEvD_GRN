@@ -89,6 +89,8 @@ for mdl in ["lr", "lda", "qda", "gnb", "gmm", "rbf", "mlp", "hgb"]:
     for fs, nf in (("all", 20), ("data", 19)):
         SIMPLE.append((f"simple_{mdl}_{fs}", f"{t27.MODEL[mdl]}, {'all 20 features' if fs == 'all' else 'cell data only'}"
                        f" ({nparams(mdl, nf)}{'' if mdl == 'hgb' else ' parameters'})"))
+SIMPLE_KO = [(f"simple_{m}_{fs}_perturbation", f"{t27.MODEL[m]}, {'all 20 features' if fs == 'all' else 'cell data only'}, "
+              "trained on knockout labels only") for m in ["lr", "lda", "gnb", "hgb"] for fs in ("data", "all")]
 LABELFREE = [("lf_ggm_ridge", "Gaussian graphical model (ridge neighbourhood regression)"),
              ("lf_regdiffusion", "RegDiffusion (diffusion model with a learned gene x gene adjacency)"),
              ("lf_deepsem", "DeepSEM (sparse structural-equation VAE)"),
@@ -138,7 +140,7 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
 - **ATAC value (item 3), MeVD-GRN on BEAR-GRN, ChIP AUROC:** full {f3(bget('ChIP', 'mevd_fm_h384_hubmotif', 'AUROC_inspace'))},
   ATAC removed {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_atacnone', 'AUROC_inspace'))}, ATAC shuffled
   {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_atacshuffle', 'AUROC_inspace'))}.
-- **Simple models (item 4) and non-GNN models (item 5):** slides 7-9.""")
+- **Simple models (item 4) and non-GNN models (item 5):** slides 7-10.""")
 
     S.append("""## 2. Sources for the degree-controlled tests (item 1)
 
@@ -197,7 +199,19 @@ ChIP-seq ground truth:
 
 {btable('ChIP', [('baseline_indegree', 'In-degree'), ('mevd_fm_h384_hubmotif', 'MeVD-GRN')] + SIMPLE)}""")
 
-    S.append(f"""## 8. Parameter ladder on the scMultiomeGRN benchmark (item 4)
+    S.append(f"""## 8. Simple and Gaussian models on BEAR-GRN, knockout ground truth (item 4)
+
+- Training labels as for MeVD-GRN: binding (ChIP-derived) and knockout labels pooled. Binding labels dominate, and
+  the models then rank knockout targets below chance within a TF. The second block trains the same models on the
+  knockout labels only (6 datasets with knockout labels; same folds).
+
+{btable('KO', [('baseline_indegree', 'In-degree'), ('baseline_pearson', 'Pearson'), ('mevd_fm_h384_hubmotif', 'MeVD-GRN')] + SIMPLE)}
+
+Trained on knockout labels only:
+
+{btable('KO', [('mevd_fm_h384_hubmotif', 'MeVD-GRN')] + SIMPLE_KO)}""")
+
+    S.append(f"""## 9. Parameter ladder on the scMultiomeGRN benchmark (item 4)
 
 - Network models fitted on the training links only: the beta-model (one parameter per TF; Chatterjee, Diaconis & Sly
   2011), the latent-space model (Hoff, Raftery & Handcock 2002) and its degree-corrected form (Krivitsky et al. 2009).
@@ -211,13 +225,19 @@ Held-out-TF split:
 
 {d14.table(d14.TF, [(d14.MEVD_TF, 'MeVD-GRN')] + LADDER, d14.TF_COLS, d14.TF_HEAD)}""")
 
-    S.append(f"""## 9. Label-free, non-GNN models on BEAR-GRN, ChIP (item 5)
+    S.append(f"""## 10. Label-free, non-GNN models on BEAR-GRN (item 5)
 
 - No labels at all, one model per dataset scores every TF, as the released BEAR-GRN methods do.
 
-{btable('ChIP', LABELFREE)}""")
+ChIP-seq ground truth:
 
-    S.append("""## 10. Conclusions and next steps
+{btable('ChIP', LABELFREE)}
+
+Knockout ground truth:
+
+{btable('KO', LABELFREE)}""")
+
+    S.append("""## 11. Conclusions and next steps
 
 - To be written from the final numbers.""")
     OUT.write_text("\n\n".join(S) + "\n")
