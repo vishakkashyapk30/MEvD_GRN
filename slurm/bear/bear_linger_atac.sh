@@ -38,6 +38,12 @@ for M in full peakshuffle random; do
     --outdir "$SCR/work_$M/" --export_dir "$SCR/out/linger_rerun_$M/seed0" --mode "$M" > "$HOME/bear_v2/logs/linger_${SLURM_JOB_ID:-local}_${DS}_$M.txt" 2>&1 &
 done
 wait
+for M in full peakshuffle random; do                 # retry alone any condition that failed in parallel (e.g. memory)
+  [ -f "$SCR/out/linger_rerun_$M/seed0/grn.tsv.gz" ] && continue
+  echo "[retry] $M sequentially"; rm -rf "$SCR/work_$M"
+  python -u src/benchmarks/bear_linger_run.py --rna "$SCR/in/$RNA" --atac "$SCR/in/$ATAC" --grndir "$GRN" \
+    --outdir "$SCR/work_$M/" --export_dir "$SCR/out/linger_rerun_$M/seed0" --mode "$M" >> "$HOME/bear_v2/logs/linger_${SLURM_JOB_ID:-local}_${DS}_$M.txt" 2>&1
+done
 for M in full peakshuffle random; do echo "== $M"; tail -5 "$HOME/bear_v2/logs/linger_${SLURM_JOB_ID:-local}_${DS}_$M.txt"; done
 mkdir -p "$HOME/bear_v2/results/$DS"
 for M in full peakshuffle random; do
