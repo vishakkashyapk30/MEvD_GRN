@@ -1,0 +1,10 @@
+# ATAC-value experiment (2026-11-19): how much do ATAC inputs add on the scMultiomeGRN benchmark?
+# Full data = existing headline runs (mevd_fm_h384_obs_dm, official_scmultiomegrn_full); ATAC removed for scMultiomeGRN =
+# existing scrna_only ablation. New: official scMultiomeGRN with ATAC rows shuffled across TFs (slowest, first), then
+# MeVD-GRN with every ATAC input removed / shuffled across genes (scripts/scmgrn/17 --atac_mode).
+DS=lung UNIT_TAG=atacshuffle KINDS=offabl OFFABL_TAGS="atac_shuffle" OFFABL_SEEDS="666"
+DS=hema UNIT_TAG=atacshuffle KINDS=offabl OFFABL_TAGS="atac_shuffle" OFFABL_SEEDS="666"
+DS=lung UNIT_TAG=atacshuffle KINDS=mevd SEEDS="42 43 44" EXTRA_ARGS="--save_scores --atac_mode shuffle --variant_suffix _atacshuffle" VARIANTS="mevd_fm_h384:obs:nosmg"
+DS=hema UNIT_TAG=atacshuffle KINDS=mevd SEEDS="42 43 44" EXTRA_ARGS="--save_scores --atac_mode shuffle --variant_suffix _atacshuffle" VARIANTS="mevd_fm_h384:obs:nosmg"
+DS=lung UNIT_TAG=atacnone KINDS=mevd SEEDS="42 43 44" EXTRA_ARGS="--save_scores --atac_mode none --variant_suffix _atacnone" VARIANTS="mevd_fm_h384:obs:nosmg"
+DS=hema UNIT_TAG=atacnone KINDS=mevd SEEDS="42 43 44" EXTRA_ARGS="--save_scores --atac_mode none --variant_suffix _atacnone" VARIANTS="mevd_fm_h384:obs:nosmg"

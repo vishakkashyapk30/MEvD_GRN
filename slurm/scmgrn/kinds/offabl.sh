@@ -12,6 +12,7 @@ offabl_kw() {
     atac_only) echo '{"modalities": ["atac"]}';;
     scrna_only) echo '{"modalities": ["scrna"]}';;
     plus_geneformer) echo '{"gf_from_processed": true}';;
+    atac_shuffle) echo '{}';;                          # rows of the ATAC file permuted (script 18 --atac_shuffle_seed)
   esac
 }
 units_offabl() { local V S; for V in "${OFFABL_TAGS[@]}"; do for S in "${OFFABL_SEEDS[@]}"; do echo "offabl $1 $V $S"; done; done; }
@@ -20,5 +21,5 @@ run_kind_offabl() {
   python -u scripts/scmgrn/18_scmgrn_official_repro.py --config configs/scmgrn/$DS.yaml \
     --root "$SCMGRN_ROOT_LOCAL" --official_repo official_ablation/ScmultiomeGRN-main --cell_type "$CT" \
     --folds 1-10 --skip_existing --model_seed "$S" --ablation "$V" --extra_kw "$(offabl_kw "$V")" --save_scores \
-    --split_kind "$SPLIT_KIND" --work_dir "$SCR/official_work/${CT}_${V}_$S"
+    $( [ "$V" = atac_shuffle ] && echo --atac_shuffle_seed "$S" ) --split_kind "$SPLIT_KIND" --work_dir "$SCR/official_work/${CT}_${V}_$S"
 }
