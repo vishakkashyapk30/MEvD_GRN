@@ -73,6 +73,22 @@ def main():
     import LingerGRN.LL_net as LL_net
     from LingerGRN.preprocess import preprocess
     from LingerGRN.pseudo_bulk import pseudo_bulk
+    # LINGER hard-codes 8 joblib workers in preprocess (and sizes others from node RAM), which OOM-kills a 27 GB job.
+    # Cap every joblib pool at LINGER_MAX_JOBS without editing the package: module-level imports and the
+    # function-local "from joblib import Parallel" both resolve to the patched class. Results are unchanged
+    # (the pools only map independent chromosomes).
+    import joblib
+    import LingerGRN.preprocess as _lp
+    cap = int(os.environ.get("LINGER_MAX_JOBS", "2"))
+
+    class _Capped(joblib.Parallel):
+        def __init__(self, n_jobs=None, *a, **k):
+            super().__init__(*a, n_jobs=min(cap, n_jobs or cap), **k)
+    joblib.Parallel = _Capped
+    for m in (_lp, LL_net, LINGER_tr):
+        if hasattr(m, "Parallel"):
+            m.Parallel = _Capped
+    print(f"[linger {args.mode}] joblib pools capped at {cap} workers", flush=True)
     t0 = time.time()
     out = args.outdir
     os.makedirs(out, exist_ok=True)
