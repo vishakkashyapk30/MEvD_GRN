@@ -135,12 +135,15 @@ def build_tests(f: pd.DataFrame, gt: pd.DataFrame, seed: int = 0) -> dict | None
 
 
 def _pair_auc(s, pn):
+    """Pooled AUROC and AP over the matched set, plus the pair-level win rate: the share of links that score above
+    their own matched non-link (ties 1/2), which estimates the degree-adjusted AUC directly (Pepe et al. 2013)."""
     if pn is None:
-        return np.nan, np.nan, 0
+        return np.nan, np.nan, 0, np.nan
     p, n = pn
     yy = np.r_[np.ones(len(p), bool), np.zeros(len(n), bool)]
     ss = np.r_[s[p], s[n]]
-    return _auc(yy, ss), _ap(yy, ss), int(len(p))
+    win = float(np.mean((s[p] > s[n]) + 0.5 * (s[p] == s[n]))) if len(p) == len(n) else np.nan
+    return _auc(yy, ss), _ap(yy, ss), int(len(p)), win
 
 
 def evaluate(s_full: np.ndarray, T: dict) -> dict:
@@ -149,9 +152,11 @@ def evaluate(s_full: np.ndarray, T: dict) -> dict:
     out = {"n_inspace": int(len(y)), "n_links": int(y.sum()),
            "AUROC_inspace": _auc(y, s), "AP_inspace": _ap(y, s)}
     for name in ("dm", "cal", "ay"):
-        a, ap, n = _pair_auc(s, T[name])
+        a, ap, n, w = _pair_auc(s, T[name])
         tag = {"dm": "degmatched", "cal": "caliper", "ay": "aiyappa"}[name]
         out[f"AUROC_{tag}"], out[f"AP_{tag}"], out[f"n_{tag}"] = a, ap, n
+        if name != "ay":
+            out[f"pairwin_{tag}"] = w
     for tag, grp in (("adjusted", T["cell"]), ("adjusted_indeg_only", T["strata"])):
         num = den = 0.0
         for _g, ii in pd.Series(np.arange(len(y))).groupby(grp):
