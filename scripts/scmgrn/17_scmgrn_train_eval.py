@@ -109,6 +109,22 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
     n = adj.shape[0]
 
     data = load_celltype_data(str(pdir), [tier])
+    if args.atac_mode != "full":                                   # ATAC-value experiment (2026-11-19)
+        # none: ATAC features + openness zeroed, TF-candidate graph rebuilt from co-expression only;
+        # shuffle: ATAC features + openness take another gene's values (fixed permutation per seed), graph rebuilt
+        # with the shuffled openness. Label-free either way (same builder call as scripts/16).
+        from src.data import graph_builder as gb
+        if args.atac_mode == "none":
+            data.atac_features = torch.zeros_like(data.atac_features)
+            data.openness = torch.zeros_like(data.openness)
+        else:
+            pt = torch.from_numpy(np.random.default_rng(10_000 + seed).permutation(data.atac_features.shape[0]))
+            data.atac_features, data.openness = data.atac_features[pt], data.openness[pt]
+        data.tf_candidate_edges = gb.build_prior_graph(
+            data.gene_index, [int(t) for t in data.tf_indices], data.atac_features.numpy(), data.rna_features.numpy(),
+            top_k=int(cfg["data"].get("tf_candidate_topk", 500)), signatures=data.rna_signature.numpy(),
+            openness=data.openness.numpy() if args.atac_mode == "shuffle" else None, evidence=None,
+            exclude_positives=False)
     if cfg["model"].get("use_fm") and data.fm_embeddings.shape[1] == 0:
         raise SystemExit(f"use_fm=true but {pdir}/fm_gene_embeddings.npy is missing "
                          "(run scripts/16 --steps fm on the login node)")
@@ -160,7 +176,7 @@ def run_fold(args, dcfg, fold: int, out_path: Path) -> dict:
     shutil.rmtree(ckpt, ignore_errors=True)
     rec = {"method": "MeVD-GRN", "variant": args.variant, "cell_type": args.cell_type,
            "dataset": dcfg["dataset"], "fold": fold, "seed": seed, "obs_graph": bool(args.obs_graph),
-           "task": cfg["model"].get("task", "directed"), "smg_feats": bool(args.smg_feats), "smg_parts": args.smg_parts if args.smg_feats else None,
+           "task": cfg["model"].get("task", "directed"), "atac_mode": args.atac_mode, "smg_feats": bool(args.smg_feats), "smg_parts": args.smg_parts if args.smg_feats else None,
            "model_config": str(args.model_config), "split_kind": args.split_kind, "n_params": model.count_parameters(),
            "n_nodes": n, "n_train_pos_directed": int(splits["train"]["pos"].shape[1]),
            "epochs_run": len(res["history"]), "best_val_aupr": res["best_val_aupr"],
@@ -192,6 +208,8 @@ def main():
     ap.add_argument("--skip_existing", action="store_true")
     ap.add_argument("--save_scores", action="store_true", help="keep the N x N score matrix (scores_foldNN.npy)")
     ap.add_argument("--split_kind", default="official", choices=proto.SPLIT_KINDS)
+    ap.add_argument("--atac_mode", default="full", choices=["full", "none", "shuffle"],
+                    help="ATAC-value experiment: remove or gene-shuffle every ATAC input (features, openness, TF-candidate graph)")
     ap.add_argument("--variant_suffix", default="", help="appended to the variant name (e.g. _dm for re-runs)")
     args = ap.parse_args()
     if args.device.startswith("cuda") and not torch.cuda.is_available():
