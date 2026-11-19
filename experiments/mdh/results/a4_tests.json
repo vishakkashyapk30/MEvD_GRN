@@ -1,0 +1,680 @@
+{
+ "v2": [
+  {
+   "gt": "ChIP",
+   "a": "mid2_full",
+   "b": "baseline_indegree",
+   "n_datasets": 9,
+   "delta": 0.010418667664861493,
+   "lo": 0.008032313111860834,
+   "hi": 0.013043422433956607,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": 0.0215,
+    "Macrophage_S1": 0.0082,
+    "Macrophage_S2": 0.0021,
+    "iPS": -0.0038,
+    "mESC_E7.5_rep1": 0.014,
+    "mESC_E7.5_rep2": 0.0143,
+    "mESC_E8.5_rep1": 0.0122,
+    "mESC_E8.5_rep2": 0.0137,
+    "Naive_mESC": 0.0115
+   },
+   "p_holm": 0.006
+  },
+  {
+   "gt": "ChIP",
+   "a": "mid2_full",
+   "b": "mevd_fm_h384_hubmotif",
+   "n_datasets": 9,
+   "delta": 0.006166086765044419,
+   "lo": 0.0015303172545185482,
+   "hi": 0.0110964427299558,
+   "p_boot": 0.012,
+   "per_dataset": {
+    "K562": 0.0134,
+    "Macrophage_S1": 0.0133,
+    "Macrophage_S2": 0.0003,
+    "iPS": 0.0116,
+    "mESC_E7.5_rep1": 0.0071,
+    "mESC_E7.5_rep2": 0.0024,
+    "mESC_E8.5_rep1": 0.0019,
+    "mESC_E8.5_rep2": 0.0034,
+    "Naive_mESC": 0.0021
+   },
+   "p_holm": 0.036000000000000004
+  },
+  {
+   "gt": "ChIP",
+   "a": "mid2_full",
+   "b": "mid2_marginal",
+   "n_datasets": 9,
+   "delta": 0.010418667664861493,
+   "lo": 0.007997609538845912,
+   "hi": 0.012937120757006496,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": 0.0215,
+    "Macrophage_S1": 0.0082,
+    "Macrophage_S2": 0.0021,
+    "iPS": -0.0038,
+    "mESC_E7.5_rep1": 0.014,
+    "mESC_E7.5_rep2": 0.0143,
+    "mESC_E8.5_rep1": 0.0122,
+    "mESC_E8.5_rep2": 0.0137,
+    "Naive_mESC": 0.0115
+   },
+   "p_holm": 0.006
+  },
+  {
+   "gt": "KO",
+   "a": "mid2_full",
+   "b": "baseline_indegree",
+   "n_datasets": 6,
+   "delta": 0.006511422181419066,
+   "lo": 0.002190112584106643,
+   "hi": 0.010922753961192883,
+   "p_boot": 0.005,
+   "per_dataset": {
+    "K562": 0.0103,
+    "mESC_E7.5_rep1": 0.0053,
+    "mESC_E7.5_rep2": 0.003,
+    "mESC_E8.5_rep1": 0.0035,
+    "mESC_E8.5_rep2": 0.0075,
+    "Naive_mESC": 0.0095
+   },
+   "p_holm": 0.02
+  },
+  {
+   "gt": "KO",
+   "a": "mid2_full",
+   "b": "mevd_fm_h384_hubmotif",
+   "n_datasets": 6,
+   "delta": -0.013678776249696637,
+   "lo": -0.02345760253298689,
+   "hi": -0.005819881196445469,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": -0.0011,
+    "mESC_E7.5_rep1": -0.014,
+    "mESC_E7.5_rep2": -0.0201,
+    "mESC_E8.5_rep1": -0.02,
+    "mESC_E8.5_rep2": -0.0168,
+    "Naive_mESC": -0.0099
+   },
+   "p_holm": 0.006
+  },
+  {
+   "gt": "KO",
+   "a": "mid2_full",
+   "b": "mid2_marginal",
+   "n_datasets": 6,
+   "delta": 0.006511422181419066,
+   "lo": 0.002271537619593328,
+   "hi": 0.010778377640906379,
+   "p_boot": 0.001,
+   "per_dataset": {
+    "K562": 0.0103,
+    "mESC_E7.5_rep1": 0.0053,
+    "mESC_E7.5_rep2": 0.003,
+    "mESC_E8.5_rep1": 0.0035,
+    "mESC_E8.5_rep2": 0.0075,
+    "Naive_mESC": 0.0095
+   },
+   "p_holm": 0.006
+  },
+  {
+   "gt": "Union",
+   "a": "mid2_full",
+   "b": "baseline_indegree",
+   "n_datasets": 6,
+   "delta": 0.016553027073614588,
+   "lo": 0.014002143075022847,
+   "hi": 0.019433299181590116,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": 0.0287,
+    "mESC_E7.5_rep1": 0.0148,
+    "mESC_E7.5_rep2": 0.0146,
+    "mESC_E8.5_rep1": 0.0133,
+    "mESC_E8.5_rep2": 0.0152,
+    "Naive_mESC": 0.0126
+   },
+   "p_holm": 0.006
+  },
+  {
+   "gt": "Union",
+   "a": "mid2_full",
+   "b": "mevd_fm_h384_hubmotif",
+   "n_datasets": 6,
+   "delta": 0.00037310933913277736,
+   "lo": -0.00312711866808257,
+   "hi": 0.004152358294621374,
+   "p_boot": 0.812,
+   "per_dataset": {
+    "K562": 0.0019,
+    "mESC_E7.5_rep1": 0.0038,
+    "mESC_E7.5_rep2": 0.0003,
+    "mESC_E8.5_rep1": -0.0028,
+    "mESC_E8.5_rep2": -0.0009,
+    "Naive_mESC": -0.0001
+   },
+   "p_holm": 1.0
+  },
+  {
+   "gt": "Union",
+   "a": "mid2_full",
+   "b": "mid2_marginal",
+   "n_datasets": 6,
+   "delta": 0.016553027073614588,
+   "lo": 0.014204599415919787,
+   "hi": 0.0193206343896512,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": 0.0287,
+    "mESC_E7.5_rep1": 0.0148,
+    "mESC_E7.5_rep2": 0.0146,
+    "mESC_E8.5_rep1": 0.0133,
+    "mESC_E8.5_rep2": 0.0152,
+    "Naive_mESC": 0.0126
+   },
+   "p_holm": 0.006
+  },
+  {
+   "gt": "Intersection",
+   "a": "mid2_full",
+   "b": "baseline_indegree",
+   "n_datasets": 6,
+   "delta": 0.022587668179702997,
+   "lo": 0.00947277524792761,
+   "hi": 0.034121051964853044,
+   "p_boot": 0.001,
+   "per_dataset": {
+    "K562": 0.0344,
+    "mESC_E7.5_rep1": 0.02,
+    "mESC_E7.5_rep2": 0.0185,
+    "mESC_E8.5_rep1": 0.0176,
+    "mESC_E8.5_rep2": 0.0296,
+    "Naive_mESC": 0.0155
+   },
+   "p_holm": 0.006
+  },
+  {
+   "gt": "Intersection",
+   "a": "mid2_full",
+   "b": "mevd_fm_h384_hubmotif",
+   "n_datasets": 6,
+   "delta": 0.0045433977869779,
+   "lo": -0.018250726818583377,
+   "hi": 0.019804960232426474,
+   "p_boot": 0.863,
+   "per_dataset": {
+    "K562": 0.0625,
+    "mESC_E7.5_rep1": -0.0007,
+    "mESC_E7.5_rep2": -0.0034,
+    "mESC_E8.5_rep1": -0.0191,
+    "mESC_E8.5_rep2": 0.0056,
+    "Naive_mESC": -0.0177
+   },
+   "p_holm": 1.0
+  },
+  {
+   "gt": "Intersection",
+   "a": "mid2_full",
+   "b": "mid2_marginal",
+   "n_datasets": 6,
+   "delta": 0.022587668179702997,
+   "lo": 0.009276988928866565,
+   "hi": 0.033260089198088386,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": 0.0344,
+    "mESC_E7.5_rep1": 0.02,
+    "mESC_E7.5_rep2": 0.0185,
+    "mESC_E8.5_rep1": 0.0176,
+    "mESC_E8.5_rep2": 0.0296,
+    "Naive_mESC": 0.0155
+   },
+   "p_holm": 0.006
+  }
+ ],
+ "v1": [
+  {
+   "gt": "ChIP",
+   "a": "mid_full",
+   "b": "baseline_indegree",
+   "n_datasets": 9,
+   "delta": 0.005733437036922393,
+   "lo": 0.0016764431063799763,
+   "hi": 0.009265248550108377,
+   "p_boot": 0.005,
+   "per_dataset": {
+    "K562": 0.0283,
+    "Macrophage_S1": -0.0079,
+    "Macrophage_S2": 0.0048,
+    "iPS": -0.0002,
+    "mESC_E7.5_rep1": 0.0046,
+    "mESC_E7.5_rep2": 0.0049,
+    "mESC_E8.5_rep1": 0.0077,
+    "mESC_E8.5_rep2": 0.0078,
+    "Naive_mESC": 0.0018
+   },
+   "p_holm": 0.025
+  },
+  {
+   "gt": "ChIP",
+   "a": "mid_full",
+   "b": "mevd_fm_h384_hubmotif",
+   "n_datasets": 9,
+   "delta": -0.0020781761907305435,
+   "lo": -0.007978722347396156,
+   "hi": 0.00371207853963896,
+   "p_boot": 0.5,
+   "per_dataset": {
+    "K562": 0.0205,
+    "Macrophage_S1": -0.0042,
+    "Macrophage_S2": 0.0023,
+    "iPS": 0.0062,
+    "mESC_E7.5_rep1": -0.0068,
+    "mESC_E7.5_rep2": -0.0074,
+    "mESC_E8.5_rep1": -0.0067,
+    "mESC_E8.5_rep2": -0.0098,
+    "Naive_mESC": -0.0129
+   },
+   "p_holm": 0.5
+  },
+  {
+   "gt": "KO",
+   "a": "mid_full",
+   "b": "baseline_indegree",
+   "n_datasets": 6,
+   "delta": 0.0031414268499861137,
+   "lo": -0.0001329472188574902,
+   "hi": 0.0063152941018354055,
+   "p_boot": 0.063,
+   "per_dataset": {
+    "K562": 0.0082,
+    "mESC_E7.5_rep1": -0.0025,
+    "mESC_E7.5_rep2": 0.0013,
+    "mESC_E8.5_rep1": 0.006,
+    "mESC_E8.5_rep2": 0.004,
+    "Naive_mESC": 0.0019
+   },
+   "p_holm": 0.189
+  },
+  {
+   "gt": "KO",
+   "a": "mid_full",
+   "b": "mevd_fm_h384_hubmotif",
+   "n_datasets": 6,
+   "delta": -0.02067147236037818,
+   "lo": -0.031343603567156465,
+   "hi": -0.011897902030357836,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": -0.0047,
+    "mESC_E7.5_rep1": -0.0275,
+    "mESC_E7.5_rep2": -0.0194,
+    "mESC_E8.5_rep1": -0.0202,
+    "mESC_E8.5_rep2": -0.0283,
+    "Naive_mESC": -0.0239
+   },
+   "p_holm": 0.004
+  },
+  {
+   "gt": "Union",
+   "a": "mid_full",
+   "b": "baseline_indegree",
+   "n_datasets": 6,
+   "delta": 0.009339423066213472,
+   "lo": 0.007673178844629055,
+   "hi": 0.011246961861581747,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": 0.0275,
+    "mESC_E7.5_rep1": 0.0048,
+    "mESC_E7.5_rep2": 0.0051,
+    "mESC_E8.5_rep1": 0.0086,
+    "mESC_E8.5_rep2": 0.0079,
+    "Naive_mESC": 0.0021
+   },
+   "p_holm": 0.004
+  },
+  {
+   "gt": "Union",
+   "a": "mid_full",
+   "b": "mevd_fm_h384_hubmotif",
+   "n_datasets": 6,
+   "delta": -0.010487331689185054,
+   "lo": -0.014080679626023563,
+   "hi": -0.006858388537254698,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": 0.0005,
+    "mESC_E7.5_rep1": -0.0109,
+    "mESC_E7.5_rep2": -0.0094,
+    "mESC_E8.5_rep1": -0.0116,
+    "mESC_E8.5_rep2": -0.0152,
+    "Naive_mESC": -0.0163
+   },
+   "p_holm": 0.004
+  },
+  {
+   "gt": "Intersection",
+   "a": "mid_full",
+   "b": "baseline_indegree",
+   "n_datasets": 6,
+   "delta": 0.013588870649648454,
+   "lo": 0.0004050047867733526,
+   "hi": 0.020645381723550203,
+   "p_boot": 0.04,
+   "per_dataset": {
+    "K562": 0.0513,
+    "mESC_E7.5_rep1": -0.0021,
+    "mESC_E7.5_rep2": 0.0121,
+    "mESC_E8.5_rep1": 0.0098,
+    "mESC_E8.5_rep2": 0.0087,
+    "Naive_mESC": 0.0017
+   },
+   "p_holm": 0.16
+  },
+  {
+   "gt": "Intersection",
+   "a": "mid_full",
+   "b": "mevd_fm_h384_hubmotif",
+   "n_datasets": 6,
+   "delta": -0.014141103051301817,
+   "lo": -0.040280798329683815,
+   "hi": 0.002996949919103271,
+   "p_boot": 0.085,
+   "per_dataset": {
+    "K562": 0.0763,
+    "mESC_E7.5_rep1": -0.0404,
+    "mESC_E7.5_rep2": -0.0089,
+    "mESC_E8.5_rep1": -0.0216,
+    "mESC_E8.5_rep2": -0.0462,
+    "Naive_mESC": -0.044
+   },
+   "p_holm": 0.189
+  }
+ ],
+ "secondary": [
+  {
+   "gt": "ChIP",
+   "a": "mid_full",
+   "b": "mid_bce",
+   "n_datasets": 9,
+   "delta": 0.0018949585752344239,
+   "lo": -0.002722914489497964,
+   "hi": 0.0061808060896883085,
+   "p_boot": 0.428,
+   "per_dataset": {
+    "K562": 0.017,
+    "Macrophage_S1": -0.0029,
+    "Macrophage_S2": 0.0182,
+    "iPS": -0.0059,
+    "mESC_E7.5_rep1": -0.0026,
+    "mESC_E7.5_rep2": -0.001,
+    "mESC_E8.5_rep1": -0.0016,
+    "mESC_E8.5_rep2": -0.0025,
+    "Naive_mESC": -0.0016
+   }
+  },
+  {
+   "gt": "ChIP",
+   "a": "mid_full",
+   "b": "mid_dataonly",
+   "n_datasets": 9,
+   "delta": 0.0026151596119102626,
+   "lo": -0.0008436059180359711,
+   "hi": 0.00596136746679514,
+   "p_boot": 0.136,
+   "per_dataset": {
+    "K562": 0.0038,
+    "Macrophage_S1": -0.0015,
+    "Macrophage_S2": 0.0056,
+    "iPS": 0.0036,
+    "mESC_E7.5_rep1": 0.0023,
+    "mESC_E7.5_rep2": 0.0028,
+    "mESC_E8.5_rep1": 0.004,
+    "mESC_E8.5_rep2": 0.0012,
+    "Naive_mESC": 0.0018
+   }
+  },
+  {
+   "gt": "ChIP",
+   "a": "mid_full",
+   "b": "LINGER",
+   "n_datasets": 1,
+   "delta": 0.01384857795880887,
+   "lo": 0.005651168820102878,
+   "hi": 0.021941043819537886,
+   "p_boot": 0.001,
+   "per_dataset": {
+    "K562": 0.0138
+   }
+  },
+  {
+   "gt": "ChIP",
+   "a": "mid_dataonly_g",
+   "b": "baseline_pearson",
+   "n_datasets": 9,
+   "delta": 0.008156318524446766,
+   "lo": 0.0061428196410966834,
+   "hi": 0.010360033507929509,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": 0.0227,
+    "Macrophage_S1": 0.0141,
+    "Macrophage_S2": 0.0123,
+    "iPS": 0.0014,
+    "mESC_E7.5_rep1": 0.0051,
+    "mESC_E7.5_rep2": 0.0041,
+    "mESC_E8.5_rep1": 0.0055,
+    "mESC_E8.5_rep2": 0.0064,
+    "Naive_mESC": 0.0019
+   }
+  },
+  {
+   "gt": "KO",
+   "a": "mid_full",
+   "b": "mid_bce",
+   "n_datasets": 6,
+   "delta": 0.002964915568998888,
+   "lo": -0.0001408135505175303,
+   "hi": 0.006947806202830066,
+   "p_boot": 0.068,
+   "per_dataset": {
+    "K562": 0.0054,
+    "mESC_E7.5_rep1": -0.0017,
+    "mESC_E7.5_rep2": 0.008,
+    "mESC_E8.5_rep1": 0.0007,
+    "mESC_E8.5_rep2": 0.005,
+    "Naive_mESC": 0.0005
+   }
+  },
+  {
+   "gt": "KO",
+   "a": "mid_full",
+   "b": "mid_dataonly",
+   "n_datasets": 6,
+   "delta": 0.0023425168236675194,
+   "lo": -0.00032233071676605456,
+   "hi": 0.005170213406811161,
+   "p_boot": 0.08,
+   "per_dataset": {
+    "K562": 0.0075,
+    "mESC_E7.5_rep1": -0.0009,
+    "mESC_E7.5_rep2": 0.0008,
+    "mESC_E8.5_rep1": 0.0057,
+    "mESC_E8.5_rep2": -0.0013,
+    "Naive_mESC": 0.0022
+   }
+  },
+  {
+   "gt": "KO",
+   "a": "mid_full",
+   "b": "LINGER",
+   "n_datasets": 1,
+   "delta": 0.008183053198737956,
+   "lo": -0.005796013341141002,
+   "hi": 0.021047677551304985,
+   "p_boot": 0.224,
+   "per_dataset": {
+    "K562": 0.0082
+   }
+  },
+  {
+   "gt": "KO",
+   "a": "mid_dataonly_g",
+   "b": "baseline_pearson",
+   "n_datasets": 6,
+   "delta": 0.0023940562986463462,
+   "lo": -0.0026401005058602,
+   "hi": 0.007219150615723612,
+   "p_boot": 0.349,
+   "per_dataset": {
+    "K562": 0.001,
+    "mESC_E7.5_rep1": 0.0045,
+    "mESC_E7.5_rep2": 0.0002,
+    "mESC_E8.5_rep1": -0.0006,
+    "mESC_E8.5_rep2": 0.0033,
+    "Naive_mESC": 0.0058
+   }
+  },
+  {
+   "gt": "Union",
+   "a": "mid_full",
+   "b": "mid_bce",
+   "n_datasets": 6,
+   "delta": 0.00043513113309348817,
+   "lo": -0.0014828143914461655,
+   "hi": 0.0022933070464767604,
+   "p_boot": 0.643,
+   "per_dataset": {
+    "K562": 0.0108,
+    "mESC_E7.5_rep1": -0.0028,
+    "mESC_E7.5_rep2": 0.0003,
+    "mESC_E8.5_rep1": -0.0013,
+    "mESC_E8.5_rep2": -0.0027,
+    "Naive_mESC": -0.0017
+   }
+  },
+  {
+   "gt": "Union",
+   "a": "mid_full",
+   "b": "mid_dataonly",
+   "n_datasets": 6,
+   "delta": 0.004121651905766567,
+   "lo": 0.0027370072869672348,
+   "hi": 0.005628740494131647,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": 0.0119,
+    "mESC_E7.5_rep1": 0.0025,
+    "mESC_E7.5_rep2": 0.0027,
+    "mESC_E8.5_rep1": 0.0046,
+    "mESC_E8.5_rep2": 0.0008,
+    "Naive_mESC": 0.0022
+   }
+  },
+  {
+   "gt": "Union",
+   "a": "mid_full",
+   "b": "LINGER",
+   "n_datasets": 1,
+   "delta": 0.012644134766284156,
+   "lo": 0.0066652836651293935,
+   "hi": 0.018618036750004854,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": 0.0126
+   }
+  },
+  {
+   "gt": "Union",
+   "a": "mid_dataonly_g",
+   "b": "baseline_pearson",
+   "n_datasets": 6,
+   "delta": 0.006903312252316717,
+   "lo": 0.005424645422541283,
+   "hi": 0.008276714494310404,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": 0.0187,
+    "mESC_E7.5_rep1": 0.0045,
+    "mESC_E7.5_rep2": 0.0036,
+    "mESC_E8.5_rep1": 0.0056,
+    "mESC_E8.5_rep2": 0.0064,
+    "Naive_mESC": 0.0025
+   }
+  },
+  {
+   "gt": "Intersection",
+   "a": "mid_full",
+   "b": "mid_bce",
+   "n_datasets": 6,
+   "delta": 0.004220781155762189,
+   "lo": -0.007972552179905352,
+   "hi": 0.012483989460706743,
+   "p_boot": 0.55,
+   "per_dataset": {
+    "K562": 0.0282,
+    "mESC_E7.5_rep1": -0.0113,
+    "mESC_E7.5_rep2": 0.0053,
+    "mESC_E8.5_rep1": -0.0008,
+    "mESC_E8.5_rep2": 0.0051,
+    "Naive_mESC": -0.0012
+   }
+  },
+  {
+   "gt": "Intersection",
+   "a": "mid_full",
+   "b": "mid_dataonly",
+   "n_datasets": 6,
+   "delta": 0.004195163499758588,
+   "lo": -0.006678794487031737,
+   "hi": 0.01052150093720913,
+   "p_boot": 0.52,
+   "per_dataset": {
+    "K562": 0.0171,
+    "mESC_E7.5_rep1": -0.0014,
+    "mESC_E7.5_rep2": 0.0067,
+    "mESC_E8.5_rep1": 0.0077,
+    "mESC_E8.5_rep2": -0.0061,
+    "Naive_mESC": 0.0011
+   }
+  },
+  {
+   "gt": "Intersection",
+   "a": "mid_full",
+   "b": "LINGER",
+   "n_datasets": 1,
+   "delta": 0.02577522774552126,
+   "lo": -0.01512853545134671,
+   "hi": 0.04759143805327846,
+   "p_boot": 0.244,
+   "per_dataset": {
+    "K562": 0.0258
+   }
+  },
+  {
+   "gt": "Intersection",
+   "a": "mid_dataonly_g",
+   "b": "baseline_pearson",
+   "n_datasets": 6,
+   "delta": 0.015781141781920194,
+   "lo": 0.007284583699687935,
+   "hi": 0.02592781244653011,
+   "p_boot": 0.0005,
+   "per_dataset": {
+    "K562": 0.0405,
+    "mESC_E7.5_rep1": 0.0123,
+    "mESC_E7.5_rep2": 0.0072,
+    "mESC_E8.5_rep1": 0.008,
+    "mESC_E8.5_rep2": 0.0117,
+    "Naive_mESC": 0.0149
+   }
+  }
+ ]
+}
