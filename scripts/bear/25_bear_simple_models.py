@@ -242,7 +242,7 @@ def main():
                     if m == "deg":
                         assert fs == "all", "deg needs the in-degree feature (--sets all)"
                         o = out[(m, fs)]
-                        o[0].append(pairs[0]); o[1].append(pairs[1]); o[2].append(Xte[:, 0].astype(np.float32))
+                        o[0].append(pairs[0]); o[1].append(pairs[1]); o[2].append(np.rint(np.expm1(Xte[:, 0])).astype(np.float32))   # raw count, as baseline_indegree
                         o[3].append(np.full(pairs.shape[1], k, dtype=np.int16))
                         continue
                     mdl = make_model(m, s)

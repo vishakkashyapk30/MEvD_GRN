@@ -171,6 +171,7 @@ Trained on knockout labels only:
 | Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
 |---|---|---|---|---|---|---|---|
 | MeVD-GRN | 5 | 0.531 | 0.524 | 0.544 | 0.546 | 0.580 | 0.510 |
+| In-degree rule, knockout labels only (no fit) | – | pending | pending | pending | pending | pending | pending |
 | logistic regression, cell data only, trained on knockout labels only | 5 | 0.615 | 0.676 | 0.627 | 0.615 | 0.630 | 0.539 |
 | logistic regression, all 20 features, trained on knockout labels only | 5 | **0.693** | *0.776* | **0.692** | **0.694** | *0.710* | 0.510 |
 | LDA, cell data only, trained on knockout labels only | 5 | 0.620 | 0.684 | 0.630 | 0.618 | 0.635 | **0.542** |
@@ -179,6 +180,30 @@ Trained on knockout labels only:
 | Gaussian naive Bayes, all 20 features, trained on knockout labels only | 5 | 0.643 | 0.707 | 0.661 | 0.656 | 0.672 | 0.516 |
 | gradient boosting, cell data only, trained on knockout labels only | 5 | 0.663 | 0.736 | 0.670 | 0.657 | 0.673 | *0.541* |
 | gradient boosting, all 20 features, trained on knockout labels only | 5 | 0.679 | 0.761 | 0.681 | 0.679 | 0.697 | 0.511 |
+
+- The matched tests control the in-degree counted over all label files. Trained on knockout labels only, the models
+  pick up "genes that many knockouts affect", a hub of the knockout network that this covariate does not control;
+  the in-degree rule on knockout labels alone measures how much of the gain that is.
+
+Same knockout ground truth, matched tests re-drawn with the covariate = target in-degree over the knockout labels
+of the training TFs (5 datasets):
+
+| Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
+|---|---|---|---|---|---|---|---|
+| In-degree rule, knockout labels only (= covariate) | – | pending | pending | pending | pending | pending | pending |
+| In-degree, all labels | – | pending | pending | pending | pending | pending | pending |
+| Pearson | – | pending | pending | pending | pending | pending | pending |
+| MeVD-GRN | – | pending | pending | pending | pending | pending | pending |
+| Logistic regression, cell data only, all labels | – | pending | pending | pending | pending | pending | pending |
+| LDA, cell data only, all labels | – | pending | pending | pending | pending | pending | pending |
+| logistic regression, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| logistic regression, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| LDA, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| LDA, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| Gaussian naive Bayes, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| Gaussian naive Bayes, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| gradient boosting, cell data only, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
+| gradient boosting, all 20 features, trained on knockout labels only | – | pending | pending | pending | pending | pending | pending |
 
 ## 9. Parameter ladder on the scMultiomeGRN benchmark (item 4)
 

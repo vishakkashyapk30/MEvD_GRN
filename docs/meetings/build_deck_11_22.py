@@ -23,6 +23,8 @@ _t.loader.exec_module(t27)
 
 BM = REPO / "docs/results/bear/matched.csv"
 B = pd.read_csv(BM) if BM.exists() else pd.DataFrame(columns=["gt", "method", "kind"])
+BKM = REPO / "docs/results/bear/matched_kocov.csv"
+BK = pd.read_csv(BKM) if BKM.exists() else pd.DataFrame(columns=["gt", "method", "kind"])
 BCOLS = [("AUROC_inspace", "AUROC"), ("AUROC_perTF", "AUROC per TF"), ("AUROC_degmatched", "degree-matched"),
          ("AUROC_caliper", "caliper-matched"), ("AUROC_adjusted", "covariate-adjusted"),
          ("AUROC_aiyappa", "degree-corrected")]
@@ -32,19 +34,21 @@ def f3(x):
     return "pending" if x is None or x != x else f"{x:.3f}"
 
 
-def bget(gt, m, col):
-    r = B[(B["gt"] == gt) & (B["method"] == m)]
+def bget(gt, m, col, D=None):
+    D = B if D is None else D
+    r = D[(D["gt"] == gt) & (D["method"] == m)]
     return float(r[col].iloc[0]) if len(r) and col in r else None
 
 
-def bn(gt, m):
-    r = B[(B["gt"] == gt) & (B["method"] == m)]
+def bn(gt, m, D=None):
+    D = B if D is None else D
+    r = D[(D["gt"] == gt) & (D["method"] == m)]
     return int(r["n_datasets"].iloc[0]) if len(r) else 0
 
 
-def btable(gt, items, cols=BCOLS):
+def btable(gt, items, cols=BCOLS, D=None):
     """items: [(method, label)]; bold = best, italics = second best per column among the shown rows."""
-    vals = {m: [bget(gt, m, c) for c, _ in cols] for m, _ in items}
+    vals = {m: [bget(gt, m, c, D) for c, _ in cols] for m, _ in items}
     best = []
     for j in range(len(cols)):
         col = sorted({round(v[j], 3) for v in vals.values() if v[j] is not None and v[j] == v[j]}, reverse=True)
@@ -60,7 +64,7 @@ def btable(gt, items, cols=BCOLS):
                 elif len(best[j]) > 1 and round(x, 3) == best[j][1]:
                     t = f"*{t}*"
             cells.append(t)
-        out.append(f"| {lab} | {bn(gt, m) or '–'} | " + " | ".join(cells) + " |")
+        out.append(f"| {lab} | {bn(gt, m, D) or '–'} | " + " | ".join(cells) + " |")
     return "\n".join(out)
 
 
@@ -209,7 +213,20 @@ ChIP-seq ground truth:
 
 Trained on knockout labels only:
 
-{btable('KO', [('mevd_fm_h384_hubmotif', 'MeVD-GRN')] + SIMPLE_KO)}""")
+{btable('KO', [('mevd_fm_h384_hubmotif', 'MeVD-GRN'), ('simple_deg_all_perturbation', 'In-degree rule, knockout labels only (no fit)')] + SIMPLE_KO)}
+
+- The matched tests control the in-degree counted over all label files. Trained on knockout labels only, the models
+  pick up "genes that many knockouts affect", a hub of the knockout network that this covariate does not control;
+  the in-degree rule on knockout labels alone measures how much of the gain that is.
+
+Same knockout ground truth, matched tests re-drawn with the covariate = target in-degree over the knockout labels
+of the training TFs (5 datasets):
+
+{btable('KO', [('simple_deg_all_perturbation', 'In-degree rule, knockout labels only (= covariate)'),
+               ('baseline_indegree', 'In-degree, all labels'), ('baseline_pearson', 'Pearson'),
+               ('mevd_fm_h384_hubmotif', 'MeVD-GRN'),
+               ('simple_lr_data', 'Logistic regression, cell data only, all labels'),
+               ('simple_lda_data', 'LDA, cell data only, all labels')] + SIMPLE_KO, D=BK)}""")
 
     S.append(f"""## 9. Parameter ladder on the scMultiomeGRN benchmark (item 4)
 
