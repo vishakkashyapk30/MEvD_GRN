@@ -114,6 +114,24 @@ SECTIONS = [
         ("mevd_abl_fl_fm_noobs", "Floor model + Geneformer"),
         ("mevd_abl_fl_gnn_noobs", "Floor model + graph network"),
     ]),
+    ("ATAC value (2026-11-19): full / ATAC removed / ATAC shuffled across genes or TFs", [
+        ("mevd_fm_h384_obs_atacnone", "MeVD-GRN, every ATAC input removed"),
+        ("mevd_fm_h384_obs_atacshuffle", "MeVD-GRN, every ATAC input shuffled across genes"),
+        ("official_scmultiomegrn_atac_shuffle", "scMultiomeGRN, ATAC features shuffled across TFs"),
+    ]),
+    ("Parameter ladder (2026-11-19): network models and Gaussian classifiers", [
+        ("ladder_beta", "beta-model (one parameter per TF)"),
+        ("ladder_lsm2", "latent-space model, 2 dimensions"),
+        ("ladder_lsm4", "latent-space model, 4 dimensions"),
+        ("ladder_lsm8", "latent-space model, 8 dimensions"),
+        ("ladder_dclsm2", "degree-corrected latent-space model, 2 dimensions"),
+        ("ladder_dclsm4", "degree-corrected latent-space model, 4 dimensions"),
+        ("ladder_dclsm8", "degree-corrected latent-space model, 8 dimensions"),
+        ("ladder_lda", "LDA on MAESTRO + GRNBoost2 pair features"),
+        ("ladder_qda", "QDA on MAESTRO + GRNBoost2 pair features"),
+        ("ladder_gnb", "Gaussian naive Bayes on MAESTRO + GRNBoost2 pair features"),
+        ("ladder_gmm", "Gaussian mixture classifier on MAESTRO + GRNBoost2 pair features"),
+    ]),
 ]
 EVALS = (("test", "official test"), ("test_degmatched", "degree-matched"), ("test_degcaliper", "caliper-matched"),
          ("test_c2", "held-out TF, C2"), ("test_c3", "held-out TF, C3"))
