@@ -133,6 +133,30 @@ def uniform_negatives(src_tfs: np.ndarray, n: int, n_genes: int, forbid_keys: np
     return keys_to_edges(np.sort(got), n_genes)
 
 
+def same_tf_negatives(pos: np.ndarray, n: int, n_genes: int, forbid_keys: np.ndarray,
+                      rng: np.random.Generator) -> np.ndarray:
+    """Draw ~`n` unique negatives (2, n), each TF getting a share proportional to its number of positives
+    (quota = round(n * out_degree / n_pos)), targets uniform over the TF's non-links (exact: the complement of
+    `forbid_keys` in the TF's row is enumerated and subsampled without replacement). A hub TF linked to most genes
+    gets all of its few non-links (quota capped by availability), so dense datasets yield fewer than n negatives.
+    This is the rule of the simple models (scripts/bear/25): every link (t, g) is matched by non-links (t, g') of
+    the SAME TF, so TF identity carries no label information and only the within-TF ranking of genes is learned.
+    (degree_matched draws the TF and the target independently, so a TF's negatives match its positives only in
+    expectation, and targets follow the in-degree.)"""
+    pos = np.asarray(pos, dtype=np.int64).reshape(2, -1)
+    if pos.shape[1] == 0 or n <= 0:
+        return np.zeros((2, 0), dtype=np.int64)
+    tfs, cnt = np.unique(pos[0], return_counts=True)
+    forbid = np.unique(np.asarray(forbid_keys, dtype=np.int64))
+    quota = np.rint(n * cnt / cnt.sum()).astype(np.int64)
+    out = []
+    for t, q in zip(tfs, quota):
+        row = t * np.int64(n_genes) + np.arange(n_genes, dtype=np.int64)
+        row = row[(np.arange(n_genes) != t) & ~np.isin(row, forbid, assume_unique=True)]
+        out.append(row if q >= row.size else rng.choice(row, size=int(q), replace=False))
+    return keys_to_edges(np.sort(np.concatenate(out)), n_genes)
+
+
 def assert_tf_disjoint(train_label_edges: Dict[str, np.ndarray], held_tfs: Iterable[int],
                        what: str = "") -> None:
     """Hard audit: no training label (pos or neg, any source) may have a

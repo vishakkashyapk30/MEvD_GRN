@@ -22,19 +22,21 @@ Mean over seeds within a dataset, then over datasets. Pairs a method does not ou
 | QDA, cell data only | 9 | 0.528 | 0.569 | 0.568 | 0.551 | 0.559 | 0.555 | 0.557 |
 | QDA, all features | 9 | 0.557 | 0.631 | 0.560 | 0.548 | 0.560 | 0.557 | 0.568 |
 | Gaussian naive Bayes, cell data only | 9 | 0.524 | 0.562 | 0.567 | 0.546 | 0.552 | 0.548 | 0.551 |
+| MeVD-GRN, same-TF training negatives (simple models' rule) | 9 | 0.596 | 0.679 | 0.542 | 0.542 | 0.565 | 0.554 | 0.562 |
 | LDA, all features | 9 | 0.559 | 0.683 | 0.545 | 0.542 | 0.563 | 0.555 | 0.564 |
 | Gaussian naive Bayes, all features | 9 | 0.552 | 0.614 | 0.562 | 0.541 | 0.548 | 0.550 | 0.558 |
 | Gaussian-kernel logistic regression, all features | 9 | 0.561 | 0.685 | 0.532 | 0.537 | 0.567 | 0.547 | 0.575 |
 | MLP (32 units), all features | 9 | 0.575 | 0.700 | 0.528 | 0.534 | 0.577 | 0.553 | 0.574 |
 | logistic regression, all features | 9 | 0.576 | 0.717 | 0.526 | 0.534 | 0.600 | 0.568 | 0.576 |
 | gradient boosting, all features | 9 | 0.581 | 0.701 | 0.528 | 0.531 | 0.583 | 0.559 | 0.582 |
-| LINGER re-run, ATAC fully randomised | 1 | 0.488 | 0.532 | 0.553 | 0.529 | 0.544 | 0.545 | 0.559 |
-| LINGER re-run, ATAC peaks shuffled | 1 | 0.491 | 0.538 | 0.551 | 0.529 | 0.544 | 0.544 | 0.556 |
+| LINGER re-run, ATAC peaks shuffled | 2 | 0.498 | 0.538 | 0.552 | 0.529 | 0.542 | 0.542 | 0.557 |
+| LINGER re-run, ATAC fully randomised | 2 | 0.493 | 0.535 | 0.549 | 0.528 | 0.542 | 0.543 | 0.559 |
 | In-degree rule, all label files (script 25 check; = covariate) | 6 | 0.611 | 0.727 | 0.511 | 0.527 | 0.615 | 0.523 | 0.599 |
+| LINGER re-run, full data | 2 | 0.503 | 0.538 | 0.557 | 0.527 | 0.539 | 0.539 | 0.563 |
 | MeVD-GRN, ATAC features zeroed (old ablation) | 3 | 0.584 | 0.685 | 0.523 | 0.525 | 0.553 | 0.543 | 0.556 |
-| LINGER re-run, full data | 1 | 0.487 | 0.531 | 0.551 | 0.525 | 0.537 | 0.537 | 0.557 |
 | In-degree | 9 | 0.610 | 0.717 | 0.516 | 0.525 | 0.578 | 0.532 | 0.580 |
 | MeVD-GRN | 9 | 0.576 | 0.662 | 0.523 | 0.524 | 0.547 | 0.537 | 0.553 |
+| MeVD-GRN, seeds 42-44 only (the seeds of the ATAC and negative-sampling runs) | 9 | 0.578 | 0.663 | 0.521 | 0.523 | 0.545 | 0.536 | 0.554 |
 | MeVD-GRN, ATAC shuffled across genes | 9 | 0.574 | 0.664 | 0.521 | 0.522 | 0.545 | 0.535 | 0.551 |
 | MeVD-GRN, ATAC removed (all routes) | 9 | 0.571 | 0.663 | 0.521 | 0.521 | 0.544 | 0.535 | 0.547 |
 | DeepSEM (label-free) | 9 | 0.514 | 0.526 | 0.531 | 0.511 | 0.511 | 0.511 | 0.513 |
@@ -81,10 +83,12 @@ Mean over seeds within a dataset, then over datasets. Pairs a method does not ou
 | Gaussian naive Bayes, cell data only, trained on perturbation labels only | 5 | 0.567 | 0.592 | 0.590 | 0.570 | 0.584 | 0.585 | 0.530 |
 | MeVD-GRN, ATAC features zeroed (old ablation) | 2 | 0.515 | 0.564 | 0.543 | 0.551 | 0.585 | 0.585 | 0.507 |
 | MeVD-GRN, sequential curriculum | 2 | 0.606 | 0.671 | 0.542 | 0.550 | 0.619 | 0.619 | 0.509 |
+| MeVD-GRN, seeds 42-44 only (the seeds of the ATAC and negative-sampling runs) | 5 | 0.537 | 0.525 | 0.545 | 0.548 | 0.578 | 0.583 | 0.513 |
 | MeVD-GRN, ATAC shuffled across genes | 5 | 0.530 | 0.523 | 0.544 | 0.548 | 0.575 | 0.580 | 0.513 |
 | MeVD-GRN, ATAC removed (all routes) | 5 | 0.528 | 0.528 | 0.548 | 0.547 | 0.581 | 0.583 | 0.511 |
 | MeVD-GRN | 5 | 0.531 | 0.524 | 0.544 | 0.546 | 0.576 | 0.580 | 0.510 |
 | Pearson | 5 | 0.540 | 0.559 | 0.558 | 0.545 | 0.546 | 0.547 | 0.511 |
+| MeVD-GRN, same-TF training negatives (simple models' rule) | 5 | 0.527 | 0.496 | 0.547 | 0.541 | 0.559 | 0.565 | 0.516 |
 | Gaussian graphical model (ridge, label-free) | 5 | 0.523 | 0.534 | 0.528 | 0.527 | 0.528 | 0.526 | 0.508 |
 | MeVD-GRN, L2 (no cell-type labels) | 5 | 0.537 | 0.535 | 0.525 | 0.525 | 0.529 | 0.528 | 0.518 |
 | Gaussian mixture classifier, cell data only | 5 | 0.537 | 0.537 | 0.519 | 0.514 | 0.520 | 0.521 | 0.514 |
@@ -132,6 +136,7 @@ Mean over seeds within a dataset, then over datasets. Pairs a method does not ou
 | LDA, all features | 6 | 0.586 | 0.647 | 0.561 | 0.552 | 0.569 | 0.556 | 0.590 |
 | QDA, all features | 6 | 0.570 | 0.609 | 0.566 | 0.549 | 0.558 | 0.554 | 0.577 |
 | Gaussian-kernel logistic regression, all features | 6 | 0.604 | 0.674 | 0.545 | 0.548 | 0.590 | 0.561 | 0.612 |
+| MeVD-GRN, same-TF training negatives (simple models' rule) | 6 | 0.584 | 0.677 | 0.547 | 0.547 | 0.574 | 0.558 | 0.573 |
 | MLP (32 units), all features | 6 | 0.607 | 0.690 | 0.539 | 0.544 | 0.600 | 0.563 | 0.614 |
 | Gaussian naive Bayes, cell data only | 6 | 0.531 | 0.542 | 0.568 | 0.542 | 0.546 | 0.541 | 0.546 |
 | logistic regression, all features | 6 | 0.605 | 0.694 | 0.533 | 0.541 | 0.622 | 0.574 | 0.609 |
@@ -140,6 +145,7 @@ Mean over seeds within a dataset, then over datasets. Pairs a method does not ou
 | In-degree | 6 | 0.603 | 0.698 | 0.517 | 0.531 | 0.603 | 0.535 | 0.592 |
 | MeVD-GRN | 6 | 0.570 | 0.675 | 0.524 | 0.530 | 0.556 | 0.541 | 0.558 |
 | MeVD-GRN, ATAC removed (all routes) | 6 | 0.560 | 0.675 | 0.523 | 0.528 | 0.554 | 0.539 | 0.554 |
+| MeVD-GRN, seeds 42-44 only (the seeds of the ATAC and negative-sampling runs) | 6 | 0.570 | 0.674 | 0.523 | 0.528 | 0.553 | 0.539 | 0.556 |
 | MeVD-GRN, ATAC features zeroed (old ablation) | 2 | 0.592 | 0.688 | 0.519 | 0.527 | 0.558 | 0.544 | 0.570 |
 | MeVD-GRN, ATAC shuffled across genes | 6 | 0.561 | 0.675 | 0.521 | 0.527 | 0.553 | 0.539 | 0.554 |
 | In-degree rule, all label files (script 25 check; = covariate) | 6 | 0.603 | 0.698 | 0.511 | 0.526 | 0.612 | 0.523 | 0.592 |
@@ -185,12 +191,14 @@ Mean over seeds within a dataset, then over datasets. Pairs a method does not ou
 | logistic regression, cell data only, trained on perturbation labels only | 6 | 0.540 | 0.607 | 0.570 | 0.556 | 0.567 | 0.565 | 0.510 |
 | gradient boosting, all features, trained on perturbation labels only | 6 | 0.561 | 0.657 | 0.556 | 0.555 | 0.564 | 0.560 | 0.469 |
 | Gaussian naive Bayes, cell data only, trained on perturbation labels only | 6 | 0.529 | 0.562 | 0.564 | 0.549 | 0.559 | 0.559 | 0.519 |
+| MeVD-GRN, same-TF training negatives (simple models' rule) | 6 | 0.535 | 0.543 | 0.532 | 0.525 | 0.532 | 0.535 | 0.524 |
 | MeVD-GRN, ATAC removed (all routes) | 6 | 0.513 | 0.557 | 0.527 | 0.523 | 0.537 | 0.538 | 0.515 |
 | Pearson | 6 | 0.526 | 0.529 | 0.544 | 0.522 | 0.524 | 0.525 | 0.507 |
 | MeVD-GRN, L2 (no cell-type labels) | 6 | 0.546 | 0.530 | 0.542 | 0.520 | 0.522 | 0.524 | 0.514 |
 | MeVD-GRN, ATAC shuffled across genes | 6 | 0.508 | 0.553 | 0.518 | 0.520 | 0.529 | 0.527 | 0.514 |
 | MeVD-GRN without Geneformer | 2 | 0.499 | 0.523 | 0.515 | 0.518 | 0.531 | 0.535 | 0.476 |
 | MeVD-GRN | 6 | 0.512 | 0.556 | 0.521 | 0.518 | 0.526 | 0.527 | 0.506 |
+| MeVD-GRN, seeds 42-44 only (the seeds of the ATAC and negative-sampling runs) | 6 | 0.514 | 0.558 | 0.519 | 0.517 | 0.525 | 0.526 | 0.509 |
 | MLP (32 units), all features | 6 | 0.492 | 0.518 | 0.526 | 0.515 | 0.528 | 0.535 | 0.503 |
 | Gaussian graphical model (ridge, label-free) | 6 | 0.511 | 0.520 | 0.518 | 0.513 | 0.514 | 0.514 | 0.506 |
 | Gaussian mixture classifier, cell data only | 6 | 0.561 | 0.513 | 0.518 | 0.513 | 0.519 | 0.516 | 0.518 |

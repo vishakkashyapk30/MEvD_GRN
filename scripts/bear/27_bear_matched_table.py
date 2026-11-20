@@ -23,6 +23,8 @@ LABEL = {
     "mevd_fm_h384_hubmotif_noatac": "MeVD-GRN, ATAC features zeroed (old ablation)",
     "mevd_fm_h384_hubmotif_atacnone": "MeVD-GRN, ATAC removed (all routes)",
     "mevd_fm_h384_hubmotif_atacshuffle": "MeVD-GRN, ATAC shuffled across genes",
+    "mevd_fm_h384_hubmotif_seeds42to44": "MeVD-GRN, seeds 42-44 only (the seeds of the ATAC and negative-sampling runs)",
+    "mevd_fm_h384_hubmotif_sametf": "MeVD-GRN, same-TF training negatives (simple models' rule)",
     "mevd_fm_h384_hubmotif_nofm": "MeVD-GRN without Geneformer", "mevd_fm_h384_hubmotif_seq": "MeVD-GRN, sequential curriculum",
     "baseline_indegree": "In-degree", "baseline_pearson": "Pearson", "baseline_grnboost2": "GRNBoost2",
     "baseline_coverage": "All measured pairs", "lf_ggm_ridge": "Gaussian graphical model (ridge, label-free)",
@@ -57,6 +59,10 @@ def main():
     d = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
     d = d.drop_duplicates(["dataset", "gt", "method", "seed"], keep="last")
     d = d[(d["kind"] == "released") | d["method"].isin(list(LABEL)) | d["method"].str.startswith("simple_")]  # legacy runs out
+    # same-seed reference row for the 3-seed ablations (headline MeVD-GRN has seeds 42-46)
+    ref = d[(d["method"] == "mevd_fm_h384_hubmotif") & d["seed"].isin([42, 43, 44])].assign(
+        method="mevd_fm_h384_hubmotif_seeds42to44")
+    d = pd.concat([d, ref], ignore_index=True)
     num = [c for c, _ in COLS]
     for c in num:                                  # older per-dataset files may lack newer columns
         if c not in d:
@@ -68,6 +74,10 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     agg.to_csv(out.with_suffix(".csv"), index=False)
     per_ds.to_csv(out.with_name(out.name + "_per_dataset.csv"), index=False)
+    lg = d[d["method"].str.startswith("linger_rerun_") | (d["method"] == "LINGER")]     # LINGER re-runs, per seed
+    if len(lg):
+        lg[["gt", "method", "kind", "dataset", "seed"] + num].to_csv(out.with_name(out.name + "_linger_per_seed.csv"),
+                                                                     index=False)
     lines = ["# BEAR-GRN: degree-controlled evaluation of every method", "",
              "Mean over seeds within a dataset, then over datasets. Pairs a method does not output score 0. Covariate = "
              "target in-degree among the training TFs of the fold holding the scored TF out (seed 42). In-space pairs = "
