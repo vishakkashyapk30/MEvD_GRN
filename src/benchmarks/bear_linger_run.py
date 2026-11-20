@@ -32,11 +32,15 @@ import pandas as pd
 import scipy.sparse as sp
 
 
-def build_adata(rna_csv: str, atac_csv: str, mode: str, seed: int = 0):
+def build_adata(rna_csv: str, atac_csv: str, mode: str, seed: int = 0, max_cells: int = 0):
     import anndata
     R = pd.read_csv(rna_csv, index_col=0)
-    A = pd.read_csv(atac_csv, index_col=0)
-    cells = [c for c in R.columns if c in set(A.columns)]
+    a_cols = pd.read_csv(atac_csv, index_col=0, nrows=0).columns
+    cells = [c for c in R.columns if c in set(a_cols)]
+    if max_cells and len(cells) > max_cells:       # fixed cell subsample (seed 0), the same in every condition and seed
+        keep = set(np.random.default_rng(0).choice(len(cells), max_cells, replace=False).tolist())
+        cells = [c for i, c in enumerate(cells) if i in keep]
+    A = pd.read_csv(atac_csv, index_col=0, usecols=[0] + [1 + list(a_cols).index(c) for c in cells])
     R, A = R[cells], A[cells]
     M = A.to_numpy(dtype=np.float32)
     rng = np.random.default_rng(seed)
@@ -74,6 +78,7 @@ def main():
     ap.add_argument("--species", default="Human")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--labels", default="auto", choices=["auto", "kmeans", "none"])
+    ap.add_argument("--max_cells", type=int, default=0, help="random cell subsample (seed 0); 0 = all cells")
     args = ap.parse_args()
     import random
     import torch
@@ -106,7 +111,7 @@ def main():
     t0 = time.time()
     out = args.outdir
     os.makedirs(out, exist_ok=True)
-    a_rna, a_atac = build_adata(args.rna, args.atac, args.mode, seed=args.seed)
+    a_rna, a_atac = build_adata(args.rna, args.atac, args.mode, seed=args.seed, max_cells=args.max_cells)
     sc.pp.filter_cells(a_rna, min_genes=200)
     sc.pp.filter_genes(a_rna, min_cells=3)
     sc.pp.filter_cells(a_atac, min_genes=200)
@@ -162,7 +167,7 @@ def main():
     ed = Path(args.export_dir)
     ed.mkdir(parents=True, exist_ok=True)
     long[["Source", "Target", "Score"]].to_csv(ed / "grn.tsv.gz", sep="\t", index=False, float_format="%.5g")
-    json.dump({"method": "LINGER re-run", "mode": args.mode, "seed": args.seed, "labels": args.labels,
+    json.dump({"method": "LINGER re-run", "mode": args.mode, "seed": args.seed, "labels": args.labels, "max_cells": args.max_cells,
                "k_pseudo_labels": int(k), "metacells": int(n_meta), "cells": int(a_rna.shape[0]),
                "tg": int(S.shape[0]), "tf": int(S.shape[1]), "seconds": time.time() - t0},
               open(ed / "meta.json", "w"), indent=1)

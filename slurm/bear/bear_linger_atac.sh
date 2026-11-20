@@ -49,7 +49,7 @@ for M in ${MODES:-full random peakshuffle}; do
   echo "[run] $M $(date +%H:%M) workers=$SLURM_CPUS_PER_TASK"
   TMPDIR="$SCR/tmp_$M" python -u src/benchmarks/bear_linger_run.py --rna "$SCR/in/$RNA" --atac "$SCR/in/$ATAC" \
     --grndir "$GRN" --outdir "$SCR/work_$M/" --export_dir "$SCR/out/linger_rerun_$M/seed$SEED" --mode "$M" \
-    --seed "$SEED" --labels "${LABELS:-auto}" > "$LOG" 2>&1
+    --seed "$SEED" --labels "${LABELS:-auto}" --max_cells "${MAX_CELLS:-0}" > "$LOG" 2>&1
   tail -3 "$LOG"
   [ -f "$SCR/out/linger_rerun_$M/seed$SEED/grn.tsv.gz" ] && rsync -a "$SCR/out/linger_rerun_$M" "$HOME/bear_v2/results/$DS/" \
     && echo "published $M $(date +%H:%M)"
