@@ -16,7 +16,7 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
   0.693 caliper-matched; with it as the covariate MeVD-GRN
   falls to 0.501.
 - **ATAC value (item 3):** no model gains from ATAC. MeVD-GRN on BEAR-GRN ChIP, caliper-matched AUROC: full
-  0.524, ATAC removed
+  0.523, ATAC removed
   0.521, ATAC shuffled
   0.522 (9 datasets, 3 seeds). LINGER re-run
   (Macrophage_S1 two seeds, Macrophage_S2; mean of 3 runs): full 0.527, peaks shuffled
@@ -406,7 +406,7 @@ Knockout ground truth:
 
 **ATAC (item 3)**
 - MeVD-GRN gains nothing from ATAC on either benchmark: BEAR-GRN ChIP caliper-matched
-  0.524 full, 0.521 removed,
+  0.523 full, 0.521 removed,
   0.522 shuffled; scMultiomeGRN AUPR 0.935 /
   0.935 / 0.935.
 - scMultiomeGRN (official code) is unchanged with its ATAC features shuffled (0.919 vs

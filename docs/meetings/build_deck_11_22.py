@@ -209,7 +209,7 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
   {f3(bget('KO', 'simple_deg_all_perturbation', 'AUROC_caliper'))} caliper-matched; with it as the covariate MeVD-GRN
   falls to {f3(bget('KO', 'mevd_fm_h384_hubmotif', 'AUROC_caliper', BK))}.
 - **ATAC value (item 3):** no model gains from ATAC. MeVD-GRN on BEAR-GRN ChIP, caliper-matched AUROC: full
-  {f3(bget('ChIP', 'mevd_fm_h384_hubmotif', 'AUROC_caliper'))}, ATAC removed
+  {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_seeds42to44', 'AUROC_caliper'))}, ATAC removed
   {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_atacnone', 'AUROC_caliper'))}, ATAC shuffled
   {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_atacshuffle', 'AUROC_caliper'))} (9 datasets, 3 seeds). LINGER re-run
   (Macrophage_S1 two seeds, Macrophage_S2; mean of {len(linger_rows())} runs): full {f3(lmean('linger_rerun_full', 'AUROC_caliper'))}, peaks shuffled
@@ -425,7 +425,7 @@ Knockout ground truth:
 
 **ATAC (item 3)**
 - MeVD-GRN gains nothing from ATAC on either benchmark: BEAR-GRN ChIP caliper-matched
-  {f3(bget('ChIP', M, 'AUROC_caliper'))} full, {f3(bget('ChIP', M + '_atacnone', 'AUROC_caliper'))} removed,
+  {f3(bget('ChIP', M + '_seeds42to44', 'AUROC_caliper'))} full, {f3(bget('ChIP', M + '_atacnone', 'AUROC_caliper'))} removed,
   {f3(bget('ChIP', M + '_atacshuffle', 'AUROC_caliper'))} shuffled; scMultiomeGRN AUPR {o(d14.MEVD, 'test_aupr')} /
   {o('mevd_fm_h384_obs_atacnone', 'test_aupr')} / {o('mevd_fm_h384_obs_atacshuffle', 'test_aupr')}.
 - scMultiomeGRN (official code) is unchanged with its ATAC features shuffled ({o(d14.SMG, 'test_aupr')} vs
