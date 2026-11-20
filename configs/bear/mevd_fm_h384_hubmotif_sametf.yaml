@@ -1,0 +1,6 @@
+# Negative-sampling test (2026-11-20, deck 15-22 Nov, conclusions): the headline MeVD-GRN (M3) trained with the
+# simple models' negatives: every training link (t, g) is matched by non-links (t, g') of the SAME TF, targets uniform
+# (src/benchmarks/bear_protocol.same_tf_negatives). Everything else as mevd_fm_h384_hubmotif.yaml.
+inherit: mevd_fm_h384_hubmotif.yaml
+bear:
+  negatives: same_tf

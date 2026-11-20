@@ -25,8 +25,10 @@ Mean over seeds within a dataset, then over datasets. Pairs a method does not ou
 | LDA, all features, trained on perturbation labels only | 5 | 0.684 | 0.777 | 0.518 | 0.509 | 0.545 | 0.552 | 0.511 |
 | logistic regression, all features, trained on perturbation labels only | 5 | 0.693 | 0.776 | 0.520 | 0.508 | 0.543 | 0.548 | 0.510 |
 | DeepSEM (label-free) | 5 | 0.506 | 0.505 | 0.550 | 0.503 | 0.503 | 0.503 | 0.503 |
+| MeVD-GRN, seeds 42-44 only (the seeds of the ATAC and negative-sampling runs) | 5 | 0.537 | 0.525 | 0.607 | 0.501 | 0.505 | 0.504 | 0.513 |
 | MeVD-GRN | 5 | 0.531 | 0.524 | 0.608 | 0.501 | 0.503 | 0.503 | 0.510 |
 | In-degree rule, knockout labels only | 5 | 0.682 | 0.773 | 0.500 | 0.500 | 0.507 | 0.514 | 0.500 |
+| MeVD-GRN, same-TF training negatives (simple models' rule) | 5 | 0.527 | 0.496 | 0.639 | 0.500 | 0.502 | 0.502 | 0.516 |
 | RegDiffusion (label-free) | 5 | 0.489 | 0.487 | 0.484 | 0.496 | 0.496 | 0.496 | 0.497 |
 | In-degree | 5 | 0.446 | 0.425 | 0.618 | 0.477 | 0.478 | 0.476 | 0.479 |
 | LDA, cell data only | 5 | 0.377 | 0.334 | 0.534 | 0.471 | 0.467 | 0.465 | 0.467 |

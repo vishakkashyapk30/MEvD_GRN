@@ -1,0 +1,29 @@
+# BEAR-GRN units: MeVD-GRN (M3) retrained with same-TF negatives (configs/bear/mevd_fm_h384_hubmotif_sametf.yaml),
+# seeds 42-44 (the seeds of the ATAC ablation), larger datasets first. 2026-11-20.
+iPS fm_h384_hubmotif_sametf 42
+K562 fm_h384_hubmotif_sametf 42
+mESC_E7.5_rep1 fm_h384_hubmotif_sametf 42
+mESC_E7.5_rep2 fm_h384_hubmotif_sametf 42
+mESC_E8.5_rep1 fm_h384_hubmotif_sametf 42
+mESC_E8.5_rep2 fm_h384_hubmotif_sametf 42
+Naive_mESC fm_h384_hubmotif_sametf 42
+Macrophage_S1 fm_h384_hubmotif_sametf 42
+Macrophage_S2 fm_h384_hubmotif_sametf 42
+iPS fm_h384_hubmotif_sametf 43
+K562 fm_h384_hubmotif_sametf 43
+mESC_E7.5_rep1 fm_h384_hubmotif_sametf 43
+mESC_E7.5_rep2 fm_h384_hubmotif_sametf 43
+mESC_E8.5_rep1 fm_h384_hubmotif_sametf 43
+mESC_E8.5_rep2 fm_h384_hubmotif_sametf 43
+Naive_mESC fm_h384_hubmotif_sametf 43
+Macrophage_S1 fm_h384_hubmotif_sametf 43
+Macrophage_S2 fm_h384_hubmotif_sametf 43
+iPS fm_h384_hubmotif_sametf 44
+K562 fm_h384_hubmotif_sametf 44
+mESC_E7.5_rep1 fm_h384_hubmotif_sametf 44
+mESC_E7.5_rep2 fm_h384_hubmotif_sametf 44
+mESC_E8.5_rep1 fm_h384_hubmotif_sametf 44
+mESC_E8.5_rep2 fm_h384_hubmotif_sametf 44
+Naive_mESC fm_h384_hubmotif_sametf 44
+Macrophage_S1 fm_h384_hubmotif_sametf 44
+Macrophage_S2 fm_h384_hubmotif_sametf 44

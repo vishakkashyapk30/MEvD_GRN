@@ -33,7 +33,7 @@ training:
 bear:
   n_folds: 5                       # TF-disjoint cross-fitting folds (s6.1)
   val_tf_frac: 0.15                # inner TF-disjoint validation split (s6.4)
-  negatives: degree_matched        # degree_matched | uniform (s6.3)
+  negatives: degree_matched        # degree_matched | uniform (s6.3) | same_tf (2026-11-20)
   neg_pool_mult: 2                 # pool = mult x neg_ratio x n_train_pos ...
   neg_pool_max_frac: 0.5           # ... capped at this fraction of all non-positive training-TF pairs
   val_neg_ratio: 5

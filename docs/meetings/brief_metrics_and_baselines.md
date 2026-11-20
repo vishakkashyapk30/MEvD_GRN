@@ -51,7 +51,7 @@ Companion to `presentation_18th_oct_14th_nov.md`. Every definition below is what
 9. [Added for the 21 Nov meeting](#s7)
    - [7.1 Where the hub-controlled tests come from](#s7-1) · [7.2 Degree-controlled tests on BEAR-GRN](#s7-2)
    - [7.3 Simple and Gaussian models on BEAR-GRN](#s7-3) · [7.4 Parameter ladder](#s7-4) ·
-     [7.5 Label-free models](#s7-5) · [7.6 ATAC conditions](#s7-6)
+     [7.5 Label-free models](#s7-5) · [7.6 ATAC conditions](#s7-6) · [7.7 Same-TF negatives](#s7-7)
 
 ---
 
@@ -762,3 +762,39 @@ No label of any kind is used. One network per dataset.
 
 Shuffling keeps the value distribution and only breaks which gene or peak the values belong to. A model that still
 scores the same is not using the ATAC biology.
+
+**LINGER re-run details.** LINGER's bulk reference is human only, so the re-run covers the human BEAR-GRN datasets
+(Macrophage_S1, Macrophage_S2, K562, iPS). LINGER averages cells into $\lfloor\sqrt{N_c}\rfloor + 1$ metacells per
+cell label $c$ ($N_c$ cells with that label), and its training draws a background of 50 metacells without replacement,
+so it needs at least 50.
+
+- iPS has 5,711 cells. A fixed random subsample of 2,500 cells (the same in every condition) gives
+  $\lfloor\sqrt{2500}\rfloor + 1 = 51$ metacells from one population, so LINGER runs as published, with no split.
+  All 5,711 cells would also work (76 metacells) but need about twice the memory and run time.
+- The other three are one population of 412-529 cells (21-24 metacells). Their cells are split by k-means on the
+  first 15 RNA principal components (no labels), with the smallest $k$ that gives at least 60 metacells; Macrophage_S1
+  gets $k = 9$ and 62 metacells.
+- LINGER fixes its own training seed at 42. A re-run with seed $s > 0$ changes the k-means split, the metacell draw,
+  the ATAC permutation and LINGER's training seed ($42 + s$), so seed-to-seed spread covers every random step.
+
+<a id="s7-7"></a>
+### 7.7 MeVD-GRN with same-TF training negatives
+
+Only the training negatives change; the model, folds, label files and seeds (42-44) are those of the headline run.
+
+| Rule | How a negative $(t, g')$ is drawn | What the model can learn from TF identity |
+|---|---|---|
+| Degree-matched (headline) | $t \sim$ out-degree, $g' \sim$ in-degree $+ 1$, drawn independently | a TF's negatives match its links only on average |
+| Same-TF (simple models' rule) | each training TF $t$ gets $q_t = \mathrm{round}(n \cdot d_t / \sum_u d_u)$ non-links, $g'$ uniform among $t$'s non-links | nothing: every TF has links and non-links in the same proportion |
+
+$d_t$ = number of training links of $t$, $n$ = pool size. When $q_t$ exceeds the TF's non-links (a hub TF linked to
+most genes), the TF gets all of its non-links.
+
+Toy: 1,000 genes, $n$ = 300. TF A has 100 links, TF B has 50 links.
+
+| Rule | Negatives of A | Negatives of B |
+|---|---|---|
+| Degree-matched | about 200, varying from draw to draw, targets biased towards high in-degree | about 100 |
+| Same-TF | exactly 200, targets uniform among A's 900 non-links | exactly 100 |
+
+The matched tests compare genes within one TF, so the same-TF rule trains the model on the ranking that is scored.
