@@ -18,10 +18,9 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
 - **ATAC value (item 3):** no model gains from ATAC. MeVD-GRN on BEAR-GRN ChIP, caliper-matched AUROC: full
   0.524, ATAC removed
   0.521, ATAC shuffled
-  0.522 (9 datasets, 3 seeds). LINGER re-run on
-  Macrophage_S1: full 0.527, peaks shuffled
-  0.529, fully randomised
-  0.529. MeVD-GRN and scMultiomeGRN are also unchanged on
+  0.522 (9 datasets, 3 seeds). LINGER re-run
+  (Macrophage_S1 two seeds, Macrophage_S2; mean of 3 runs): full 0.527, peaks shuffled
+  0.529, fully randomised 0.528. MeVD-GRN and scMultiomeGRN are also unchanged on
   the scMultiomeGRN benchmark.
 - **Simple models (item 4):** on BEAR-GRN ChIP a 20-parameter logistic regression on cell data reaches
   0.561 caliper-matched AUROC (MeVD-GRN
@@ -115,11 +114,12 @@ MeVD-GRN, knockout ground truth:
 - LINGER (LingerGRN 1.110) re-run on BEAR-GRN's own input matrices with LINGER's bulk reference: full data, ATAC
   peaks shuffled (each peak takes another peak's cell profile: genomic location broken, cell structure kept) and ATAC
   fully randomised (every value permuted across peaks and cells: no ATAC information left).
-- Datasets: the human BEAR-GRN datasets (Macrophage_S1, Macrophage_S2); LINGER's bulk reference is human only.
-- Pseudo-labels: LINGER builds floor(sqrt(N)) + 1 metacells per cell label and its training needs >= 50. On iPS a
-  fixed random 2,500 of its 5,711 cells give 51 metacells from one population, so LINGER runs there as published,
-  with no split (all 5,711 cells need about twice the memory and time). The other datasets are one population of
-  412-529 cells (21-24 metacells), so their cells are split by k-means on RNA PCA (no labels used).
+- Datasets: Macrophage_S1, Macrophage_S2 (3 runs). LINGER's bulk reference is human only. K562 and iPS did not run: LINGER's
+  preprocessing stops with an error on both (K562: its peak coordinates are not found in LINGER's hg38 reference,
+  so the coordinates probably use another genome build; iPS: an error inside LINGER's code). Not investigated further.
+- Pseudo-labels: LINGER builds floor(sqrt(N)) + 1 metacells per cell label and its training needs >= 50. The
+  Macrophage datasets are one population of 474-528 cells (22-23 metacells), so their cells are split by k-means on
+  RNA PCA (no labels used) into 60-62 metacells.
 - Seeds: LINGER fixes its training seed at 42. Seed s > 0 changes the k-means split, the metacell draw, the ATAC
   permutation and LINGER's training seed (42 + s).
 
@@ -128,24 +128,27 @@ Caliper-matched AUROC, ChIP-seq ground truth:
 | Dataset | Seed | Pseudo-labels | Released (BEAR-GRN) | Re-run, full data | Re-run, ATAC peaks shuffled | Re-run, ATAC fully randomised |
 |---|---|---|---|---|---|---|
 | Macrophage_S1 | 0 | 474 cells, k-means k = 9, 62 metacells | 0.519 | 0.525 | 0.529 | 0.529 |
+| Macrophage_S1 | 1 | 474 cells, k-means k = 7, 60 metacells | 0.519 | 0.529 | 0.531 | 0.527 |
 | Macrophage_S2 | 0 | 528 cells, k-means k = 8, 61 metacells | 0.521 | 0.526 | 0.529 | 0.527 |
-| **Mean over the 2 runs** | | | 0.520 | 0.526 | 0.529 | 0.528 |
+| **Mean over the 3 runs** | | | 0.520 | 0.527 | 0.529 | 0.528 |
 
 AUROC (no hub control), ChIP-seq ground truth:
 
 | Dataset | Seed | Pseudo-labels | Released (BEAR-GRN) | Re-run, full data | Re-run, ATAC peaks shuffled | Re-run, ATAC fully randomised |
 |---|---|---|---|---|---|---|
 | Macrophage_S1 | 0 | 474 cells, k-means k = 9, 62 metacells | 0.510 | 0.487 | 0.491 | 0.488 |
+| Macrophage_S1 | 1 | 474 cells, k-means k = 7, 60 metacells | 0.510 | 0.503 | 0.494 | 0.495 |
 | Macrophage_S2 | 0 | 528 cells, k-means k = 8, 61 metacells | 0.508 | 0.510 | 0.504 | 0.497 |
-| **Mean over the 2 runs** | | | 0.509 | 0.499 | 0.498 | 0.493 |
+| **Mean over the 3 runs** | | | 0.509 | 0.500 | 0.496 | 0.493 |
 
 Covariate-adjusted AUROC, ChIP-seq ground truth:
 
 | Dataset | Seed | Pseudo-labels | Released (BEAR-GRN) | Re-run, full data | Re-run, ATAC peaks shuffled | Re-run, ATAC fully randomised |
 |---|---|---|---|---|---|---|
 | Macrophage_S1 | 0 | 474 cells, k-means k = 9, 62 metacells | 0.523 | 0.537 | 0.544 | 0.545 |
+| Macrophage_S1 | 1 | 474 cells, k-means k = 7, 60 metacells | 0.523 | 0.544 | 0.546 | 0.542 |
 | Macrophage_S2 | 0 | 528 cells, k-means k = 8, 61 metacells | 0.524 | 0.538 | 0.540 | 0.540 |
-| **Mean over the 2 runs** | | | 0.524 | 0.538 | 0.542 | 0.543 |
+| **Mean over the 3 runs** | | | 0.524 | 0.540 | 0.543 | 0.542 |
 
 ## 7. How much ATAC adds on the scMultiomeGRN benchmark (item 3)
 
@@ -409,10 +412,10 @@ Knockout ground truth:
 - scMultiomeGRN (official code) is unchanged with its ATAC features shuffled (0.919 vs
   0.918 AUPR), although that benchmark's ground truth is built from
   ATAC peaks.
-- LINGER re-run (Macrophage_S1 and Macrophage_S2 in slide 6; iPS, K562 and a second Macrophage_S1 seed still
-  running at the time of writing), Macrophage_S1 caliper-matched AUROC: full 0.527,
+- LINGER re-run (Macrophage_S1 with two seeds and Macrophage_S2, slide 6; K562 and iPS failed inside LINGER's
+  preprocessing), caliper-matched AUROC, mean over the 3 runs: full 0.527,
   peaks shuffled 0.529, fully randomised
-  0.529: no loss without ATAC (one dataset, one seed).
+  0.528: no loss without ATAC on any of the runs (two datasets).
 
 **Label-free, non-GNN models (item 5)**
 - DeepSEM, RegDiffusion and the ridge Gaussian graphical model score

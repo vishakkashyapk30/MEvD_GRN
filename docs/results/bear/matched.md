@@ -29,8 +29,8 @@ Mean over seeds within a dataset, then over datasets. Pairs a method does not ou
 | MLP (32 units), all features | 9 | 0.575 | 0.700 | 0.528 | 0.534 | 0.577 | 0.553 | 0.574 |
 | logistic regression, all features | 9 | 0.576 | 0.717 | 0.526 | 0.534 | 0.600 | 0.568 | 0.576 |
 | gradient boosting, all features | 9 | 0.581 | 0.701 | 0.528 | 0.531 | 0.583 | 0.559 | 0.582 |
-| LINGER re-run, ATAC peaks shuffled | 2 | 0.498 | 0.538 | 0.552 | 0.529 | 0.542 | 0.542 | 0.557 |
-| LINGER re-run, ATAC fully randomised | 2 | 0.493 | 0.535 | 0.549 | 0.528 | 0.542 | 0.543 | 0.559 |
+| LINGER re-run, ATAC peaks shuffled | 2 | 0.498 | 0.537 | 0.552 | 0.529 | 0.543 | 0.542 | 0.557 |
+| LINGER re-run, ATAC fully randomised | 2 | 0.494 | 0.536 | 0.550 | 0.528 | 0.541 | 0.542 | 0.559 |
 | In-degree rule, all label files (script 25 check; = covariate) | 6 | 0.611 | 0.727 | 0.511 | 0.527 | 0.615 | 0.523 | 0.599 |
 | LINGER re-run, full data | 2 | 0.503 | 0.538 | 0.557 | 0.527 | 0.539 | 0.539 | 0.563 |
 | MeVD-GRN, ATAC features zeroed (old ablation) | 3 | 0.584 | 0.685 | 0.523 | 0.525 | 0.553 | 0.543 | 0.556 |
