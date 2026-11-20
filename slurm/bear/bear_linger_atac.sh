@@ -37,6 +37,15 @@ ssh "$MASTER" "cat /share1/$USER/mevd_grn/pbmc/linger/data_bulk.tar.gz" | tar -x
 GRN="$SCR/bulk/data_bulk/"                         # the archive unpacks to data_bulk/ (as in slurm/pbmc/pbmc_linger.sh)
 echo "[stage] grndir=$GRN $(du -sh "$SCR/bulk" | cut -f1)"
 cd "$REPO"
+# LingerGRN 1.110 bug: TF_RE_LINGER_chr uses the loop variable `ii` after `for ii in range(times)`, which is unset when a
+# chromosome has fewer than 50 genes (times = 0; hit on iPS, 4,808 genes). A patched copy goes first on PYTHONPATH (the
+# loky workers re-import the package, so an in-process monkeypatch would not reach them). `ii = times` equals the
+# original `ii + 1` whenever the loop ran, so results are unchanged otherwise.
+LP=$(python -c "import LingerGRN, os; print(os.path.dirname(LingerGRN.__path__[0]))")
+mkdir -p "$SCR/pkgs" && cp -r "$LP/LingerGRN" "$SCR/pkgs/"
+sed -i 's/^    ii=ii+1$/    ii=times/' "$SCR/pkgs/LingerGRN/LL_net.py"
+grep -q "^    ii=times$" "$SCR/pkgs/LingerGRN/LL_net.py" || { echo "LINGER patch failed"; exit 1; }
+export PYTHONPATH="$SCR/pkgs${PYTHONPATH:+:$PYTHONPATH}"
 # LINGER sizes its worker pools from the NODE's free RAM (5 GB per worker) and SLURM_CPUS_PER_TASK, not from the job's
 # memory limit: 8 workers OOM-killed a 27 GB job (93598). Cap the workers and run the conditions one after another,
 # each with its own temp dir (pybedtools cleans up shared /tmp files of other processes). Each condition is published

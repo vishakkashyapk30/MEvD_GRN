@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import os
 import time
 from pathlib import Path
@@ -50,7 +51,10 @@ def build_adata(rna_csv: str, atac_csv: str, mode: str, seed: int = 0, max_cells
         M = rng.permutation(M.reshape(-1)).reshape(M.shape)
     elif mode != "full":
         raise ValueError(mode)
-    peaks = [p.replace("-", ":", 1) for p in A.index.astype(str)]       # chr1-10112-10254 -> chr1:10112-10254
+    # LINGER wants chr:start-end. BEAR-GRN uses chr-start-end (Macrophage, iPS, mESC) or already chr:start-end (K562).
+    peaks = [re.sub(r"^(chr[^:-]+)[:-](\d+)-(\d+)$", r"\1:\2-\3", p) for p in A.index.astype(str)]
+    bad = [p for p in peaks if not re.match(r"^chr[^:-]+:\d+-\d+$", p)]
+    assert not bad, f"unparsed peak names, e.g. {bad[:3]}"
     a_rna = anndata.AnnData(X=sp.csc_matrix(R.to_numpy(dtype=np.float32).T))
     a_rna.var_names = R.index.astype(str)
     a_rna.var["gene_ids"] = a_rna.var_names
