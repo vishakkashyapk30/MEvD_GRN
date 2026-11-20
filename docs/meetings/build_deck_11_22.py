@@ -211,10 +211,9 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
 - **ATAC value (item 3):** no model gains from ATAC. MeVD-GRN on BEAR-GRN ChIP, caliper-matched AUROC: full
   {f3(bget('ChIP', 'mevd_fm_h384_hubmotif', 'AUROC_caliper'))}, ATAC removed
   {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_atacnone', 'AUROC_caliper'))}, ATAC shuffled
-  {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_atacshuffle', 'AUROC_caliper'))} (9 datasets, 3 seeds). LINGER re-run on
-  Macrophage_S1: full {f3(bget('ChIP', 'linger_rerun_full', 'AUROC_caliper', MS1))}, peaks shuffled
-  {f3(bget('ChIP', 'linger_rerun_peakshuffle', 'AUROC_caliper', MS1))}, fully randomised
-  {f3(bget('ChIP', 'linger_rerun_random', 'AUROC_caliper', MS1))}. MeVD-GRN and scMultiomeGRN are also unchanged on
+  {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_atacshuffle', 'AUROC_caliper'))} (9 datasets, 3 seeds). LINGER re-run
+  (Macrophage_S1 two seeds, Macrophage_S2; mean of {len(linger_rows())} runs): full {f3(lmean('linger_rerun_full', 'AUROC_caliper'))}, peaks shuffled
+  {f3(lmean('linger_rerun_peakshuffle', 'AUROC_caliper'))}, fully randomised {f3(lmean('linger_rerun_random', 'AUROC_caliper'))}. MeVD-GRN and scMultiomeGRN are also unchanged on
   the scMultiomeGRN benchmark.
 - **Simple models (item 4):** on BEAR-GRN ChIP a 20-parameter logistic regression on cell data reaches
   {f3(bget('ChIP', 'simple_lr_data', 'AUROC_caliper'))} caliper-matched AUROC (MeVD-GRN
@@ -272,11 +271,12 @@ MeVD-GRN, knockout ground truth:
 - LINGER (LingerGRN 1.110) re-run on BEAR-GRN's own input matrices with LINGER's bulk reference: full data, ATAC
   peaks shuffled (each peak takes another peak's cell profile: genomic location broken, cell structure kept) and ATAC
   fully randomised (every value permuted across peaks and cells: no ATAC information left).
-- Datasets: the human BEAR-GRN datasets ({', '.join(lds)}); LINGER's bulk reference is human only.
-- Pseudo-labels: LINGER builds floor(sqrt(N)) + 1 metacells per cell label and its training needs >= 50. On iPS a
-  fixed random 2,500 of its 5,711 cells give 51 metacells from one population, so LINGER runs there as published,
-  with no split (all 5,711 cells need about twice the memory and time). The other datasets are one population of
-  412-529 cells (21-24 metacells), so their cells are split by k-means on RNA PCA (no labels used).
+- Datasets: {', '.join(lds)} ({len(lr)} runs). LINGER's bulk reference is human only. K562 and iPS did not run: LINGER's
+  preprocessing stops with an error on both (K562: its peak coordinates are not found in LINGER's hg38 reference,
+  so the coordinates probably use another genome build; iPS: an error inside LINGER's code). Not investigated further.
+- Pseudo-labels: LINGER builds floor(sqrt(N)) + 1 metacells per cell label and its training needs >= 50. The
+  Macrophage datasets are one population of 474-528 cells (22-23 metacells), so their cells are split by k-means on
+  RNA PCA (no labels used) into 60-62 metacells.
 - Seeds: LINGER fixes its training seed at 42. Seed s > 0 changes the k-means split, the metacell draw, the ATAC
   permutation and LINGER's training seed (42 + s).
 
@@ -431,10 +431,10 @@ Knockout ground truth:
 - scMultiomeGRN (official code) is unchanged with its ATAC features shuffled ({o(d14.SMG, 'test_aupr')} vs
   {o('official_scmultiomegrn_atac_shuffle', 'test_aupr')} AUPR), although that benchmark's ground truth is built from
   ATAC peaks.
-- LINGER re-run (Macrophage_S1 and Macrophage_S2 in slide 6; iPS, K562 and a second Macrophage_S1 seed still
-  running at the time of writing), Macrophage_S1 caliper-matched AUROC: full {f3(bget('ChIP', 'linger_rerun_full', 'AUROC_caliper', MS1))},
-  peaks shuffled {f3(bget('ChIP', 'linger_rerun_peakshuffle', 'AUROC_caliper', MS1))}, fully randomised
-  {f3(bget('ChIP', 'linger_rerun_random', 'AUROC_caliper', MS1))}: no loss without ATAC (one dataset, one seed).
+- LINGER re-run (Macrophage_S1 with two seeds and Macrophage_S2, slide 6; K562 and iPS failed inside LINGER's
+  preprocessing), caliper-matched AUROC, mean over the {len(linger_rows())} runs: full {f3(lmean('linger_rerun_full', 'AUROC_caliper'))},
+  peaks shuffled {f3(lmean('linger_rerun_peakshuffle', 'AUROC_caliper'))}, fully randomised
+  {f3(lmean('linger_rerun_random', 'AUROC_caliper'))}: no loss without ATAC on any of the runs (two datasets).
 
 **Label-free, non-GNN models (item 5)**
 - DeepSEM, RegDiffusion and the ridge Gaussian graphical model score
