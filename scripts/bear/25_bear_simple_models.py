@@ -26,11 +26,13 @@ Models (sklearn; features standardised on the training pairs):
   rbf    kernel logistic regression with a Gaussian (RBF) kernel, Nystroem approximation (300 components)
   mlp    one hidden layer of 32 units                                      (~700 parameters)
   hgb    histogram gradient boosting (non-neural, non-graph reference)
-Training pairs per fold: every training-TF link (subsampled to <= 60k) + 5x as many random non-links of training
-TFs (pairs in any label or ground-truth file excluded from the negatives).
+  deg    no fit: score = the in-degree feature itself (set "all" only); with --label_sources it is the in-degree
+         counted in those label files, i.e. the hub rule matching the training labels
+Training pairs per fold: every training-TF link (subsampled to <= 60k) + 5 non-links of the SAME TF per link
+(pairs in any label or ground-truth file excluded from the negatives), so TF identity carries no label information.
 
 Label-free models (no labels at all) are in scripts/bear/26_bear_label_free.py.
-Outputs: results/<ds>/simple_<model>_<set>/seed<s>/grn.tsv.gz, same format as scripts/23.
+Outputs: results/<ds>/simple_<model>_<set>[_<label sources>]/seed<s>/grn.tsv.gz, same format as scripts/23.
 """
 from __future__ import annotations
 
@@ -147,6 +149,9 @@ def main():
     ap.add_argument("--sets", nargs="+", default=["data", "all"])
     ap.add_argument("--max_pos", type=int, default=60000)
     ap.add_argument("--neg_ratio", type=int, default=5)
+    ap.add_argument("--label_sources", nargs="*", default=None,
+                    help="train on these label files only (e.g. perturbation); folds and negative exclusion still use "
+                         "every label file, so the held-out TFs are identical. Output suffix _<sources>")
     args = ap.parse_args()
     root = Path(args.root)
     K = int(load_config(args.model_config)["bear"]["n_folds"])
@@ -160,12 +165,20 @@ def main():
     tf_nodes = np.asarray(load_json(pdir / "tf_indices.json"), dtype=np.int64)
     tf_pos = {int(t): i for i, t in enumerate(tf_nodes)}
     nT = len(tf_nodes)
-    labels = [torch.load(p).numpy().reshape(2, -1) for p in sorted((pdir / "labels").glob("*.pt"))]
+    lab_files = sorted((pdir / "labels").glob("*.pt"))
+    labels = [torch.load(p).numpy().reshape(2, -1) for p in lab_files]
     lab = bp.keys_to_edges(np.unique(np.concatenate([bp.edge_keys(e, n) for e in labels])), n)
+    suffix = ""
+    if args.label_sources:
+        sel = [e for p, e in zip(lab_files, labels) if p.stem in args.label_sources]
+        assert sel, f"no label file among {args.label_sources}"
+        suffix = "_" + "+".join(sorted(args.label_sources))
     gts = [torch.load(p).numpy().reshape(2, -1) for p in sorted((pdir / "gts").glob("*.pt"))] \
         if (pdir / "gts").exists() else []
     known = np.unique(np.concatenate([bp.edge_keys(e, n) for e in labels + gts]))
-    outdeg = {int(k): int(v) for k, v in zip(*np.unique(lab[0], return_counts=True))}
+    outdeg = {int(k): int(v) for k, v in zip(*np.unique(lab[0], return_counts=True))}   # folds: every label file
+    if args.label_sources:
+        lab = bp.keys_to_edges(np.unique(np.concatenate([bp.edge_keys(e, n) for e in sel])), n)
 
     # ---- per-pair matrices (TF row x gene) and per-gene / per-TF vectors
     P = {"pearson": pair_matrix(res / "baseline_pearson/seed0/grn.tsv.gz", gene_index, tf_pos, nT, n),
@@ -201,9 +214,19 @@ def main():
             pos = train
             if pos.shape[1] > args.max_pos:
                 pos = pos[:, rng.choice(pos.shape[1], args.max_pos, replace=False)]
-            nneg = args.neg_ratio * pos.shape[1]
-            cand = np.stack([rng.choice(fit_tfs, 3 * nneg), rng.integers(0, n, 3 * nneg)])
-            cand = cand[:, (cand[0] != cand[1]) & ~np.isin(bp.edge_keys(cand, n), known)][:, :nneg]
+            # negatives per TF: every positive (t, g) gets neg_ratio non-links (t, g') of the SAME TF, so TF identity
+            # carries no label information and the models must rank genes within a TF (what BEAR-GRN scores; a
+            # TF-uniform negative draw lets TF-level features learn "which TF is a hub", which does not transfer
+            # to held-out TFs and inverted two folds of Macrophage_S1).
+            src = np.repeat(pos[0], 3 * args.neg_ratio)
+            cand = np.stack([src, rng.integers(0, n, len(src))])
+            ok = (cand[0] != cand[1]) & ~np.isin(bp.edge_keys(cand, n), known)
+            cand = cand[:, ok]
+            per_tf = {int(t): args.neg_ratio * int(c) for t, c in zip(*np.unique(pos[0], return_counts=True))}
+            order = rng.permutation(cand.shape[1])
+            cand = cand[:, order]
+            rank = pd.Series(cand[0]).groupby(cand[0]).cumcount().to_numpy()
+            cand = cand[:, rank < np.array([per_tf[int(t)] for t in cand[0]])]
             tr = np.concatenate([pos, cand], axis=1)
             y = np.r_[np.ones(pos.shape[1], int), np.zeros(cand.shape[1], int)]
             rows_tr = np.array([tf_pos[int(t)] for t in tr[0]])
@@ -216,6 +239,12 @@ def main():
                 sc = StandardScaler().fit(Xtr[:, cols])
                 A, B = sc.transform(Xtr[:, cols]), sc.transform(Xte[:, cols])
                 for m in args.models:
+                    if m == "deg":
+                        assert fs == "all", "deg needs the in-degree feature (--sets all)"
+                        o = out[(m, fs)]
+                        o[0].append(pairs[0]); o[1].append(pairs[1]); o[2].append(np.rint(np.expm1(Xte[:, 0])).astype(np.float32))   # raw count, as baseline_indegree
+                        o[3].append(np.full(pairs.shape[1], k, dtype=np.int16))
+                        continue
                     mdl = make_model(m, s)
                     if m in ("qda", "gmm", "rbf", "mlp") and len(y) > 120000:      # cap the slow fits
                         sub = rng.choice(len(y), 120000, replace=False)
@@ -228,10 +257,10 @@ def main():
             print(f"[{args.dataset} seed {s} fold {k}] {pos.shape[1]} pos / {cand.shape[1]} neg, "
                   f"{pairs.shape[1]:,} scored, {time.time() - t0:.0f}s", flush=True)
         for (m, fs), o in out.items():
-            write(res / f"simple_{m}_{fs}" / f"seed{s}", names, np.concatenate(o[0]), np.concatenate(o[1]),
+            write(res / f"simple_{m}_{fs}{suffix}" / f"seed{s}", names, np.concatenate(o[0]), np.concatenate(o[1]),
                   np.concatenate(o[2]), np.concatenate(o[3]),
                   {"model": m, "features": fs, "seed": s, "feature_names": FEATS if fs == "all" else FEATS[1:],
-                   "folds": [f.tolist() for f in folds], "protocol": "TF-disjoint cross-fitting (scripts/22 folds)"})
+                   "label_sources": args.label_sources or "all", "folds": [f.tolist() for f in folds], "protocol": "TF-disjoint cross-fitting (scripts/22 folds)"})
 
 
 

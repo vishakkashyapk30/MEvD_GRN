@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pandas as pd
 
-COLS = [("AUROC_inspace", "AUROC"), ("AUROC_degmatched", "degree-matched"), ("AUROC_caliper", "caliper-matched"),
+COLS = [("AUROC_inspace", "AUROC"), ("AUROC_perTF", "AUROC per TF"), ("AUROC_degmatched", "degree-matched"), ("AUROC_caliper", "caliper-matched"),
         ("pairwin_caliper", "caliper, pair win rate"), ("AUROC_adjusted", "covariate-adjusted"),
         ("AUROC_aiyappa", "degree-corrected (Aiyappa)")]
 LABEL = {
@@ -26,19 +26,24 @@ LABEL = {
     "mevd_fm_h384_hubmotif_nofm": "MeVD-GRN without Geneformer", "mevd_fm_h384_hubmotif_seq": "MeVD-GRN, sequential curriculum",
     "baseline_indegree": "In-degree", "baseline_pearson": "Pearson", "baseline_grnboost2": "GRNBoost2",
     "baseline_coverage": "All measured pairs", "lf_ggm_ridge": "Gaussian graphical model (ridge, label-free)",
-    "lf_regdiffusion": "RegDiffusion (label-free)",
+    "lf_regdiffusion": "RegDiffusion (label-free)", "lf_deepsem": "DeepSEM (label-free)",
+    "linger_rerun_full": "LINGER re-run, full data", "linger_rerun_peakshuffle": "LINGER re-run, ATAC peaks shuffled",
+    "linger_rerun_random": "LINGER re-run, ATAC fully randomised",
+    "simple_deg_all": "In-degree rule, all label files (script 25 check; = covariate)",
+    "simple_deg_all_perturbation": "In-degree rule, knockout labels only",
 }
 MODEL = {"lr": "logistic regression", "lda": "LDA", "qda": "QDA", "gnb": "Gaussian naive Bayes",
          "gmm": "Gaussian mixture classifier", "rbf": "Gaussian-kernel logistic regression", "mlp": "MLP (32 units)",
-         "hgb": "gradient boosting"}
+         "hgb": "gradient boosting", "deg": "in-degree rule"}
 
 
 def label(m: str) -> str:
     if m in LABEL:
         return LABEL[m]
     if m.startswith("simple_"):
-        _, mod, fs = m.split("_")
-        return f"{MODEL.get(mod, mod)}, {'cell data only' if fs == 'data' else 'all features'}"
+        _, mod, fs, *src = m.split("_")
+        lab = f", trained on {' + '.join(src)} labels only" if src else ""
+        return f"{MODEL.get(mod, mod)}, {'cell data only' if fs == 'data' else 'all features'}{lab}"
     return m
 
 
@@ -46,11 +51,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", required=True)
     ap.add_argument("--out", required=True, help="output prefix (writes <out>.md and <out>.csv)")
+    ap.add_argument("--subdir", default="matched", help="results/<subdir>/*.csv to aggregate")
     a = ap.parse_args()
-    files = sorted((Path(a.root).expanduser() / "results" / "matched").glob("*.csv"))
+    files = sorted((Path(a.root).expanduser() / "results" / a.subdir).glob("*.csv"))
     d = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
     d = d.drop_duplicates(["dataset", "gt", "method", "seed"], keep="last")
+    d = d[(d["kind"] == "released") | d["method"].isin(list(LABEL)) | d["method"].str.startswith("simple_")]  # legacy runs out
     num = [c for c, _ in COLS]
+    for c in num:                                  # older per-dataset files may lack newer columns
+        if c not in d:
+            d[c] = float("nan")
     per_ds = d.groupby(["gt", "method", "kind", "dataset"], as_index=False)[num].mean()
     agg = per_ds.groupby(["gt", "method", "kind"], as_index=False).agg(
         **{c: (c, "mean") for c in num}, n_datasets=("dataset", "nunique"))

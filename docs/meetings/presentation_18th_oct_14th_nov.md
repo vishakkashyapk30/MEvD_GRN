@@ -50,11 +50,13 @@ column and *italics* the second best.
 ## 3. Evaluation protocol
 
 - **Official test** [1]. scMultiomeGRN's 10 folds split the links: each test link is paired with a random non-link.
-- **Degree-matched test** (own variant of degree-aware negatives [2, 3]). Each test link is paired with one of the
-  three test non-links closest to it in the two TFs' training-link counts.
-- **Caliper-matched test** (own construction: caliper matching [4, 5] applied to link counts). Stricter: a test link
-  is kept only if a test non-link has both TFs' log link counts within 0.1 of the link's, so the link-count rule
-  scores 0.5 by construction.
+- **Degree-matched test** [11, 12, 13]. Each test link is paired with one of the three test non-links closest to it
+  in the two TFs' log training-link counts. Degree-matched test negatives are published for link prediction
+  (Aiyappa et al., ICML 2025 [11]), biomedical knowledge graphs [12] and protein interactions [13]; they match the
+  degree distribution, ours matches each pair.
+- **Caliper-matched test** = covariate-adjusted AUROC with degree as the covariate [14, 15, 16]: a matched
+  case-control evaluation in which every non-link must have both TFs' log link counts within 0.1 of its link's
+  (caliper matching [4, 5]); links without such a non-link are dropped, so the link-count rule scores 0.5.
 - **Held-out-TF split (new)** [6]. The TFs, not the links, are split into 10 groups. Each test item is a pair of
   TFs, in one of two classes: **pairs with one unseen TF** (one TF of the pair is hidden from training, the other was
   seen; Park and Marcotte's "C2") and **pairs of two unseen TFs** (both TFs of the pair hidden; "C3"). The
@@ -385,13 +387,13 @@ within groups of target genes with the same in-degree.
 | Test or metric | Source | Published, or own construction |
 |---|---|---|
 | Official test: random non-links, 10 folds, AUROC and trapezoidal AUPR | scMultiomeGRN [1] | Published (Nucleic Acids Research) |
-| Degree-matched test | Idea: degree-preserving negatives [3], degree-aware negatives [2]; nearest-3 matching on training-link counts is own | Idea published (Bioinformatics); closest GRN version is a preprint; this variant is own |
-| Caliper-matched test (official split, and held-out-TF pairs with one unseen TF) | Caliper matching from causal inference [4, 5], applied here to TF link counts | Own construction; no published link-prediction paper using it was found |
+| Degree-matched test | Degree-matched / degree-corrected test negatives: Aiyappa et al. [11], Cappelletti et al. [12], BioGraphBench-PPI [13]; per-protein degree-balanced negatives [3]; GRN preprint [2] | Published (ICML, Bioinformatics Advances, Frontiers in Bioinformatics); ours matches per pair instead of per distribution |
+| Caliper-matched test (official split, and held-out-TF pairs with one unseen TF) | Covariate-adjusted ROC / matched case-control accuracy studies [14, 15, 16] with caliper matching [4, 5] | Published statistical method, applied here with degree as the covariate; no link-prediction paper uses a degree caliper |
 | Held-out-TF split, pairs with one unseen TF and pairs of two unseen TFs (C2 and C3 in the paper) | Park and Marcotte [6] | Published (Nature Methods) |
 | Average precision; overestimate of trapezoidal AUPR | Davis and Goadrich [7] | Published (ICML) |
 | BEAR-GRN: AUROC and AUPRC on ChIP, KO, union and intersection ground truths, random-baseline AUPRC | BEAR-GRN [8], scored with its own code (ported, checked against the R code) | Published (Nature Communications) |
 | BEAR-GRN in-degree baseline | In-degree sorter of [2] | Preprint |
-| BEAR-GRN hub control: AUROC within in-degree groups | Stratified evaluation, pre-registered in `docs/benchmarks/bear_grn.md` | Own construction |
+| BEAR-GRN hub control: AUROC within in-degree groups | Covariate-adjusted AUC = AUROC within covariate strata weighted by positives [14, 15]; popularity-stratified evaluation in recommender systems [17] | Published statistical method, applied with in-degree as the covariate |
 | Degree as a shortcut in pair-input prediction | [3]; Chatterjee et al. [9]; hard negatives for GNN link prediction, Li et al. [10] | Published (Bioinformatics, Nat Commun, NeurIPS) |
 
 1. Xu J. et al. Deep learning-based cell-specific gene regulatory networks inferred from single-cell multiome data.
@@ -413,3 +415,20 @@ within groups of target genes with the same in-degree.
    *Nature Communications* 14, 1989 (2023). https://doi.org/10.1038/s41467-023-37572-z
 10. Li J. et al. Evaluating graph neural networks for link prediction: current pitfalls and new benchmarking.
     *NeurIPS* (2023). https://arxiv.org/abs/2306.10453
+11. Aiyappa R. et al. Implicit degree bias in the link prediction task. *ICML 2025*, PMLR 267:874-908.
+    https://arxiv.org/abs/2405.14985
+12. Cappelletti L. et al. Node-degree aware edge sampling mitigates inflated classification performance in biomedical
+    random walk-based graph representation learning. *Bioinformatics Advances* 4(1), vbae036 (2024).
+    https://doi.org/10.1093/bioadv/vbae036
+13. Cabrera-Andrade A. et al. BioGraphBench-PPI enables audit-first evaluation of negative-sampling contracts and
+    structural baselines in protein interaction networks. *Frontiers in Bioinformatics* 6 (2026).
+    https://doi.org/10.3389/fbinf.2026.1966469
+14. Janes H., Pepe M. S. Adjusting for covariate effects on classification accuracy using the covariate-adjusted
+    receiver operating characteristic curve. *Biometrika* 96(2), 371-382 (2009). https://doi.org/10.1093/biomet/asp002
+15. Pepe M. S., Fan J., Seymour C. W. Estimating the receiver operating characteristic curve in studies that match
+    controls to cases on covariates. *Academic Radiology* 20(7), 863-873 (2013).
+    https://doi.org/10.1016/j.acra.2013.03.004
+16. Janes H., Pepe M. S. Matching in studies of classification accuracy: implications for analysis, efficiency, and
+    assessment of incremental value. *Biometrics* 64(1), 1-9 (2008). https://doi.org/10.1111/j.1541-0420.2007.00823.x
+17. Bellogin A., Castells P., Cantador I. Statistical biases in Information Retrieval metrics for recommender systems.
+    *Information Retrieval Journal* 20(6), 606-634 (2017). https://doi.org/10.1007/s10791-017-9312-z

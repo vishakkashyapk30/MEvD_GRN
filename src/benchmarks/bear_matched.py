@@ -10,7 +10,8 @@ Covariate = target in-degree among the TRAINING TFs of the TF-disjoint fold that
 of that seed is exactly the covariate.
 
 Tests (all AUROC; ties count 1/2):
-  inspace     plain AUROC on the in-space pairs (reference)
+  inspace     plain AUROC on the in-space pairs (reference; mixes TFs, so a TF-level score offset matters)
+  perTF       mean over TFs of the AUROC within each TF (no matching; removes TF-level offsets only)
   degmatched  each link (t, g) paired with a non-link (t, g') of the SAME TF, drawn among the 3 nearest in
               log(1 + in-degree); the scored TF's own out-degree is matched by construction
   caliper     same TF, |log(1+indeg g') - log(1+indeg g)| <= 0.1, links without a match dropped
@@ -48,8 +49,8 @@ def _read(p: Path) -> pd.DataFrame:
     return pd.read_csv(p, sep="\t", keep_default_na=False, na_values=[""])
 
 
-def frame(root: Path, ds: str, cov_seed: int) -> pd.DataFrame:
-    d = _read(root / "results" / ds / "baseline_indegree" / f"seed{cov_seed}" / "grn.tsv.gz")
+def frame(root: Path, ds: str, cov_seed: int, cov_dir: str = "baseline_indegree") -> pd.DataFrame:
+    d = _read(root / "results" / ds / cov_dir / f"seed{cov_seed}" / "grn.tsv.gz")
     f = pd.DataFrame({"tf": d["Source"].astype(str).str.upper(), "target": d["Target"].astype(str).str.upper(),
                       "indeg": pd.to_numeric(d["Score"], errors="coerce").fillna(0.0)})
     return f.groupby(["tf", "target"], as_index=False, sort=True)["indeg"].max()
@@ -128,7 +129,7 @@ def build_tests(f: pd.DataFrame, gt: pd.DataFrame, seed: int = 0) -> dict | None
     ay_n = np.concatenate(got)[:need] if got else np.array([], int)
     st = strata(indeg)
     cell = pd.factorize(pd.Series(tf).astype(str) + "|" + pd.Series(st).astype(str))[0]
-    return {"ins": ins, "y": y, "strata": st, "cell": cell,
+    return {"ins": ins, "y": y, "strata": st, "cell": cell, "tfc": tf_codes,
             "dm": (np.concatenate(dm_p), np.concatenate(dm_n)) if dm_p else None,
             "cal": (np.concatenate(cal_p), np.concatenate(cal_n)) if cal_p else None,
             "ay": (lp_idx, ay_n) if len(ay_n) else None}
@@ -151,6 +152,12 @@ def evaluate(s_full: np.ndarray, T: dict) -> dict:
     y = T["y"]
     out = {"n_inspace": int(len(y)), "n_links": int(y.sum()),
            "AUROC_inspace": _auc(y, s), "AP_inspace": _ap(y, s)}
+    per = []                                    # per-TF AUROC (TFs with >= 10 links and >= 10 non-links), mean
+    for _t, ii in pd.Series(np.arange(len(y))).groupby(T["tfc"]):
+        ii = ii.to_numpy()
+        if y[ii].sum() >= 10 and (~y[ii]).sum() >= 10:
+            per.append(roc_auc_score(y[ii], s[ii]))
+    out["AUROC_perTF"] = float(np.mean(per)) if per else np.nan
     for name in ("dm", "cal", "ay"):
         a, ap, n, w = _pair_auc(s, T[name])
         tag = {"dm": "degmatched", "cal": "caliper", "ay": "aiyappa"}[name]
@@ -210,7 +217,10 @@ def main():
     ap.add_argument("--config", default=str(REPO / "configs/bear/datasets.yaml"))
     ap.add_argument("--gts", nargs="*", default=["ChIP", "KO", "Union", "Intersection"])
     ap.add_argument("--cov_seed", type=int, default=42)
-    ap.add_argument("--include", default=r"^(baseline_|mevd_|simple_|lf_|nn_)",
+    ap.add_argument("--cov_dir", default="baseline_indegree",
+                    help="results/<ds>/<cov_dir>/seed<cov_seed> whose Score is the covariate (default: in-degree over "
+                         "every label file); e.g. simple_deg_all_perturbation = in-degree over knockout labels only")
+    ap.add_argument("--include", default=r"^(baseline_|mevd_|simple_|lf_|nn_|linger_)",
                     help="regex on results/<ds>/<dir> names to score besides the released methods")
     ap.add_argument("--out", default=None, help="CSV (default results/matched/<datasets>.csv)")
     args = ap.parse_args()
@@ -219,7 +229,7 @@ def main():
     rows = []
     for ds in args.datasets:
         c = dcfg["datasets"][ds]
-        f = frame(root, ds, args.cov_seed)
+        f = frame(root, ds, args.cov_seed, args.cov_dir)
         tests = {}
         for g in args.gts:
             p = c["gts"].get(g)
@@ -234,7 +244,8 @@ def main():
                 continue
             s = scores_on(f, e)
             for g, T in tests.items():
-                r = {"dataset": ds, "gt": g, "method": name, "kind": kind, "seed": seed, **evaluate(s, T)}
+                r = {"dataset": ds, "gt": g, "method": name, "kind": kind, "seed": seed, "covariate": args.cov_dir,
+                     **evaluate(s, T)}
                 rows.append(r)
             print(f"  {name} seed {seed}: " + ", ".join(
                 f"{g} cal {rows[-len(tests) + i]['AUROC_caliper']:.3f} adj {rows[-len(tests) + i]['AUROC_adjusted']:.3f}"
