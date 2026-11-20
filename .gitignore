@@ -30,6 +30,7 @@ result_logs/
 logs/
 *.pt
 *.npy
+*.npz
 
 # Superseded local planning document
 MEvD_GRN_plan.md
@@ -67,3 +68,7 @@ paper/*.fdb_latexmk
 # Local Claude Code instructions and settings (never committed)
 CLAUDE.md
 .claude/
+
+# Experiment folders: per-run statistics and logs are large and regenerable (keep code, docs, summary results)
+experiments/*/results/stats/
+experiments/*/logs/
