@@ -48,6 +48,10 @@ Companion to `presentation_18th_oct_14th_nov.md`. Every definition below is what
    - [4.5 Pre-registered "WIN"](#s4-5) · [4.6 Hub control](#s4-6)
 7. [Statistics in the tables](#s5)
 8. [Likely questions, short answers](#s6)
+9. [Added for the 21 Nov meeting](#s7)
+   - [7.1 Where the hub-controlled tests come from](#s7-1) · [7.2 Degree-controlled tests on BEAR-GRN](#s7-2)
+   - [7.3 Simple and Gaussian models on BEAR-GRN](#s7-3) · [7.4 Parameter ladder](#s7-4) ·
+     [7.5 Label-free models](#s7-5) · [7.6 ATAC conditions](#s7-6)
 
 ---
 
@@ -268,7 +272,7 @@ Limitation: in dense graphs there may be no close non-link, so the 3 "nearest" c
 why the degree product still scores 0.653 AUROC here instead of 0.5.
 
 <a id="s2-3"></a>
-### 2.3 Caliper-matched test (own construction; caliper idea from propensity-score matching, Austin 2011)
+### 2.3 Caliper-matched test (matched estimator of the covariate-adjusted AUROC, Janes and Pepe 2009; caliper from Austin 2011; see [7.1](#s7-1))
 
 Stricter version of 2.2: a test link is kept **only if** some candidate non-link satisfies
 
@@ -622,3 +626,139 @@ Raw AUROC $= 0.81$ and in-degree alone $= 0.75$, but within groups AUROC $= \mat
   of the same fold) and no cell data, so beating it is the minimum for a supervised model to show it uses the data.
 - **"Any test-to-train leakage?"** Every split is built so that test pairs (and, in the held-out-TF split, test TFs)
   never appear in training; the scripts assert this per fold.
+- **"Is the caliper test made up?"** No: it is a matched estimator of the **covariate-adjusted AUROC** (Janes and
+  Pepe, Biometrika 2009), with node degree as the covariate. The pair-level win rate is the estimator of Pepe, Fan
+  and Seymour (Acad. Radiol. 2013). Degree-matched negatives are published for PPIs (Yu et al. 2010;
+  BioGraphBench-PPI, Front. Bioinform. 2026). The closest link-prediction analogue is the degree-corrected test of
+  Aiyappa et al. (ICML 2025), now also run ([7.2](#s7-2)). What is new is only the 0.1 caliper width on log degree.
+  No paper was found that uses a caliper on node degree for link prediction.
+
+---
+
+<a id="s7"></a>
+## 7. Added for the 21 Nov meeting
+
+<a id="s7-1"></a>
+### 7.1 Where the hub-controlled tests come from
+
+| Test in the tables | Published counterpart |
+|---|---|
+| Covariate-adjusted AUROC | Janes and Pepe, Biometrika 2009 (AUROC within covariate groups, weighted by the number of positives); Janes and Pepe, Biometrics 2008 |
+| Caliper-matched AUROC | the same quantity, estimated by matching each link to a non-link with the same covariate value; caliper matching from Rosenbaum and Rubin 1985 and Austin 2011 |
+| Pair-level win rate | Pepe, Fan and Seymour, Acad. Radiol. 2013: share of matched pairs where the positive scores higher |
+| Degree-matched negatives | Yu et al., Bioinformatics 2010 (PPIs); BioGraphBench-PPI, Front. Bioinform. 2026 (negatives keep the log-degree bins of the positives; GCN AUPRC falls to 0.50–0.52) |
+| Degree-corrected negatives | Aiyappa et al., ICML 2025 |
+| Degree bias in GRN / link benchmarks | Cappelletti et al., Bioinform. Adv. 2024; Stock et al., bioRxiv 2025 |
+
+<a id="s7-2"></a>
+### 7.2 Degree-controlled tests on BEAR-GRN (`src/benchmarks/bear_matched.py`)
+
+**Covariate.** For a pair (TF $t$, gene $g$), $c(t, g)$ is the in-degree of $g$ among the **training TFs** of the
+fold that holds $t$ out (the in-degree baseline, seed 42). It never uses $t$'s own labels. The pairs scored are the
+"in-space" pairs: TFs and targets of the ground truth. Pairs a method does not output get score 0. The matched sets are
+drawn once and are the same for every method.
+
+| Column | Definition |
+|---|---|
+| AUROC | plain AUROC on the in-space pairs |
+| AUROC per TF | mean over TFs (with $\ge 10$ links and $\ge 10$ non-links) of the AUROC inside one TF |
+| degree-matched | each link $(t, g)$ paired with a non-link $(t, g')$ of the **same TF**, drawn from the 3 nearest in $\log(1 + c)$ |
+| caliper-matched | same TF and $\lvert \log(1 + c_{g'}) - \log(1 + c_g) \rvert \le 0.1$; links without such a partner are dropped |
+| caliper, pair win rate | share of caliper links scoring above their own partner (ties $\tfrac12$) |
+| covariate-adjusted | $\text{AUROC}_{\text{adj}} = \sum_k \frac{n_k^+}{n^+} \text{AUROC}_k$, cells $k$ = (TF, in-degree group); groups = in-degree 0, then 20 quantile bins |
+| degree-corrected (Aiyappa) | negatives $(t', g')$: $t'$ = TF of a random link, $g'$ = target of a random link, kept if not a link; as many as links |
+
+Matching on the same TF removes the TF's out-degree as well, so neither endpoint's hubness can help.
+
+**Toy (covariate-adjusted).** One TF, two in-degree groups.
+
+| Group | Link scores | Non-link scores | AUROC in group |
+|---|---|---|---|
+| Hub genes | 0.9, 0.6 | 0.8, 0.7 | 2 of 4 pairs won = 0.50 |
+| Other genes | 0.5 | 0.2, 0.3, 0.6 | 2 of 3 = 0.67 |
+
+- Pooled AUROC = 9.5 / 15 = 0.633.
+- In-degree alone also scores 0.633: links are more often hub genes.
+- Adjusted: $\frac{2}{3} \cdot 0.50 + \frac{1}{3} \cdot 0.67 = \mathbf{0.556}$. The in-degree rule gets exactly 0.5.
+
+**Toy (Aiyappa).** Links (A, g1), (A, g2), (B, g3). A negative takes its TF from {A, A, B} and its gene from {g1, g2,
+g3}, e.g. (B, g1) or (A, g3). Hub TFs and hub genes then appear equally often among links and negatives.
+
+<a id="s7-3"></a>
+### 7.3 Simple and Gaussian models on BEAR-GRN (`scripts/bear/25_bear_simple_models.py`)
+
+**Protocol (as MeVD-GRN, so the models qualify for BEAR-GRN).** TF-disjoint 5-fold cross-fitting: fit on the
+labels of the training TFs, score every pair of the held-out TFs. Negatives are 5 non-links **of the same TF** per
+link, so TF identity carries no label.
+
+**Features (20 numbers per pair):**
+- in-degree of $g$, leave-one-out for training pairs;
+- $\lvert$Pearson $r\rvert$ and GRNBoost2;
+- 3 expression statistics of $g$ and 3 of $t$;
+- 3 accessibility statistics and 4 promoter-openness numbers of $g$;
+- 3 motif numbers;
+- Geneformer cosine.
+
+Set "cell data only" = without in-degree.
+
+| Model | Score $s(x)$ | Parameters |
+|---|---|---|
+| Logistic regression | $\sigma(w^\top x + b)$ | 21 |
+| Gaussian naive Bayes | $\sum_j \log \frac{N(x_j; \mu_{1j}, \sigma_{1j}^2)}{N(x_j; \mu_{0j}, \sigma_{0j}^2)}$ | 80 |
+| LDA | $\log \frac{N(x; \mu_1, \Sigma)}{N(x; \mu_0, \Sigma)} = (\mu_1 - \mu_0)^\top \Sigma^{-1} x + \text{const}$ (linear) | about 250 |
+| QDA | same with $\Sigma_1 \neq \Sigma_0$ (quadratic), $\Sigma_c \leftarrow 0.9\, \Sigma_c + 0.1\, I$ | about 460 |
+| Gaussian-mixture classifier | $\log \frac{\sum_{m=1}^4 \pi_{1m} N(x; \mu_{1m}, \Sigma_{1m})}{\sum_{m=1}^4 \pi_{0m} N(x; \mu_{0m}, \Sigma_{0m})}$ | about 1,840 |
+| Gaussian-kernel logistic regression | logistic regression on 300 Nyström features approximating $k(x, x') = e^{-\lVert x - x' \rVert^2 / 20}$ | 301 |
+| MLP | one hidden layer of 32 units | about 700 |
+| Gradient boosting | 200 trees (non-neural reference) | trees |
+
+**Reading.** Each model scores the held-out TFs on its own scale, so the pooled AUROC also measures calibration
+across TFs. The per-TF, matched and adjusted columns do not.
+
+<a id="s7-4"></a>
+### 7.4 Parameter ladder on scMultiomeGRN (`scripts/scmgrn/27_scmgrn_param_ladder.py`)
+
+$N$ = number of TFs (100–270), all fitted on the fold's training pairs by L2-regularised logistic likelihood.
+
+| Model | $\text{logit}\, P(u \sim v)$ | Parameters | Source |
+|---|---|---|---|
+| $\beta$-model | $b + \beta_u + \beta_v$ | $N + 1$ | Chatterjee, Diaconis and Sly, Ann. Appl. Probab. 2011 |
+| Latent-space model, $k = 2, 4, 8$ | $a - \lVert z_u - z_v \rVert^2$, $z \in \mathbb{R}^k$ | $kN + 1$ | Hoff, Raftery and Handcock, JASA 2002 |
+| Degree-corrected latent-space model | $a + \beta_u + \beta_v - \lVert z_u - z_v \rVert^2$ | $(k + 1)N + 1$ | Krivitsky et al., Social Networks 2009 |
+| LDA, QDA, Gaussian naive Bayes, Gaussian mixture | as in [7.3](#s7-3), on 32 cell-data numbers (MAESTRO and GRNBoost2, 8 SVD dimensions each, $[x_u \odot x_v, \lvert x_u - x_v \rvert]$) | 130–4,500 | |
+
+- The $\beta$-model is the **learned** version of the degree rule: $\beta_u$ grows with $d_u$. So it should match the
+  degree product on the official test and score about 0.5 on the caliper test.
+- The latent-space model is the smallest model that can express "TFs close to each other link" beyond degree.
+
+<a id="s7-5"></a>
+### 7.5 Label-free models on BEAR-GRN (`scripts/bear/26_bear_label_free.py`)
+
+No label of any kind is used. One network per dataset.
+
+- **Gaussian graphical model (ridge).** Standardised expression $Z$, TF columns $X_T$:
+  $\Theta = (X_T^\top X_T + \lambda I)^{-1}$ with $\lambda = 0.1 \times$ cells. Each gene $g$ is regressed on all TFs,
+  $\beta_{\cdot g} = \Theta X_T^\top z_g$, and $s(t, g) = \lvert \beta_{tg} \rvert$. When $g$ is itself a TF it is
+  left out of its own regressors, through $\beta_{t g} = -\Theta_{tg} / \Theta_{gg}$ (Meinshausen and Bühlmann,
+  Ann. Stat. 2006).
+- **RegDiffusion** (Zhu and Slonim, J. Comput. Biol. 2024). Gaussian noise is added to expression in steps. A
+  denoiser predicts the noise through a learnable gene $\times$ gene matrix $A$, and $s(t, g) = \lvert A_{tg} \rvert$.
+- **DeepSEM** (Shu et al., Nat. Comput. Sci. 2021). A $\beta$-VAE whose encoder and decoder are a linear structural
+  equation model:
+  - $h = (I - W^\top) f(x)$ and $\hat{x} = g\big((I - W^\top)^{-1} z\big)$;
+  - loss = reconstruction + KL $+ \alpha \lVert W \rVert_1$;
+  - $s(t, g) = \lvert W_{gt} \rvert$.
+
+  It uses the authors' code and defaults, on the TFs plus the 2,000 most variable genes.
+
+<a id="s7-6"></a>
+### 7.6 ATAC conditions (advisor item 3)
+
+| Model | ATAC removed | ATAC shuffled |
+|---|---|---|
+| MeVD-GRN (BEAR-GRN and scMultiomeGRN) | all ATAC routes set to 0 (features, openness, motif pair features); TF-candidate graph rebuilt without the accessibility filter | every gene takes another gene's ATAC values (one fixed permutation per seed) in every route; TF-candidate graph rebuilt with the shuffled openness |
+| scMultiomeGRN (official code) | (its "scRNA only" ablation) | rows of the MAESTRO matrix permuted across TFs |
+| LINGER (BEAR-GRN re-run) | every ATAC value permuted across all peaks and cells ("fully randomised") | every peak takes another peak's cell profile: values kept, genome location broken |
+
+Shuffling keeps the value distribution and only breaks which gene or peak the values belong to. A model that still
+scores the same is not using the ATAC biology.
