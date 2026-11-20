@@ -143,10 +143,18 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
 - **BEAR-GRN under degree control (item 2).** On ChIP, the best caliper-matched AUROC of any method is
   {f3(bc[0])} ({bc[1]}); the best covariate-adjusted AUROC is {f3(ba[0])} ({ba[1]}). MeVD-GRN:
   {f3(bget('ChIP', 'mevd_fm_h384_hubmotif', 'AUROC_caliper'))} caliper-matched,
-  {f3(bget('ChIP', 'mevd_fm_h384_hubmotif', 'AUROC_adjusted'))} covariate-adjusted.
-- **ATAC value (item 3), MeVD-GRN on BEAR-GRN, ChIP AUROC:** full {f3(bget('ChIP', 'mevd_fm_h384_hubmotif', 'AUROC_inspace'))},
-  ATAC removed {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_atacnone', 'AUROC_inspace'))}, ATAC shuffled
-  {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_atacshuffle', 'AUROC_inspace'))}.
+  {f3(bget('ChIP', 'mevd_fm_h384_hubmotif', 'AUROC_adjusted'))} covariate-adjusted, level with the in-degree rule. On
+  KO, the in-degree counted over knockout labels alone scores
+  {f3(bget('KO', 'simple_deg_all_perturbation', 'AUROC_caliper'))} caliper-matched; with it as the covariate MeVD-GRN
+  falls to {f3(bget('KO', 'mevd_fm_h384_hubmotif', 'AUROC_caliper', BK))}.
+- **ATAC value (item 3):** no model gains from ATAC. MeVD-GRN on BEAR-GRN ChIP, caliper-matched AUROC: full
+  {f3(bget('ChIP', 'mevd_fm_h384_hubmotif', 'AUROC_caliper'))}, ATAC removed
+  {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_atacnone', 'AUROC_caliper'))}, ATAC shuffled
+  {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_atacshuffle', 'AUROC_caliper'))} (9 datasets, 3 seeds). LINGER re-run on
+  Macrophage_S1: full {f3(bget('ChIP', 'linger_rerun_full', 'AUROC_caliper', MS1))}, peaks shuffled
+  {f3(bget('ChIP', 'linger_rerun_peakshuffle', 'AUROC_caliper', MS1))}, fully randomised
+  {f3(bget('ChIP', 'linger_rerun_random', 'AUROC_caliper', MS1))}. MeVD-GRN and scMultiomeGRN are also unchanged on
+  the scMultiomeGRN benchmark.
 - **Simple models (item 4):** on BEAR-GRN ChIP a 20-parameter logistic regression on cell data reaches
   {f3(bget('ChIP', 'simple_lr_data', 'AUROC_caliper'))} caliper-matched AUROC (MeVD-GRN
   {f3(bget('ChIP', 'mevd_fm_h384_hubmotif', 'AUROC_caliper'))}); on scMultiomeGRN the beta-model matches MeVD-GRN on the
@@ -186,7 +194,8 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
 
 - MeVD-GRN uses ATAC in four places: the ATAC features, promoter openness, the peak-derived motif features and the
   accessibility filter of the TF-candidate graph. "Removed" cuts all four; "shuffled" gives every gene another gene's
-  ATAC values (same distribution, broken gene mapping). Seeds 42-44.
+  ATAC values (same distribution, broken gene mapping). ATAC conditions: seeds 42-44; full data: seeds 42-46 (over
+  seeds 42-44 alone it moves by at most 0.002 in every column).
 - LINGER is re-run on Macrophage_S1 with LINGER's own bulk reference: full data, ATAC peaks shuffled (genomic location
   broken, cell structure kept) and ATAC fully randomised (no ATAC information left). One cell population, so cells
   are split into 9 expression clusters (k-means, label-free) to give LINGER enough metacells (it needs >= 50).
@@ -309,7 +318,9 @@ Knockout ground truth:
 - scMultiomeGRN (official code) is unchanged with its ATAC features shuffled ({o(d14.SMG, 'test_aupr')} vs
   {o('official_scmultiomegrn_atac_shuffle', 'test_aupr')} AUPR), although that benchmark's ground truth is built from
   ATAC peaks.
-- LINGER re-run on Macrophage_S1 (full / peaks shuffled / fully randomised): slide 5.
+- LINGER re-run on Macrophage_S1, caliper-matched AUROC: full {f3(bget('ChIP', 'linger_rerun_full', 'AUROC_caliper', MS1))},
+  peaks shuffled {f3(bget('ChIP', 'linger_rerun_peakshuffle', 'AUROC_caliper', MS1))}, fully randomised
+  {f3(bget('ChIP', 'linger_rerun_random', 'AUROC_caliper', MS1))}: no loss without ATAC (one dataset, one seed).
 
 **Label-free, non-GNN models (item 5)**
 - DeepSEM, RegDiffusion and the ridge Gaussian graphical model score
@@ -317,7 +328,7 @@ Knockout ground truth:
   caliper-matched on ChIP, the level of the released BEAR-GRN methods.
 
 **Next steps (for discussion)**
-- MeVD-GRN with negatives drawn from the same TF as each link (the training choice behind the simple models'
+- MeVD-GRN with negatives drawn from the same TF as each link (the likely reason for the simple models'
   advantage), scored on the hub-controlled tests.
 - Report BEAR-GRN with the covariate-adjusted and degree-corrected AUROC next to the standard metrics, and KO with the
   knockout-label covariate.

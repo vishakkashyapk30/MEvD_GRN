@@ -2,7 +2,7 @@
 
 Status legend: DONE / RUNNING / NEXT / LATER. Times are targets, IST.
 
-## Status, Fri 20 Nov 03:30
+## Status, Fri 20 Nov 07:30: all items DONE
 Deck: `docs/meetings/presentation_15th_nov_22nd_nov.md` (built by `docs/meetings/build_deck_11_22.py` from the
 compiled tables; rebuilt on every new result). Brief: section 7 of `docs/meetings/brief_metrics_and_baselines.md`.
 
@@ -10,7 +10,7 @@ compiled tables; rebuilt on every new result). Brief: section 7 of `docs/meeting
 |---|---|
 | 1. Citations | DONE: survey `docs/reference/lit_survey/degree_controlled_evaluation.md`; deck slide 2; brief 7.1 |
 | 2. Hub-controlled tests on BEAR-GRN, every method | DONE: `docs/results/bear/matched.md` (released 8, baselines 4, MeVD-GRN + L2 + ablations, 16 simple, 3 label-free); KO also with the knockout-label in-degree as covariate (`matched_kocov.md`) |
-| 3. ATAC value | scMultiomeGRN DONE (MeVD-GRN 3 seeds, scMultiomeGRN official). BEAR-GRN MeVD-GRN RUNNING: 32/54 units (3 workers, done ~07:00). LINGER re-run on Macrophage_S1: full DONE, randomised ~05:00, peaks shuffled ~06:40 (job 93928) |
+| 3. ATAC value | DONE: scMultiomeGRN (MeVD-GRN 3 seeds, scMultiomeGRN official) and BEAR-GRN (MeVD-GRN, 9 datasets x 3 seeds, 54/54 units); LINGER re-run on Macrophage_S1 in all three conditions (job 93928). No model gains from ATAC on any test |
 | 4. Simple / Gaussian models | DONE: BEAR-GRN 8 models x 2 feature sets x 9 datasets, plus knockout-label-only training and the in-degree rule per label source; scMultiomeGRN parameter ladder (beta-model, latent-space, degree-corrected latent-space, LDA/QDA/GNB/GMM) |
 | 5. Non-GNN models | DONE: ridge Gaussian graphical model, RegDiffusion, DeepSEM on 9 BEAR-GRN datasets; MLP and gradient boosting in item 4 |
 

@@ -11,10 +11,18 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
 - **BEAR-GRN under degree control (item 2).** On ChIP, the best caliper-matched AUROC of any method is
   0.561 (logistic regression, cell data only (20 parameters)); the best covariate-adjusted AUROC is 0.568 (logistic regression, all 20 features (21 parameters)). MeVD-GRN:
   0.524 caliper-matched,
-  0.537 covariate-adjusted.
-- **ATAC value (item 3), MeVD-GRN on BEAR-GRN, ChIP AUROC:** full 0.576,
-  ATAC removed 0.569, ATAC shuffled
-  0.571.
+  0.537 covariate-adjusted, level with the in-degree rule. On
+  KO, the in-degree counted over knockout labels alone scores
+  0.693 caliper-matched; with it as the covariate MeVD-GRN
+  falls to 0.501.
+- **ATAC value (item 3):** no model gains from ATAC. MeVD-GRN on BEAR-GRN ChIP, caliper-matched AUROC: full
+  0.524, ATAC removed
+  0.521, ATAC shuffled
+  0.522 (9 datasets, 3 seeds). LINGER re-run on
+  Macrophage_S1: full 0.525, peaks shuffled
+  0.529, fully randomised
+  0.529. MeVD-GRN and scMultiomeGRN are also unchanged on
+  the scMultiomeGRN benchmark.
 - **Simple models (item 4):** on BEAR-GRN ChIP a 20-parameter logistic regression on cell data reaches
   0.561 caliper-matched AUROC (MeVD-GRN
   0.524); on scMultiomeGRN the beta-model matches MeVD-GRN on the
@@ -84,7 +92,8 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
 
 - MeVD-GRN uses ATAC in four places: the ATAC features, promoter openness, the peak-derived motif features and the
   accessibility filter of the TF-candidate graph. "Removed" cuts all four; "shuffled" gives every gene another gene's
-  ATAC values (same distribution, broken gene mapping). Seeds 42-44.
+  ATAC values (same distribution, broken gene mapping). ATAC conditions: seeds 42-44; full data: seeds 42-46 (over
+  seeds 42-44 alone it moves by at most 0.002 in every column).
 - LINGER is re-run on Macrophage_S1 with LINGER's own bulk reference: full data, ATAC peaks shuffled (genomic location
   broken, cell structure kept) and ATAC fully randomised (no ATAC information left). One cell population, so cells
   are split into 9 expression clusters (k-means, label-free) to give LINGER enough metacells (it needs >= 50).
@@ -93,9 +102,9 @@ MeVD-GRN, all datasets, ChIP-seq ground truth:
 
 | Method | Datasets | AUROC | AUROC per TF | degree-matched | caliper-matched | covariate-adjusted | degree-corrected |
 |---|---|---|---|---|---|---|---|
-| MeVD-GRN, full data | 9 | **0.576** | *0.662* | **0.523** | **0.524** | **0.537** | **0.553** |
-| MeVD-GRN, ATAC removed (all four routes) | 9 | 0.569 | **0.663** | *0.521* | *0.521* | *0.534* | 0.547 |
-| MeVD-GRN, ATAC shuffled across genes | 9 | *0.571* | **0.663** | 0.520 | *0.521* | 0.533 | *0.549* |
+| MeVD-GRN, full data | 9 | **0.576** | 0.662 | **0.523** | **0.524** | **0.537** | **0.553** |
+| MeVD-GRN, ATAC removed (all four routes) | 9 | 0.571 | *0.663* | *0.521* | 0.521 | *0.535* | 0.547 |
+| MeVD-GRN, ATAC shuffled across genes | 9 | *0.574* | **0.664** | *0.521* | *0.522* | *0.535* | *0.551* |
 
 Macrophage_S1 only (the LINGER re-run dataset), ChIP-seq ground truth:
 
@@ -106,7 +115,7 @@ Macrophage_S1 only (the LINGER re-run dataset), ChIP-seq ground truth:
 | MeVD-GRN, ATAC shuffled across genes | 1 | *0.623* | *0.665* | 0.533 | 0.520 | 0.545 | 0.545 |
 | LINGER, released network (BEAR-GRN) | 1 | 0.510 | 0.529 | 0.544 | 0.519 | 0.523 | 0.558 |
 | LINGER re-run, full data | 1 | 0.487 | 0.531 | *0.551* | *0.525* | 0.537 | 0.557 |
-| LINGER re-run, ATAC peaks shuffled | – | pending | pending | pending | pending | pending | pending |
+| LINGER re-run, ATAC peaks shuffled | 1 | 0.491 | 0.538 | *0.551* | **0.529** | 0.544 | 0.556 |
 | LINGER re-run, ATAC fully randomised | 1 | 0.488 | 0.532 | **0.553** | **0.529** | 0.545 | *0.559* |
 
 ## 6. How much ATAC adds on the scMultiomeGRN benchmark (item 3)
@@ -320,12 +329,14 @@ Knockout ground truth:
 **ATAC (item 3)**
 - MeVD-GRN gains nothing from ATAC on either benchmark: BEAR-GRN ChIP caliper-matched
   0.524 full, 0.521 removed,
-  0.521 shuffled; scMultiomeGRN AUPR 0.935 /
+  0.522 shuffled; scMultiomeGRN AUPR 0.935 /
   0.935 / 0.935.
 - scMultiomeGRN (official code) is unchanged with its ATAC features shuffled (0.919 vs
   0.918 AUPR), although that benchmark's ground truth is built from
   ATAC peaks.
-- LINGER re-run on Macrophage_S1 (full / peaks shuffled / fully randomised): slide 5.
+- LINGER re-run on Macrophage_S1, caliper-matched AUROC: full 0.525,
+  peaks shuffled 0.529, fully randomised
+  0.529: no loss without ATAC (one dataset, one seed).
 
 **Label-free, non-GNN models (item 5)**
 - DeepSEM, RegDiffusion and the ridge Gaussian graphical model score
@@ -333,7 +344,7 @@ Knockout ground truth:
   caliper-matched on ChIP, the level of the released BEAR-GRN methods.
 
 **Next steps (for discussion)**
-- MeVD-GRN with negatives drawn from the same TF as each link (the training choice behind the simple models'
+- MeVD-GRN with negatives drawn from the same TF as each link (the likely reason for the simple models'
   advantage), scored on the hub-controlled tests.
 - Report BEAR-GRN with the covariate-adjusted and degree-corrected AUROC next to the standard metrics, and KO with the
   knockout-label covariate.
