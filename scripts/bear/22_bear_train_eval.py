@@ -199,6 +199,9 @@ def main():
                              float(bcfg.get("neg_pool_max_frac", 0.5)) * n_avail))
             if bcfg["negatives"] == "degree_matched":
                 return bp.degree_matched_negatives(pos, n_pool, n_genes, all_known, rng)
+            if bcfg["negatives"] == "same_tf":
+                return bp.same_tf_negatives(pos, n_pool, n_genes, all_known, rng)
+            assert bcfg["negatives"] == "uniform", bcfg["negatives"]
             return bp.uniform_negatives(fit_tfs, n_pool, n_genes, all_known, rng)
 
         # inner validation on the NATURAL distribution (s12.6): every non-positive

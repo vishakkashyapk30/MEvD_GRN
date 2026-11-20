@@ -28,6 +28,10 @@ BK = pd.read_csv(BKM) if BKM.exists() else pd.DataFrame(columns=["gt", "method",
 BPD = REPO / "docs/results/bear/matched_per_dataset.csv"
 MS1 = (pd.read_csv(BPD).query("dataset == 'Macrophage_S1'").assign(n_datasets=1) if BPD.exists()
        else pd.DataFrame(columns=["gt", "method", "kind"]))
+BLS = REPO / "docs/results/bear/matched_linger_per_seed.csv"
+LPS = pd.read_csv(BLS) if BLS.exists() else pd.DataFrame(columns=["gt", "method", "dataset", "seed"])
+LMETA = (pd.read_csv(REPO / "docs/results/bear/linger_rerun_meta.csv")
+         if (REPO / "docs/results/bear/linger_rerun_meta.csv").exists() else pd.DataFrame())
 BCOLS = [("AUROC_inspace", "AUROC"), ("AUROC_perTF", "AUROC per TF"), ("AUROC_degmatched", "degree-matched"),
          ("AUROC_caliper", "caliper-matched"), ("AUROC_adjusted", "covariate-adjusted"),
          ("AUROC_aiyappa", "degree-corrected")]
@@ -76,13 +80,70 @@ RELEASED = [("LINGER", "LINGER"), ("TRIPOD", "TRIPOD"), ("CellOracle", "CellOrac
 BASE = [("baseline_indegree", "In-degree (training TFs' links)"), ("baseline_pearson", "Pearson"),
         ("baseline_grnboost2", "GRNBoost2"), ("baseline_coverage", "All measured pairs")]
 MEVD = [("mevd_fm_h384_hubmotif", "MeVD-GRN"), ("mevd_fm_h384_hubmotif_L2", "MeVD-GRN, L2 (no cell-type labels)")]
-ATAC_BEAR = [("mevd_fm_h384_hubmotif", "MeVD-GRN, full data"),
+ATAC_BEAR = [("mevd_fm_h384_hubmotif_seeds42to44", "MeVD-GRN, full data"),
              ("mevd_fm_h384_hubmotif_atacnone", "MeVD-GRN, ATAC removed (all four routes)"),
-             ("mevd_fm_h384_hubmotif_atacshuffle", "MeVD-GRN, ATAC shuffled across genes"),
-             ("LINGER", "LINGER, released network (BEAR-GRN)"),
-             ("linger_rerun_full", "LINGER re-run, full data"),
-             ("linger_rerun_peakshuffle", "LINGER re-run, ATAC peaks shuffled"),
-             ("linger_rerun_random", "LINGER re-run, ATAC fully randomised")]
+             ("mevd_fm_h384_hubmotif_atacshuffle", "MeVD-GRN, ATAC shuffled across genes")]
+LINGER_COND = [("LINGER", "Released (BEAR-GRN)"), ("linger_rerun_full", "Re-run, full data"),
+               ("linger_rerun_peakshuffle", "Re-run, ATAC peaks shuffled"),
+               ("linger_rerun_random", "Re-run, ATAC fully randomised")]
+LINGER_DS = ["Macrophage_S1", "Macrophage_S2", "K562", "iPS"]
+NEG = [("baseline_indegree", "In-degree (training TFs' links)"),
+       ("mevd_fm_h384_hubmotif_seeds42to44", "MeVD-GRN, degree-matched negatives (headline)"),
+       ("mevd_fm_h384_hubmotif_sametf", "MeVD-GRN, same-TF negatives"),
+       ("simple_lr_data", "Logistic regression, cell data only (20 parameters; same-TF negatives)"),
+       ("simple_lda_data", "LDA, cell data only (same-TF negatives)")]
+
+
+def linger_rows(gt="ChIP"):
+    """(dataset, seed) pairs that have every re-run condition, in LINGER_DS order."""
+    L = LPS[(LPS["gt"] == gt) & LPS["method"].str.startswith("linger_rerun_")]
+    out = []
+    for ds in LINGER_DS:
+        x = L[L["dataset"] == ds]
+        for sd in sorted(x["seed"].unique()):
+            if set(x[x["seed"] == sd]["method"]) >= {m for m, _ in LINGER_COND[1:]}:
+                out.append((ds, int(sd)))
+    return out
+
+
+def lget(ds, seed, m, col, gt="ChIP"):
+    L = LPS[(LPS["gt"] == gt) & (LPS["method"] == m) & (LPS["dataset"] == ds)]
+    if m != "LINGER":
+        L = L[L["seed"] == seed]
+    return float(L[col].mean()) if len(L) else None
+
+
+def lmeta(ds, seed):
+    if LMETA.empty:
+        return "–"
+    x = LMETA[(LMETA["dataset"] == ds) & (LMETA["seed"] == seed)]
+    if not len(x):
+        return "–"
+    k, mc, c = int(x["k_pseudo_labels"].iloc[0]), int(x["metacells"].iloc[0]), int(x["cells"].iloc[0])
+    return f"{c} cells, one population, {mc} metacells" if k == 1 else f"{c} cells, k-means k = {k}, {mc} metacells"
+
+
+def linger_table(col, gt="ChIP"):
+    rows = linger_rows(gt)
+    head = "| Dataset | Seed | Pseudo-labels | " + " | ".join(l for _, l in LINGER_COND) + " |"
+    out = [head, "|" + "---|" * (3 + len(LINGER_COND))]
+    acc = {m: [] for m, _ in LINGER_COND}
+    for ds, sd in rows:
+        v = [lget(ds, sd, m, col, gt) for m, _ in LINGER_COND]
+        for (m, _), x in zip(LINGER_COND, v):
+            if x is not None:
+                acc[m].append(x)
+        out.append(f"| {ds} | {sd} | {lmeta(ds, sd)} | " + " | ".join(f3(x) for x in v) + " |")
+    if rows:
+        out.append(f"| **Mean over the {len(rows)} runs** | | | " +
+                   " | ".join(f3(sum(a) / len(a)) if a else "–" for a in acc.values()) + " |")
+    return "\n".join(out)
+
+
+def lmean(m, col, gt="ChIP"):
+    v = [lget(ds, sd, m, col, gt) for ds, sd in linger_rows(gt)]
+    v = [x for x in v if x is not None]
+    return sum(v) / len(v) if v else None
 
 
 def nparams(model, nf):
@@ -158,9 +219,9 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
 - **Simple models (item 4):** on BEAR-GRN ChIP a 20-parameter logistic regression on cell data reaches
   {f3(bget('ChIP', 'simple_lr_data', 'AUROC_caliper'))} caliper-matched AUROC (MeVD-GRN
   {f3(bget('ChIP', 'mevd_fm_h384_hubmotif', 'AUROC_caliper'))}); on scMultiomeGRN the beta-model matches MeVD-GRN on the
-  official test. Slides 7-9.
+  official test. Slides 8, 9 and 11.
 - **Label-free, non-GNN models (item 5):** DeepSEM, RegDiffusion and a ridge Gaussian graphical model score at the
-  level of the released methods. Slide 10.""")
+  level of the released methods. Slide 12.""")
 
     S.append("""## 2. Sources for the degree-controlled tests (item 1)
 
@@ -194,28 +255,51 @@ Advisor meeting, follow-up on the feedback of 19 November 2026.
 
 - MeVD-GRN uses ATAC in four places: the ATAC features, promoter openness, the peak-derived motif features and the
   accessibility filter of the TF-candidate graph. "Removed" cuts all four; "shuffled" gives every gene another gene's
-  ATAC values (same distribution, broken gene mapping). ATAC conditions: seeds 42-44; full data: seeds 42-46 (over
-  seeds 42-44 alone it moves by at most 0.002 in every column).
-- LINGER is re-run on Macrophage_S1 with LINGER's own bulk reference: full data, ATAC peaks shuffled (genomic location
-  broken, cell structure kept) and ATAC fully randomised (no ATAC information left). One cell population, so cells
-  are split into 9 expression clusters (k-means, label-free) to give LINGER enough metacells (it needs >= 50).
+  ATAC values (same distribution, broken gene mapping). All three rows: the same seeds 42-44 on all 9 datasets.
 
-MeVD-GRN, all datasets, ChIP-seq ground truth:
+MeVD-GRN, ChIP-seq ground truth:
 
-{btable('ChIP', ATAC_BEAR[:3])}
+{btable('ChIP', ATAC_BEAR)}
 
-Macrophage_S1 only (the LINGER re-run dataset), ChIP-seq ground truth:
+MeVD-GRN, knockout ground truth:
 
-{btable('ChIP', ATAC_BEAR, D=MS1)}""")
+{btable('KO', ATAC_BEAR)}""")
 
-    S.append(f"""## 6. How much ATAC adds on the scMultiomeGRN benchmark (item 3)
+    lr = linger_rows()
+    lds = sorted({d for d, _ in lr}, key=LINGER_DS.index)
+    S.append(f"""## 6. LINGER re-run under the ATAC conditions (item 3)
+
+- LINGER (LingerGRN 1.110) re-run on BEAR-GRN's own input matrices with LINGER's bulk reference: full data, ATAC
+  peaks shuffled (each peak takes another peak's cell profile: genomic location broken, cell structure kept) and ATAC
+  fully randomised (every value permuted across peaks and cells: no ATAC information left).
+- Datasets: the human BEAR-GRN datasets ({', '.join(lds)}); LINGER's bulk reference is human only.
+- Pseudo-labels: LINGER builds floor(sqrt(N)) + 1 metacells per cell label and its training needs >= 50. On iPS a
+  fixed random 2,500 of its 5,711 cells give 51 metacells from one population, so LINGER runs there as published,
+  with no split (all 5,711 cells need about twice the memory and time). The other datasets are one population of
+  412-529 cells (21-24 metacells), so their cells are split by k-means on RNA PCA (no labels used).
+- Seeds: LINGER fixes its training seed at 42. Seed s > 0 changes the k-means split, the metacell draw, the ATAC
+  permutation and LINGER's training seed (42 + s).
+
+Caliper-matched AUROC, ChIP-seq ground truth:
+
+{linger_table('AUROC_caliper')}
+
+AUROC (no hub control), ChIP-seq ground truth:
+
+{linger_table('AUROC_inspace')}
+
+Covariate-adjusted AUROC, ChIP-seq ground truth:
+
+{linger_table('AUROC_adjusted')}""")
+
+    S.append(f"""## 7. How much ATAC adds on the scMultiomeGRN benchmark (item 3)
 
 - The ground-truth network of this benchmark is itself built from the ATAC peaks (motif in an open promoter), so ATAC
   could only look more useful here than it is; BEAR-GRN (previous slide) is the clean test.
 
 {d14.table(d14.OFF, SMG_ATAC, d14.OFF_COLS, d14.OFF_HEAD)}""")
 
-    S.append(f"""## 7. Simple and Gaussian models on BEAR-GRN, ChIP (item 4)
+    S.append(f"""## 8. Simple and Gaussian models on BEAR-GRN, ChIP (item 4)
 
 - Same TF-held-out folds as MeVD-GRN (seed 42), so no label of a scored TF is used. 20 interpretable features per
   (TF, gene) pair: target in-degree among training TFs (left out for the pair's own link), Pearson correlation,
@@ -225,7 +309,7 @@ Macrophage_S1 only (the LINGER re-run dataset), ChIP-seq ground truth:
 
 {btable('ChIP', [('baseline_indegree', 'In-degree'), ('mevd_fm_h384_hubmotif', 'MeVD-GRN')] + SIMPLE)}""")
 
-    S.append(f"""## 8. Simple and Gaussian models on BEAR-GRN, knockout ground truth (item 4)
+    S.append(f"""## 9. Simple and Gaussian models on BEAR-GRN, knockout ground truth (item 4)
 
 - Training labels as for MeVD-GRN: binding (ChIP-derived) and knockout labels pooled. Binding labels dominate, and
   the models then rank knockout targets below chance within a TF. The second block trains the same models on the
@@ -250,7 +334,33 @@ of the training TFs (5 datasets):
                ('simple_lr_data', 'Logistic regression, cell data only, all labels'),
                ('simple_lda_data', 'LDA, cell data only, all labels')] + SIMPLE_KO, D=BK)}""")
 
-    S.append(f"""## 9. Parameter ladder on the scMultiomeGRN benchmark (item 4)
+    S.append(f"""## 10. MeVD-GRN retrained with the simple models' negatives
+
+- Only the training negatives change. Headline MeVD-GRN: a negative's TF is drawn by out-degree and its target by
+  in-degree, independently, so a TF's negatives match its links only on average and targets follow the in-degree.
+  Same-TF: every TF gets non-links in proportion to its links, targets drawn uniformly among its non-links (the rule
+  of the simple models on slides 8-9). On dense datasets a hub TF has few non-links and gets all of them.
+- Same 9 datasets, TF-held-out folds, model and seeds 42-44 as the headline rows shown.
+- Result: on ChIP, same-TF negatives raise MeVD-GRN's caliper-matched and covariate-adjusted AUROC by about 0.02, to
+  just below the logistic regression; on KO nothing changes, and with the knockout-label covariate both versions stay
+  at chance.
+- Result: on ChIP, same-TF negatives raise MeVD-GRN's caliper-matched and covariate-adjusted AUROC by about 0.02, to
+  just below the logistic regression; on KO nothing changes, and with the knockout-label covariate both versions stay
+  at chance.
+
+ChIP-seq ground truth:
+
+{btable('ChIP', NEG)}
+
+Knockout ground truth:
+
+{btable('KO', NEG)}
+
+Knockout ground truth, covariate = target in-degree over the knockout labels of the training TFs (5 datasets):
+
+{btable('KO', [NEG[1], NEG[2], ('simple_lda_data', 'LDA, cell data only, all labels'), ('simple_lda_data_perturbation', 'LDA, cell data only, knockout labels only')], D=BK)}""")
+
+    S.append(f"""## 11. Parameter ladder on the scMultiomeGRN benchmark (item 4)
 
 - Network models fitted on the training links only: the beta-model (one parameter per TF; Chatterjee, Diaconis & Sly
   2011), the latent-space model (Hoff, Raftery & Handcock 2002) and its degree-corrected form (Krivitsky et al. 2009).
@@ -264,7 +374,7 @@ Held-out-TF split:
 
 {d14.table(d14.TF, [(d14.MEVD_TF, 'MeVD-GRN')] + LADDER, d14.TF_COLS, d14.TF_HEAD)}""")
 
-    S.append(f"""## 10. Label-free, non-GNN models on BEAR-GRN (item 5)
+    S.append(f"""## 12. Label-free, non-GNN models on BEAR-GRN (item 5)
 
 - No labels at all, one model per dataset scores every TF, as the released BEAR-GRN methods do.
 
@@ -280,7 +390,7 @@ Knockout ground truth:
     o = lambda m, k: f3(d14.v(d14.OFF, m, k))
     t = lambda m, k: f3(d14.v(d14.TF, m, k))
     rel_c = best_of("ChIP", RELEASED, "AUROC_caliper")
-    S.append(f"""## 11. Conclusions and next steps
+    S.append(f"""## 13. Conclusions and next steps
 
 **Hub-controlled evaluation (items 1-2)**
 - Every hub-controlled test has a published counterpart: covariate-adjusted AUROC (Janes & Pepe 2009), matched
@@ -298,9 +408,12 @@ Knockout ground truth:
 **Simple models (item 4)**
 - BEAR-GRN ChIP: logistic regression on 19 cell-data features (20 parameters) reaches
   {f3(bget('ChIP', 'simple_lr_data', 'AUROC_caliper'))} caliper-matched and
-  {f3(bget('ChIP', 'simple_lr_data', 'AUROC_adjusted'))} covariate-adjusted, above MeVD-GRN. Likely reason (untested):
-  training negatives drawn from the same TF as each link force a within-TF ranking, which is what the matched tests
-  measure.
+  {f3(bget('ChIP', 'simple_lr_data', 'AUROC_adjusted'))} covariate-adjusted, above MeVD-GRN. Tested: retraining MeVD-GRN with negatives drawn from the same TF as each link raises ChIP
+  caliper-matched AUROC from {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_seeds42to44', 'AUROC_caliper'))} to {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_sametf', 'AUROC_caliper'))} and covariate-adjusted from {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_seeds42to44', 'AUROC_adjusted'))} to {f3(bget('ChIP', 'mevd_fm_h384_hubmotif_sametf', 'AUROC_adjusted'))} (9 datasets, seeds
+  42-44), about half of the gap to the logistic regression; the rest remains. On KO it changes nothing
+  ({f3(bget('KO', 'mevd_fm_h384_hubmotif_sametf', 'AUROC_caliper'))} vs
+  {f3(bget('KO', 'mevd_fm_h384_hubmotif_seeds42to44', 'AUROC_caliper'))}; {f3(bget('KO', 'mevd_fm_h384_hubmotif_sametf', 'AUROC_caliper', BK))}
+  with the knockout-label covariate).
 - BEAR-GRN KO, knockout-label covariate: knockout-trained cell-data LDA keeps
   {f3(bget('KO', 'simple_lda_data_perturbation', 'AUROC_caliper', BK))} caliper-matched, the largest signal left
   beyond hubness on KO (Pearson {f3(bget('KO', 'baseline_pearson', 'AUROC_caliper', BK))}).
@@ -318,7 +431,8 @@ Knockout ground truth:
 - scMultiomeGRN (official code) is unchanged with its ATAC features shuffled ({o(d14.SMG, 'test_aupr')} vs
   {o('official_scmultiomegrn_atac_shuffle', 'test_aupr')} AUPR), although that benchmark's ground truth is built from
   ATAC peaks.
-- LINGER re-run on Macrophage_S1, caliper-matched AUROC: full {f3(bget('ChIP', 'linger_rerun_full', 'AUROC_caliper', MS1))},
+- LINGER re-run (Macrophage_S1 and Macrophage_S2 in slide 6; iPS, K562 and a second Macrophage_S1 seed still
+  running at the time of writing), Macrophage_S1 caliper-matched AUROC: full {f3(bget('ChIP', 'linger_rerun_full', 'AUROC_caliper', MS1))},
   peaks shuffled {f3(bget('ChIP', 'linger_rerun_peakshuffle', 'AUROC_caliper', MS1))}, fully randomised
   {f3(bget('ChIP', 'linger_rerun_random', 'AUROC_caliper', MS1))}: no loss without ATAC (one dataset, one seed).
 
@@ -328,8 +442,7 @@ Knockout ground truth:
   caliper-matched on ChIP, the level of the released BEAR-GRN methods.
 
 **Next steps (for discussion)**
-- MeVD-GRN with negatives drawn from the same TF as each link (the likely reason for the simple models'
-  advantage), scored on the hub-controlled tests.
+- Close the remaining ChIP gap between MeVD-GRN with same-TF negatives and the 20-parameter logistic regression.
 - Report BEAR-GRN with the covariate-adjusted and degree-corrected AUROC next to the standard metrics, and KO with the
   knockout-label covariate.
 - Decide the role of ATAC in MeVD-GRN: no test shows a contribution.""")

@@ -1,0 +1,8 @@
+dataset,mode,seed,cells,k_pseudo_labels,metacells,hours
+Macrophage_S1,full,0,474,9,62,1.7
+Macrophage_S1,full,1,474,7,60,2.01
+Macrophage_S1,peakshuffle,0,474,9,62,1.52
+Macrophage_S1,random,0,474,9,62,1.89
+Macrophage_S2,full,0,528,8,61,1.9
+Macrophage_S2,peakshuffle,0,528,8,61,1.41
+Macrophage_S2,random,0,528,8,61,2.01
